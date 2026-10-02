@@ -13,7 +13,8 @@
 //   audience   who can play a built-in beat: 'everyone', 'members' or 'admin'
 //   title, host, sharer, ownerName   words for the sentences
 export function sheetState(s) {
-  const out = { warning: null, toggle: null, link: null, recipient: '', note: '' };
+  // intro: what is being shared, when that is not obvious; offer: the better way to share it
+  const out = { intro: '', warning: null, offer: null, toggle: null, link: null, recipient: '', note: '' };
   const warn = (text, primary, secondary = null) => (s.dismissed ? null : { text, primary, secondary });
 
   if (s.kind === 'own') {
@@ -38,15 +39,26 @@ export function sheetState(s) {
     return out;
   }
 
+  // One of the site's beats. The better link is to a copy of one's own, which carries its own
+  // preview; the beat's own link only works for the people who can play the beat.
   if (s.kind === 'beat') {
-    if (s.edited) out.warning = warn("Your changes to the code can't go in a link until they are saved.", { label: 'Save as my song and share', action: 'save-new-share' }, { label: 'Share without my changes', action: 'dismiss' });
-    out.link = { text: s.link, note: 'The link carries your knob and switch positions, channel levels and tempo.' };
-    out.recipient =
-      s.audience === 'admin'
-        ? 'Only you can play this beat. Open it to members (Admin) before sharing it.'
-        : s.audience === 'members'
-          ? 'People need to sign in, free, to play this beat.'
-          : 'Anyone can play it, no account needed.';
+    out.intro = `"${s.title}" is one of the site's beats, not a song of yours.`;
+    if (s.accounts) {
+      out.offer = {
+        text: `Keep your own copy${s.edited ? ', with your changes,' : ''} and share that: its link shows its own title and picture wherever it is pasted.`,
+        label: 'Save as my song and share',
+        action: 'save-new-share',
+      };
+    } else if (s.edited) {
+      out.warning = warn("Your changes to the code can't go in a link until they are saved.", { label: 'Save as my song', action: 'save-new' }, { label: 'Share without my changes', action: 'dismiss' });
+    }
+    if (s.audience === 'admin') {
+      out.recipient = 'Only you can play this beat, so a link to it would not work for anyone else. Open it to members in the Admin sheet first, or share your own copy.';
+      return out;
+    }
+    const lead = s.accounts ? 'Or share the beat itself' : 'This link';
+    out.link = { text: s.link, note: `${lead}${s.edited ? ', without your changes' : ''}: it opens the beat's page with your knob and switch positions, channel levels and tempo.` };
+    out.recipient = s.audience === 'members' ? 'People need to sign in, free, to play this beat.' : 'Anyone can play the beat, no account needed.';
     return out;
   }
 

@@ -192,13 +192,24 @@ async function scenario() {
   const ranEdit = await until(() => !A.dirty && A.mixer.tracks.some((track) => track.name === 'EDITED'), 8000);
   check('edited code runs without stopping the music', wasDirty && ranEdit && A.started && !A.own && h.songs.list().length === 0);
 
-  // sharing an edited beat: the sheet says the changes are not in the link, and offers to keep them
+  // sharing an edited site beat (no accounts here): the sheet says what it is, offers to keep
+  // the changes first, and the beat's own link goes without them
   document.getElementById('share').click();
-  const sheet = { open: document.getElementById('share-sheet').open, warning: !document.getElementById('share-warning').hidden && document.getElementById('share-warning-go').textContent, link: document.getElementById('share-link').value };
+  const sheet = {
+    open: document.getElementById('share-sheet').open,
+    intro: document.getElementById('share-intro').textContent,
+    warning: !document.getElementById('share-warning').hidden && document.getElementById('share-warning-go').textContent,
+    link: document.getElementById('share-link').value,
+    note: document.getElementById('share-link-note').textContent,
+  };
   document.getElementById('share-warning-skip').click();
   const skipped = document.getElementById('share-warning').hidden;
   document.getElementById('share-close').click();
-  check('sharing an edited beat warns that the changes are not in the link', sheet.open && sheet.warning === 'Save as my song and share' && /\/beats\/[a-z0-9-]+#mix=/.test(sheet.link) && skipped, JSON.stringify(sheet));
+  check(
+    "sharing an edited site beat says what it is, and that its link goes without the changes",
+    sheet.open && /one of the site's beats/.test(sheet.intro) && sheet.warning === 'Save as my song' && /\/beats\/[a-z0-9-]+#mix=/.test(sheet.link) && /without your changes/.test(sheet.note) && skipped,
+    JSON.stringify(sheet),
+  );
 
   // a different beat is asked for while the changes are unsaved: the site asks first
   const elsewhere = h.app.songs.find((song) => song !== beat && !song.broken);

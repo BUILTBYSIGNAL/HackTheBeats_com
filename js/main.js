@@ -909,7 +909,7 @@ function shareInput(target) {
     const host = new URL(site.split ? config.shareOrigin : location.origin).host;
     return { ...base, kind: 'own', accounts: cloud.accounts, shared: song.shared, blocked: song.blocked, synced: song.synced, link: songs.shareLink(song.id), host, sharer: cloud.user?.displayName || '' };
   }
-  if (song.source === 'beats' && player) return { ...base, kind: 'beat', audience: song.audience ?? (song.featured ? 'everyone' : 'members'), link: mixLink(player, song) };
+  if (song.source === 'beats' && player) return { ...base, kind: 'beat', accounts: cloud.accounts && app.access === 'full', audience: song.audience ?? (song.featured ? 'everyone' : 'members'), link: mixLink(player, song) };
   if (song.source === 'shared') return { ...base, kind: 'theirs', ownerName: song.ownerName, link: linkToSong(song) };
   return { ...base, kind: 'loose' };
 }
@@ -1242,6 +1242,10 @@ async function boot() {
       song: $('share-song'),
       credit: $('share-credit'),
       from: $('share-from'),
+      intro: $('share-intro'),
+      offer: $('share-offer'),
+      offerText: $('share-offer-text'),
+      offerGo: $('share-offer-go'),
       warning: $('share-warning'),
       warningText: $('share-warning-text'),
       warningGo: $('share-warning-go'),

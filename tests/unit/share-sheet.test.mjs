@@ -45,14 +45,34 @@ test('without accounts there is nothing to switch on', () => {
   assert.match(view.note, /needs accounts/);
 });
 
-test('a built-in beat is shared as a mix, and says who can play it', () => {
-  const view = sheetState({ kind: 'beat', link: 'https://example.org/beats/amber#mix=abc', audience: 'everyone' });
+test("a site beat: the sheet says so, and leads with a copy of one's own", () => {
+  const view = sheetState({ kind: 'beat', title: 'Amber', accounts: true, link: 'https://example.org/beats/amber#mix=abc', audience: 'everyone' });
+  assert.match(view.intro, /"Amber" is one of the site's beats/);
+  assert.equal(view.offer.action, 'save-new-share');
+  assert.match(view.offer.text, /its own title and picture/);
   assert.equal(view.toggle, null);
-  assert.match(view.link.note, /knob and switch positions/);
+  assert.match(view.link.note, /^Or share the beat itself: .*knob and switch positions/);
   assert.match(view.recipient, /no account needed/);
-  assert.match(sheetState({ kind: 'beat', link: 'x', audience: 'members' }).recipient, /sign in/);
-  assert.match(sheetState({ kind: 'beat', link: 'x', audience: 'admin' }).recipient, /Only you/);
-  assert.equal(sheetState({ kind: 'beat', link: 'x', edited: true }).warning.primary.action, 'save-new-share');
+  assert.match(sheetState({ kind: 'beat', title: 'Amber', accounts: true, link: 'x', audience: 'members' }).recipient, /sign in/);
+  // with changes on the deck, the copy takes them along; the beat's own link does not
+  const edited = sheetState({ kind: 'beat', title: 'Amber', accounts: true, link: 'x', edited: true });
+  assert.match(edited.offer.text, /with your changes/);
+  assert.match(edited.link.note, /without your changes/);
+  assert.equal(edited.warning, null);
+});
+
+test('a site beat only you can play gets no link, and says why', () => {
+  const view = sheetState({ kind: 'beat', title: 'Amber', accounts: true, link: 'x', audience: 'admin' });
+  assert.equal(view.link, null);
+  assert.match(view.recipient, /Only you can play this beat/);
+  assert.equal(view.offer.action, 'save-new-share');
+});
+
+test('without accounts, a site beat is shared as a mix, and changes are kept first', () => {
+  const view = sheetState({ kind: 'beat', title: 'Amber', accounts: false, link: 'x', audience: 'everyone' });
+  assert.equal(view.offer, null);
+  assert.match(view.link.note, /^This link: /);
+  assert.equal(sheetState({ kind: 'beat', title: 'Amber', accounts: false, link: 'x', edited: true }).warning.primary.action, 'save-new');
 });
 
 test("someone else's song is shared by its own link", () => {

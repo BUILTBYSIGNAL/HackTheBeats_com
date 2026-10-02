@@ -33,6 +33,7 @@ export const shareSheet = {
     els.link.addEventListener('focus', () => els.link.select());
     els.warningGo.addEventListener('click', () => this.act(this.view?.warning?.primary?.action));
     els.warningSkip.addEventListener('click', () => this.act(this.view?.warning?.secondary?.action));
+    els.offerGo.addEventListener('click', () => this.act(this.view?.offer?.action));
     els.record.addEventListener('click', () => {
       els.dialog.close();
       hooks.record();
@@ -75,6 +76,15 @@ export const shareSheet = {
     els.credit.hidden = !input.credit;
     els.from.textContent = input.from || '';
     els.from.hidden = !input.from;
+
+    els.intro.textContent = view.intro;
+    els.intro.hidden = !view.intro;
+    els.offer.hidden = !view.offer;
+    if (view.offer) {
+      els.offerText.textContent = view.offer.text;
+      els.offerGo.textContent = view.offer.label;
+      els.offerGo.disabled = this.busy;
+    }
 
     els.warning.hidden = !view.warning;
     if (view.warning) {

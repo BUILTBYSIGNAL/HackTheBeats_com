@@ -837,6 +837,20 @@ dialog::backdrop {
   color: var(--hb-ink-2);
   font-size: 13px;
 }
+.share__intro {
+  color: var(--hb-ink);
+  font-size: 13.5px;
+}
+.share__offer {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--hb-line);
+  border-radius: 8px;
+  background: var(--hb-raise);
+  color: var(--hb-ink-2);
+  font-size: 13px;
+}
 .share__toggle {
   display: flex;
   align-items: center;

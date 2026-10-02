@@ -491,6 +491,35 @@ try {
     `${closedPage.status} / ${closedCard.status}`,
   );
 
+  // sharing from a site beat: the sheet says what it is, and leads with a copy of one's own,
+  // whose link is the song's own address (with its own preview)
+  const fromBeat = await owner.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const A = h.players.A;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const beat = h.app.songs.find((song) => song.featured);
+    if (A.song?.id !== beat.id) document.querySelector(`.beat[data-id="${CSS.escape(beat.id)}"] .beat__deck[data-deck="A"]`).click();
+    for (let i = 0; i < 200 && !(A.song?.id === beat.id && A.ready); i++) await sleep(50);
+    const before = h.songs.list().length;
+    document.getElementById('share').click();
+    const sheet = { intro: document.getElementById('share-intro').textContent, offer: document.getElementById('share-offer-go').textContent, beatLink: document.getElementById('share-link').value };
+    document.getElementById('share-offer-go').click();
+    for (let i = 0; i < 100 && !document.getElementById('share-link').value.includes('/s/'); i++) await sleep(100);
+    const link = document.getElementById('share-link').value;
+    document.getElementById('share-close').click();
+    const copy = A.song;
+    return { ...sheet, link, own: A.own, shared: h.songs.get(copy.id)?.shared, from: copy.from, added: h.songs.list().length - before, beat: beat.title, copyId: copy.id };
+  });
+  check(
+    "sharing from a site beat offers a copy of one's own, whose link is its own address",
+    /one of the site's beats/.test(fromBeat.intro) && fromBeat.offer === 'Save as my song and share' && /\/beats\//.test(fromBeat.beatLink) && SONG_ADDRESS.test(fromBeat.link) && fromBeat.own && fromBeat.shared && fromBeat.added === 1 && fromBeat.from?.title === fromBeat.beat,
+    JSON.stringify(fromBeat),
+  );
+  await owner.evaluate(async (id) => {
+    window.hackingTheBeats.songs.remove(id);
+    await window.hackingTheBeats.songs.flush();
+  }, fromBeat.copyId);
+
   // a link that names nothing: the player says so, and offers no copy to take home
   const nowhere = await bare(`${PLAYER}/#song=00000000-0000-4000-8000-0000000000ff`, SPLIT);
   await nowhere.waitForFunction(() => !document.getElementById('gone').hidden, null, { timeout: 15000 }).catch(() => {});
