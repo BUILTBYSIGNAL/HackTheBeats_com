@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parse } from 'acorn';
 import { createAnalyzer } from '../../js/analyze-core.js';
 import { collect, createLibrary } from '../../js/library-core.js';
-import { slugify, assignSlugs, beatPath, slugFromPath, songTitle, songDescription } from '../../js/routes-core.js';
+import { slugify, assignSlugs, beatPath, slugFromPath, songTitle, songDescription, creditLine, remixLine, songLinkIn } from '../../js/routes-core.js';
 
 const library = createLibrary(createAnalyzer(parse));
 
@@ -57,4 +57,27 @@ test('the same pattern exported twice is one song, the newest copy', () => {
     ['Hats', 'hats', 'Someone'],
     ['One, again', 'one-again', null],
   ]);
+});
+
+test('a credit line names who wrote it, who shared it (when someone else), and its tempo', () => {
+  assert.equal(creditLine({ by: 'Ana', ownerName: 'Rowan', bpm: 120.4 }), 'by Ana · shared by Rowan · 120 bpm');
+  assert.equal(creditLine({ by: 'Rowan', ownerName: 'Rowan', bpm: 90 }), 'by Rowan · 90 bpm');
+  assert.equal(creditLine({ ownerName: 'Rowan' }), 'shared by Rowan');
+  assert.equal(creditLine({}), '');
+});
+
+test('a remix names its original', () => {
+  assert.equal(remixLine({ title: 'Glass Tide', by: 'Ana', ownerName: 'Rowan' }), 'Remix of "Glass Tide" by Ana');
+  assert.equal(remixLine({ title: 'Glass Tide', ownerName: 'Rowan' }), 'Remix of "Glass Tide" by Rowan');
+  assert.equal(remixLine({ title: 'Glass Tide' }), 'Remix of "Glass Tide"');
+  assert.equal(remixLine(null), '');
+});
+
+test('a shared song is found in its link', () => {
+  const uuid = '0b9c7a1e-4f3d-4c2b-9a8e-1d2c3b4a5f6e';
+  assert.deepEqual(songLinkIn({ hash: `#song=${uuid}` }), { kind: 'song', raw: uuid, share: uuid });
+  assert.deepEqual(songLinkIn({ hash: `#copy=${uuid}` }), { kind: 'copy', raw: uuid, share: uuid });
+  assert.deepEqual(songLinkIn({ hash: '#song=owner1~song1' }), { kind: 'song', raw: 'owner1~song1', owner: 'owner1', id: 'song1' });
+  assert.equal(songLinkIn({ hash: '#mix=abc' }), null);
+  assert.equal(songLinkIn({}), null);
 });

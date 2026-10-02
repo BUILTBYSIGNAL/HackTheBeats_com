@@ -709,6 +709,15 @@ body:not(.has-played) .coach,
   font: 400 13px/1 var(--hb-mono);
   min-height: 13px;
 }
+.curtain__from {
+  margin-top: -6px;
+  color: var(--hb-ink-3);
+  font-size: 13px;
+  font-style: italic;
+}
+.curtain__from[hidden] {
+  display: none;
+}
 .curtain__play {
   position: relative;
   display: grid;
@@ -799,7 +808,9 @@ body:not(.has-played) .coach,
 }
 /* while it is up, the stage behind it is not the beat it describes */
 .is-locked .curtain,
-.is-locked .panes {
+.is-locked .panes,
+.is-gone .curtain,
+.is-gone .panes {
   visibility: hidden;
 }
 .gate__title {

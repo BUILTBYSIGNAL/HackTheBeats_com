@@ -35,6 +35,31 @@ export const slugFromPath = (pathname) => /^\/beats\/([a-z0-9-]+)\/?$/.exec(path
 const credit = (song) => (song.by ? `${song.title} by ${song.by}` : song.title);
 export const songTitle = (song) => `${credit(song)} — ${SITE_NAME}`;
 
+// "by Ana · shared by Rowan · 120 bpm": who wrote it (from its code), who shared it (from
+// their account, when that is someone else) and its tempo.
+export function creditLine({ by, ownerName, bpm } = {}) {
+  const sharer = ownerName && ownerName !== by ? `shared by ${ownerName}` : null;
+  return [by ? `by ${by}` : null, sharer, bpm ? `${Math.round(bpm)} bpm` : null].filter(Boolean).join(' · ');
+}
+
+// Where a copy came from: 'Remix of "Glass Tide" by Rowan', or '' for an original.
+export function remixLine(from) {
+  if (!from?.title) return '';
+  const who = from.by || from.ownerName;
+  return `Remix of "${from.title}"${who ? ` by ${who}` : ''}`;
+}
+
+// A link to someone's shared song, from an address: #song=<uuid> (or, for songs shared
+// before links were UUIDs, #song=<owner>~<id>). #copy= is the same song, sent over from
+// the player to be changed or kept.
+//   → { kind: 'song' | 'copy', raw, share } or { kind, raw, owner, id }, or null
+export function songLinkIn({ hash = '' } = {}) {
+  const found = /[#&](song|copy)=([^&]+)/.exec(hash);
+  if (!found) return null;
+  const [owner, id] = found[2].split('~').map(decodeURIComponent);
+  return id ? { kind: found[1], raw: found[2], owner, id } : { kind: found[1], raw: found[2], share: owner };
+}
+
 const clip = (text, max) => {
   if (text.length <= max) return text;
   const cut = text.slice(0, max - 1);

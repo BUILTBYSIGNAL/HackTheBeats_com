@@ -9,6 +9,8 @@ rules_version = '2';
 //       so a private song's id cannot be discovered.
 //     - An admin can see every song and switch a shared one off (shared: false,
 //       blocked: true). The owner cannot share a blocked song again.
+//     - A copy can say where it came from (from: title, credit, link or page of the
+//       original), never whose account it was in.
 //   shares/{uuid}                what a share link points at
 //     - A link is a UUID. Anyone holding it can read whose song it names, nothing more;
 //       nobody can list them. Only the owner creates one, for themselves.
@@ -41,9 +43,21 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // Where a copy came from: what was already public about the original.
+    function validFrom(from) {
+      return from is map
+        && from.keys().hasOnly(['title', 'by', 'ownerName', 'shareId', 'beat'])
+        && from.keys().hasAll(['title'])
+        && from.title is string && from.title.size() <= 200
+        && (!('by' in from) || (from.by is string && from.by.size() <= 200))
+        && (!('ownerName' in from) || (from.ownerName is string && from.ownerName.size() <= 200))
+        && (!('shareId' in from) || (from.shareId is string && from.shareId.size() <= 64))
+        && (!('beat' in from) || (from.beat is string && from.beat.size() <= 120));
+    }
+
     // What a song document may contain, and how big it may be.
     function validSong(song) {
-      return song.keys().hasOnly(['code', 'title', 'createdAt', 'updatedAt', 'shared', 'mixer', 'ownerName', 'blocked', 'shareId'])
+      return song.keys().hasOnly(['code', 'title', 'createdAt', 'updatedAt', 'shared', 'mixer', 'ownerName', 'blocked', 'shareId', 'from'])
         && song.keys().hasAll(['code', 'title', 'createdAt', 'updatedAt', 'shared'])
         && song.code is string && song.code.size() <= 200000
         && song.title is string && song.title.size() <= 200
@@ -53,7 +67,8 @@ service cloud.firestore {
         && (!('mixer' in song) || (song.mixer is list && song.mixer.size() <= 64))
         && (!('ownerName' in song) || (song.ownerName is string && song.ownerName.size() <= 200))
         && (!('blocked' in song) || song.blocked is bool)
-        && (!('shareId' in song) || (song.shareId is string && song.shareId.size() <= 64));
+        && (!('shareId' in song) || (song.shareId is string && song.shareId.size() <= 64))
+        && (!('from' in song) || validFrom(song.from));
     }
     function blocked(song) {
       return song.get('blocked', false);

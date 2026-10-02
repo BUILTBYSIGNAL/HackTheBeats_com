@@ -92,6 +92,16 @@ async function visitor(url = SITE, config = CONFIG) {
   return page;
 }
 const settle = (page, ms = 400) => page.waitForTimeout(ms);
+// a page that is not expected to load a song (a link that leads nowhere)
+async function bare(url, config) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
+  await context.addInitScript((value) => (window.HTB_CONFIG = value), config);
+  const page = await context.newPage();
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(url);
+  await page.waitForFunction(() => window.hackingTheBeats?.cloud.ready, null, { timeout: 45000 });
+  return page;
+}
 
 try {
   /* ---------- without an account: the small player ---------- */
@@ -213,6 +223,30 @@ try {
   const edited = await one.evaluate(async () => (await window.hackingTheBeats.cloud.listSongs())[0].code.includes('EXTRA:'));
   check('edits to my own song are saved to the account when I press Save', edited);
 
+  // the share sheet: changes not yet saved are kept first, then the link is made
+  const sheet = await one.evaluate(async (id) => {
+    const h = window.hackingTheBeats;
+    const A = h.players.A;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const view = A.mirror.editor;
+    view.dispatch({ changes: { from: view.state.doc.length, insert: '// saved by sharing\n' } });
+    document.getElementById('share').click();
+    const before = { open: document.getElementById('share-sheet').open, warning: document.getElementById('share-warning-go').textContent, toggle: !document.getElementById('share-toggle-row').hidden };
+    document.getElementById('share-warning-go').click();
+    for (let i = 0; i < 100 && !document.getElementById('share-link').value.includes('#song='); i++) await sleep(100);
+    const after = { link: document.getElementById('share-link').value, recipient: document.getElementById('share-recipient').textContent, edited: A.edited, shared: h.songs.get(id).shared };
+    document.getElementById('share-close').click();
+    const remote = (await h.cloud.listSongs()).find((song) => song.id === id);
+    h.songs.setShared(id, false);
+    await h.songs.flush();
+    return { before, after, saved: remote.code.includes('saved by sharing') && remote.shared };
+  }, first);
+  check(
+    'sharing a song with unsaved changes saves them first, then gives the link',
+    sheet.before.open && sheet.before.warning === 'Save and share' && sheet.before.toggle && /#song=[0-9a-f-]{36}$/.test(sheet.after.link) && !sheet.after.edited && sheet.after.shared && sheet.saved && /shared by One Tester/.test(sheet.after.recipient),
+    JSON.stringify(sheet),
+  );
+
   // sharing
   const links = await one.evaluate(async (id) => {
     const h = window.hackingTheBeats;
@@ -272,6 +306,10 @@ try {
       writeOwnBlocked: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'born-blocked'), song({ blocked: true }))),
       writeOwnHuge: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'huge'), song({ code: 'x'.repeat(200001) }))),
       writeOwnExtraField: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'extra'), { ...song(), admin: true })),
+      writeOwnWithFrom: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'remix'), song({ from: { title: 'Paper Kite', ownerName: 'One', shareId: '00000000-0000-4000-8000-00000000000a' } }))),
+      writeOwnFromWithOwner: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'remix-2'), song({ from: { title: 'Paper Kite', owner: uid } }))),
+      writeOwnFromHuge: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'remix-3'), song({ from: { title: 'x'.repeat(201) } }))),
+      writeOwnFromNotAMap: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'remix-4'), song({ from: 'Paper Kite' }))),
       writeElsewhere: await attempt(() => fb.setDoc(fb.doc(db, 'anything', 'else'), { a: 1 })),
       makeSelfAdmin: await attempt(() => fb.setDoc(fb.doc(db, 'admins', me), {})),
       listEveryonesShared: await attempt(() => fb.getDocs(fb.query(fb.collectionGroup(db, 'songs'), fb.where('shared', '==', true)))),
@@ -294,6 +332,11 @@ try {
   check('rules: a standard user cannot make themselves admin, or publish beats', denied(rules.makeSelfAdmin) && denied(rules.writeBeat) && denied(rules.writeCatalog), `${rules.makeSelfAdmin} / ${rules.writeBeat} / ${rules.writeCatalog}`);
   check('rules: share links cannot be listed, forged, taken over or removed by someone else', denied(rules.listShares) && denied(rules.shareForSomeoneElse) && denied(rules.shareWithAName) && denied(rules.hijackShare) && denied(rules.deleteOthersShare), `${rules.listShares} / ${rules.shareForSomeoneElse} / ${rules.shareWithAName} / ${rules.hijackShare} / ${rules.deleteOthersShare}`);
   check('rules: the rest of the database is closed', denied(rules.writeElsewhere), rules.writeElsewhere);
+  check(
+    'rules: a copy can say where it came from, but never whose account it was in',
+    rules.writeOwnWithFrom === 'allowed' && denied(rules.writeOwnFromWithOwner) && denied(rules.writeOwnFromHuge) && denied(rules.writeOwnFromNotAMap),
+    `${rules.writeOwnWithFrom} / ${rules.writeOwnFromWithOwner} / ${rules.writeOwnFromHuge} / ${rules.writeOwnFromNotAMap}`,
+  );
 
   // keeping a copy of the shared song
   await two.click('#save-copy');
@@ -301,15 +344,17 @@ try {
   await two.evaluate(() => window.hackingTheBeats.songs.flush());
   const copy = await two.evaluate(async () => {
     const h = window.hackingTheBeats;
-    return { own: h.players.A.own, mine: h.songs.list().length, remote: (await h.cloud.listSongs()).some((s) => s.code.includes('EXTRA:')) };
+    const remote = (await h.cloud.listSongs()).find((s) => s.code.includes('EXTRA:'));
+    return { own: h.players.A.own, mine: h.songs.list().length, remote: Boolean(remote), from: remote?.from, curtainFrom: document.getElementById('curtain-from').textContent };
   });
   check('"Save a copy" puts a shared song in my own account', copy.own && copy.remote, JSON.stringify(copy));
+  check('the copy credits the song it came from, in the account too', copy.from?.ownerName === 'One Tester' && /^[0-9a-f-]{36}$/.test(copy.from?.shareId || '') && !JSON.stringify(copy.from).includes(links.uid), JSON.stringify(copy.from));
 
   // a private song's link opens nothing, even for someone signed in
   await two.goto(links.secret);
-  await two.waitForFunction(() => /no longer available/.test(document.getElementById('status').textContent), null, { timeout: 15000 }).catch(() => {});
-  const blocked = await two.evaluate(() => ({ gated: window.hackingTheBeats.players.A.gated, status: document.getElementById('status').textContent }));
-  check('a private song cannot be opened by its link', !blocked.gated && /no longer available/.test(blocked.status), blocked.status);
+  await two.waitForFunction(() => !document.getElementById('gone').hidden, null, { timeout: 15000 }).catch(() => {});
+  const blocked = await two.evaluate(() => ({ gated: window.hackingTheBeats.players.A.gated, gone: !document.getElementById('gone').hidden, title: document.getElementById('gone-title').textContent }));
+  check('a private song cannot be opened by its link, and the page says so', !blocked.gated && blocked.gone && /no longer works/.test(blocked.title), JSON.stringify(blocked));
 
   // switching sharing off closes the link
   await one.evaluate(async (id) => {
@@ -377,12 +422,46 @@ try {
   }, first);
   check("sharing again makes a new link, on the player's address", playerLink?.startsWith(`${PLAYER}/#song=`) && UUID.test(playerLink) && playerLink.split('#song=')[1] !== links.shared.split('#song=')[1], playerLink);
 
+  // a link that names nothing: the player says so, and offers no copy to take home
+  const nowhere = await bare(`${PLAYER}/#song=00000000-0000-4000-8000-0000000000ff`, SPLIT);
+  await nowhere.waitForFunction(() => !document.getElementById('gone').hidden, null, { timeout: 15000 }).catch(() => {});
+  const lost = await nowhere.evaluate(() => ({ gone: !document.getElementById('gone').hidden, go: document.getElementById('gone-go').textContent, keep: getComputedStyle(document.getElementById('intro-sign-in')).display !== 'none' }));
+  check("on the player, a link that leads nowhere says so", lost.gone && lost.go === 'Listen to the featured beat' && !lost.keep, JSON.stringify(lost));
+  await nowhere.context().close();
+
+  // an old link stays closed, even if its record was left behind when sharing went back on
+  const stale = await owner.evaluate(async ({ id, old }) => {
+    await window.hackingTheBeats.cloud.saveShare(old, id);
+    return window.hackingTheBeats.songs.get(id).shareId !== old;
+  }, { id: first, old: links.shared.split('#song=')[1] });
+  const leftover = await bare(`${PLAYER}/#song=${links.shared.split('#song=')[1]}`, SPLIT);
+  await leftover.waitForFunction(() => !document.getElementById('gone').hidden, null, { timeout: 15000 }).catch(() => {});
+  check('an old link stays closed, even if its record lingers', stale && (await leftover.evaluate(() => !document.getElementById('gone').hidden && !window.hackingTheBeats.players.A.song)));
+  await leftover.context().close();
+  await owner.evaluate((old) => window.hackingTheBeats.cloud.deleteShare(old), links.shared.split('#song=')[1]);
+
   // someone with no account follows the link
   const stranger = await visitor(playerLink, SPLIT);
   await stranger.waitForFunction(() => window.hackingTheBeats.players.A.song?.source === 'shared' && window.hackingTheBeats.players.A.ready, null, { timeout: 30000 });
   await stranger.click('#curtain-play');
   await stranger.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 30000 });
-  check('a shared song plays for someone who is not signed in', (await shown(stranger, 'intro')) && !(await shown(stranger, 'deck')));
+  await settle(stranger);
+  const playing = await stranger.evaluate(() => {
+    const h = window.hackingTheBeats;
+    const hidden = (selector) => getComputedStyle(document.querySelector(selector)).display === 'none';
+    const label = document.querySelector('#pane-a .hb-label');
+    label?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+    const muted = label ? h.players.A.mixer.tracks[Number(label.dataset.track)].mute : true;
+    return {
+      hidden: ['#chip-b', '#record', '#share', '.mixrow', '.stagebar', '#tries', '#coach'].filter(hidden).length,
+      muted,
+      by: document.getElementById('curtain-by').textContent,
+      intro: document.getElementById('intro-now').textContent,
+      stored: Object.keys(localStorage).filter((key) => key.startsWith('hacking-the-beats')),
+    };
+  });
+  check('a shared song plays for someone who is not signed in, with its knobs, channels and pads', (await shown(stranger, 'intro')) && (await shown(stranger, 'deck')) && playing.hidden === 7 && playing.muted, JSON.stringify(playing));
+  check('the player says who shared it, and keeps nothing', /shared by One Tester/.test(playing.by) && /One Tester shared/.test(playing.intro) && !playing.stored.includes('hacking-the-beats:songs'), JSON.stringify(playing));
   await stranger.click('#intro-sign-in');
   await stranger.waitForURL((url) => url.origin === new URL(SITE).origin, { timeout: 15000 });
   await arrive(stranger);
@@ -431,13 +510,12 @@ try {
   await listener.waitForFunction(() => window.hackingTheBeats.players.A.gated, null, { timeout: 15000 });
   const home = await listener.evaluate(() => ({ user: window.hackingTheBeats.cloud.user?.email, gate: !document.getElementById('gate').hidden, ready: window.hackingTheBeats.players.A.ready }));
   check('signed in, "Edit a copy" opens the song on the main site, behind the question', home.user === 'two@example.com' && home.gate && !home.ready, JSON.stringify(home));
+  const runLabel = await listener.textContent('#gate-run');
+  const songsBefore = await listener.evaluate(() => window.hackingTheBeats.songs.list().length);
   await listener.click('#gate-run');
-  await listener.waitForFunction(() => window.hackingTheBeats.players.A.ready, null, { timeout: 30000 });
-  await listener.click('#curtain-play');
-  await listener.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 30000 });
-  await listener.click('#save-copy');
-  await listener.waitForFunction(() => window.hackingTheBeats.players.A.own, null, { timeout: 10000 });
-  check('and from there it can be kept', true);
+  await listener.waitForFunction(() => window.hackingTheBeats.players.A.ready && window.hackingTheBeats.players.A.own, null, { timeout: 30000 });
+  const keptCopy = await listener.evaluate(() => ({ mine: window.hackingTheBeats.songs.list().length, from: window.hackingTheBeats.players.A.song.from }));
+  check('there, one click runs it and keeps a copy that credits the original', runLabel === 'Run and keep a copy' && keptCopy.mine === songsBefore + 1 && keptCopy.from?.ownerName === 'One Tester', JSON.stringify({ runLabel, ...keptCopy }));
 
   // the player's address is only for shared songs
   await listener.goto(`${PLAYER}/`);

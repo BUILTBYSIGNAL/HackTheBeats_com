@@ -192,6 +192,14 @@ async function scenario() {
   const ranEdit = await until(() => !A.dirty && A.mixer.tracks.some((track) => track.name === 'EDITED'), 8000);
   check('edited code runs without stopping the music', wasDirty && ranEdit && A.started && !A.own && h.songs.list().length === 0);
 
+  // sharing an edited beat: the sheet says the changes are not in the link, and offers to keep them
+  document.getElementById('share').click();
+  const sheet = { open: document.getElementById('share-sheet').open, warning: !document.getElementById('share-warning').hidden && document.getElementById('share-warning-go').textContent, link: document.getElementById('share-link').value };
+  document.getElementById('share-warning-skip').click();
+  const skipped = document.getElementById('share-warning').hidden;
+  document.getElementById('share-close').click();
+  check('sharing an edited beat warns that the changes are not in the link', sheet.open && sheet.warning === 'Save as my song and share' && /\/beats\/[a-z0-9-]+#mix=/.test(sheet.link) && skipped, JSON.stringify(sheet));
+
   // a different beat is asked for while the changes are unsaved: the site asks first
   const elsewhere = h.app.songs.find((song) => song !== beat && !song.broken);
   document.querySelector(`.beat[data-id="${CSS.escape(elsewhere.id)}"] .beat__main`).click();
@@ -215,6 +223,18 @@ async function scenario() {
   await sleep(300);
   const mine = h.songs.list();
   check('"Save as my song" keeps the changes as a new song of mine', A.own && !A.edited && mine.length === 1 && mine[0].code.includes('EDITED:') && !beat.code.includes('EDITED:') && !shownNow('unsaved'), mine[0]?.title);
+  check('and the copy remembers the beat it came from', mine[0].from?.title === beat.title && mine[0].from?.beat === beat.slug && /^from /.test(document.querySelector(`.beat[data-id="${CSS.escape(mine[0].id)}"] .beat__meta`)?.textContent.split(' · ').find((part) => part.startsWith('from ')) || ''), JSON.stringify(mine[0].from));
+
+  // one of my songs, from the list: one Share item, and here (no accounts) the sheet says what sharing needs
+  h.crate.open('A');
+  document.querySelector(`.beat[data-id="${CSS.escape(mine[0].id)}"] .beat__tool`).click();
+  const menuShare = document.querySelector('.beat__menu [data-action="share"]');
+  const menuItems = [...document.querySelectorAll('.beat__menu [data-action]')].map((button) => button.dataset.action).join();
+  menuShare.click();
+  const ownSheet = { open: document.getElementById('share-sheet').open, toggle: !document.getElementById('share-toggle-row').hidden, note: document.getElementById('share-note').textContent };
+  document.getElementById('share-close').click();
+  h.crate.dialog.close();
+  check('a song of my own is shared from one Share item; without accounts the sheet says so', menuItems === 'duplicate,share,delete' && ownSheet.open && !ownSheet.toggle && /needs accounts/.test(ownSheet.note), JSON.stringify({ menuItems, ...ownSheet }));
   await sleep(400);
   const ticked = Object.keys(JSON.parse(localStorage.getItem('hacking-the-beats:v1')).onboarding?.done || {});
   check('each first step ticks itself off when it is done, and is remembered', ['play', 'knob', 'mute', 'tweak', 'save'].every((step) => ticked.includes(step) && document.querySelector(`.coach__step[data-step="${step}"]`)?.classList.contains('is-done')), ticked.join(' '));
@@ -425,6 +445,38 @@ async function addresses(browser) {
   return results;
 }
 
+// A built-in beat shared as a mix: its own page's address, with the deck's settings, switches too.
+async function sharing(browser) {
+  const results = [];
+  const check = (name, passed, detail = '') => results.push([name, Boolean(passed), String(detail)]);
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
+  await context.addInitScript(() => (window.HTB_CONFIG = { firebase: null, analytics: null }));
+  const page = await context.newPage();
+  await page.goto(URL);
+  await page.waitForFunction(() => window.hackingTheBeats?.players.A.ready, null, { timeout: 45000 });
+  const shared = await page.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const A = h.players.A;
+    // a beat with a switch (Low Tide's "mood")
+    const song = h.app.songs.find((entry) => entry.code?.includes('const mood'));
+    if (A.song !== song) document.querySelector(`.beat[data-id="${CSS.escape(song.id)}"] .beat__deck[data-deck="A"]`).click();
+    for (let i = 0; i < 200 && !(A.song === song && A.ready); i++) await new Promise((r) => setTimeout(r, 50));
+    A.setSwitch(0, 1);
+    await new Promise((r) => setTimeout(r, 600));
+    document.getElementById('share').click();
+    return { link: document.getElementById('share-link').value, slug: song.slug, recipient: document.getElementById('share-recipient').textContent };
+  });
+  const address = new globalThis.URL(shared.link);
+  check("a beat's link is its own page's address, carrying the deck's settings", address.pathname === `/beats/${shared.slug}` && address.hash.startsWith('#mix=') && /no account needed/.test(shared.recipient), shared.link);
+  const fresh = await context.newPage();
+  await fresh.goto(shared.link);
+  await fresh.waitForFunction(() => window.hackingTheBeats?.players.A.ready, null, { timeout: 45000 });
+  const opened = await fresh.evaluate(() => ({ value: window.hackingTheBeats.players.A.switches[0]?.value, code: /const mood = 1/.test(window.hackingTheBeats.players.A.code) }));
+  check('opening it brings the switches back as they were', opened.value === 1 && opened.code, JSON.stringify(opened));
+  await context.close();
+  return results;
+}
+
 // A phone: a touch screen, a narrow window, no keyboard shortcuts to lean on.
 async function phone(browser) {
   const results = [];
@@ -511,6 +563,7 @@ for (const name of engines) {
     const results = [...preResults, ...(await page.evaluate(scenario))];
     results.push(['no errors in the console', errors.length === 0, errors.slice(0, 3).join(' | ')]);
     results.push(...(await addresses(browser)));
+    results.push(...(await sharing(browser)));
     // Firefox has no mobile mode in Playwright
     if (name !== 'firefox') results.push(...(await phone(browser)));
     results.push(...(await counting(browser)));

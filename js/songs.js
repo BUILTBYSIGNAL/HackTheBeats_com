@@ -3,12 +3,12 @@
 import { describeSong } from './library.js';
 import { cloud } from './cloud.js';
 import { config, site } from './config.js';
-import { newId, newUuid, titleOf, withTitle, uniqueTitle, templateSong, mergeSongs, toExport, fromImport } from './songs-core.js';
+import { newId, newUuid, titleOf, withTitle, uniqueTitle, templateSong, mergeSongs, toExport, fromImport, fromOf, cleanFrom } from './songs-core.js';
 
 const KEY = 'hacking-the-beats:songs';
 const UPLOAD_DELAY = 1500;
 
-// id → { id, code, createdAt, updatedAt, mixer, shared, owner, synced }
+// id → { id, code, createdAt, updatedAt, mixer, shared, shareId, owner, synced, blocked, from }
 const records = new Map();
 const described = new Map();
 const listeners = new Set();
@@ -113,7 +113,7 @@ export const songs = {
   describe(record) {
     const cached = described.get(record.id);
     if (cached && cached.record === record) return cached.song;
-    const song = { ...describeSong(record, 'mine'), mixer: record.mixer || null, shared: Boolean(record.shared), shareId: record.shareId || null, blocked: Boolean(record.blocked), synced: Boolean(record.synced), owner: record.owner || null, createdAt: record.createdAt, updatedAt: record.updatedAt };
+    const song = { ...describeSong(record, 'mine'), mixer: record.mixer || null, shared: Boolean(record.shared), shareId: record.shareId || null, blocked: Boolean(record.blocked), synced: Boolean(record.synced), owner: record.owner || null, from: cleanFrom(record.from), createdAt: record.createdAt, updatedAt: record.updatedAt };
     described.set(record.id, { record, song });
     return song;
   },
@@ -126,9 +126,11 @@ export const songs = {
     return this.describe(record);
   },
 
-  create({ code, mixer = null, createdAt = Date.now() }) {
+  // `from` credits the song a copy was made from (songs-core.js fromOf).
+  create({ code, mixer = null, createdAt = Date.now(), from = null }) {
     const uid = cloud.user?.uid ?? null;
-    return this.put({ id: newId(), code, mixer, createdAt, updatedAt: Date.now(), shared: false, owner: uid, synced: false }, 'created');
+    const credit = cleanFrom(from);
+    return this.put({ id: newId(), code, mixer, createdAt, updatedAt: Date.now(), shared: false, owner: uid, synced: false, ...(credit ? { from: credit } : {}) }, 'created');
   },
 
   // A new song from one of the starters (songs-core.js STARTERS).
@@ -140,14 +142,15 @@ export const songs = {
   // One's own copy of any song (a built-in beat, a shared song, or another of one's own).
   copyOf(song, code = song.code) {
     const title = uniqueTitle(song.source === 'mine' ? `${song.title} copy` : song.title, this.list().map((entry) => entry.title));
-    return this.create({ code: withTitle(code, title), mixer: song.mixer || null });
+    return this.create({ code: withTitle(code, title), mixer: song.mixer || null, from: fromOf(song) });
   },
 
   update(id, patch) {
     const record = records.get(id);
     if (!record) return null;
     const next = { ...record, ...patch, updatedAt: Date.now(), synced: false };
-    if (next.code === record.code && JSON.stringify(next.mixer) === JSON.stringify(record.mixer) && next.shared === record.shared) return this.describe(record);
+    const same = (key) => JSON.stringify(next[key]) === JSON.stringify(record[key]);
+    if (['code', 'mixer', 'shared', 'shareId', 'from'].every(same)) return this.describe(record);
     return this.put(next, 'updated');
   },
 

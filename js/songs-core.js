@@ -21,6 +21,33 @@ export function newUuid() {
 }
 export const isUuid = (text) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(String(text));
 
+// Where a copy came from, kept with the copy so it can credit its original. Only what was
+// already public about the original: never its owner's account or the song's own id.
+//   { title, by?, ownerName?, shareId?, beat? }
+const LIMITS = { title: 200, by: 200, ownerName: 200, shareId: 64, beat: 120 };
+export function cleanFrom(from) {
+  if (!from || typeof from !== 'object' || typeof from.title !== 'string' || !from.title.trim()) return null;
+  const clean = {};
+  for (const [key, max] of Object.entries(LIMITS)) {
+    const value = from[key];
+    if (typeof value === 'string' && value.trim()) clean[key] = value.trim().slice(0, max);
+  }
+  return clean;
+}
+
+// The `from` of a copy of `song`: a shared song credits its sharer, a built-in beat its
+// page, and a copy of one's own copy keeps crediting the same original.
+export function fromOf(song) {
+  if (!song) return null;
+  if (song.source === 'shared') return cleanFrom({ title: song.title, by: song.by, ownerName: song.ownerName, shareId: song.shareId });
+  if (song.source === 'beats') return cleanFrom({ title: song.title, by: song.by, beat: song.slug });
+  return cleanFrom(song.from);
+}
+
+// Whether a shared song is still shared by the link that led to it. Switching sharing off
+// and on again makes a new link; the old one must stay closed even if its record lingers.
+export const isLive = (song, shareId = null) => Boolean(song) && song.shared === true && song.blocked !== true && (!shareId || !song.shareId || song.shareId === shareId);
+
 // The title a song gives itself: `@title Name` in a comment, or `// "Name" @by someone`.
 export function titleOf(code) {
   const tagged = code.match(/@title[ \t]+(.+)/);

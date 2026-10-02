@@ -91,7 +91,7 @@
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle class="rec-dot" cx="8" cy="8" r="4" /></svg>
           <span class="rec-time" id="record-time"></span>
         </button>
-        <button type="button" class="iconbtn" id="share" aria-label="Copy a link to this mix">
+        <button type="button" class="iconbtn" id="share" aria-label="Share this song">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.8 9.2a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.7.7M9.2 6.8a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7l.7-.7" /></svg>
         </button>
         <button type="button" class="iconbtn" id="open-about" aria-label="About and keyboard shortcuts">
@@ -168,6 +168,7 @@
         <p class="curtain__kicker">Live-coded music · press play</p>
         <p class="curtain__title" id="curtain-title">&nbsp;</p>
         <p class="curtain__by" id="curtain-by"></p>
+        <p class="curtain__from" id="curtain-from" hidden></p>
         <button type="button" class="curtain__play" id="curtain-play" aria-label="Play">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z" /></svg>
           <span class="spinner" aria-hidden="true"></span>
@@ -198,6 +199,15 @@
         <div class="gate__actions">
           <button type="button" class="pillbtn pillbtn--go" id="locked-sign-in">Sign in with Google</button>
           <button type="button" class="pillbtn" id="locked-featured">Play the featured beat</button>
+        </div>
+      </div>
+
+      <div class="gate gone" id="gone" hidden>
+        <p class="curtain__kicker" id="gone-kicker">Shared song</p>
+        <p class="gate__title" id="gone-title">This link no longer works</p>
+        <p class="gate__text" id="gone-text"></p>
+        <div class="gate__actions">
+          <button type="button" class="pillbtn pillbtn--go" id="gone-go"></button>
         </div>
       </div>
 
@@ -400,6 +410,47 @@
           <button type="button" class="pillbtn" id="unsaved-new">Save as new</button>
           <button type="button" class="pillbtn" id="unsaved-discard">Discard</button>
           <button type="button" class="pillbtn" id="unsaved-cancel">Cancel</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="sheet sheet--narrow" id="share-sheet" aria-labelledby="share-title">
+      <header class="sheet__head">
+        <h2 class="sheet__title" id="share-title">Share</h2>
+        <button type="button" class="iconbtn" id="share-close" aria-label="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+      </header>
+      <div class="sheet__body">
+        <section class="sheet__song">
+          <h3 id="share-song"></h3>
+          <p id="share-credit"></p>
+          <p class="share__from" id="share-from" hidden></p>
+        </section>
+        <div class="share__warning" id="share-warning" role="alert" hidden>
+          <p id="share-warning-text"></p>
+          <div class="sheet__row">
+            <button type="button" class="pillbtn pillbtn--go" id="share-warning-go"></button>
+            <button type="button" class="pillbtn" id="share-warning-skip"></button>
+          </div>
+        </div>
+        <label class="share__toggle" id="share-toggle-row" hidden>
+          <input type="checkbox" id="share-toggle" />
+          <span>Share by link: anyone with the link can listen</span>
+        </label>
+        <div class="share__link" id="share-link-row" hidden>
+          <input type="text" id="share-link" readonly aria-label="Link to share" />
+          <button type="button" class="pillbtn pillbtn--go" id="share-copy">Copy</button>
+          <button type="button" class="pillbtn" id="share-native" hidden>Share…</button>
+        </div>
+        <p class="sheet__fine" id="share-link-note" hidden></p>
+        <p id="share-recipient" hidden></p>
+        <p class="sheet__fine" id="share-note" hidden></p>
+        <p class="visually-hidden" id="share-live" aria-live="polite"></p>
+        <h3>More ways to share</h3>
+        <div class="sheet__row">
+          <button type="button" class="pillbtn" id="share-record">Record audio</button>
+          <button type="button" class="pillbtn" id="share-video" hidden>Make a video clip</button>
         </div>
       </div>
     </dialog>

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parse } from 'acorn';
-import { titleOf, withTitle, uniqueTitle, mergeSongs, toExport, fromImport, templateSong, STARTERS, newId, newUuid, isUuid } from '../../js/songs-core.js';
+import { titleOf, withTitle, uniqueTitle, mergeSongs, toExport, fromImport, templateSong, STARTERS, newId, newUuid, isUuid, cleanFrom, fromOf, isLive } from '../../js/songs-core.js';
 
 test('reads a title from the code', () => {
   assert.equal(titleOf('/*\n  @title Amber\n*/\ns("bd")'), 'Amber');
@@ -102,4 +102,28 @@ test('a share link id is a UUID, different every time', () => {
   for (const id of ids) assert.ok(isUuid(id), id);
   assert.equal(isUuid('jo8RMFi2fB80t4ayPry5rT3pi9M3~VMpOXxe5Rv3B'), false);
   assert.equal(isUuid('3f2b8c1e-9a4d-4c7b-8e21-0a1b2c3d4e5f'), true);
+});
+
+test('a copy remembers where it came from, and nothing private about it', () => {
+  const uuid = '0b9c7a1e-4f3d-4c2b-9a8e-1d2c3b4a5f6e';
+  assert.deepEqual(fromOf({ source: 'shared', title: 'Glass Tide', by: 'Ana', ownerName: 'Rowan', shareId: uuid, owner: 'uid-1', id: 'song-1' }), { title: 'Glass Tide', by: 'Ana', ownerName: 'Rowan', shareId: uuid });
+  assert.deepEqual(fromOf({ source: 'beats', title: 'Amber', by: 'SIGNAL', slug: 'amber', id: 'beat-1' }), { title: 'Amber', by: 'SIGNAL', beat: 'amber' });
+  // a copy of my own remix still credits the original
+  assert.deepEqual(fromOf({ source: 'mine', title: 'Glass Tide 2', from: { title: 'Glass Tide', ownerName: 'Rowan' } }), { title: 'Glass Tide', ownerName: 'Rowan' });
+  assert.equal(fromOf({ source: 'mine', title: 'Mine' }), null);
+});
+
+test('where a copy came from is trimmed to what the rules allow', () => {
+  assert.deepEqual(cleanFrom({ title: '  Glass Tide ', owner: 'uid-1', id: 'x', extra: 1, by: '' }), { title: 'Glass Tide' });
+  assert.equal(cleanFrom({ title: 'x'.repeat(500) }).title.length, 200);
+  for (const junk of [null, 'Glass Tide', {}, { title: '   ' }, { title: 3 }]) assert.equal(cleanFrom(junk), null);
+});
+
+test('a shared song is live only while it is shared by the link that led to it', () => {
+  assert.equal(isLive({ shared: true, shareId: 'a' }, 'a'), true);
+  assert.equal(isLive({ shared: true }, 'a'), true);
+  assert.equal(isLive({ shared: true, shareId: 'b' }, 'a'), false);
+  assert.equal(isLive({ shared: false, shareId: 'a' }, 'a'), false);
+  assert.equal(isLive({ shared: true, blocked: true }, null), false);
+  assert.equal(isLive(null), false);
 });

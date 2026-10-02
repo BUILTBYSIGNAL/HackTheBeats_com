@@ -3,13 +3,14 @@
 // stay in the browser. The SDK is only loaded when accounts are configured.
 //
 // Layout in Firestore (see firestore.rules for who may read and write what):
-//   users/{uid}/songs/{songId}   { code, title, createdAt, updatedAt, shared, mixer, ownerName, blocked? }
+//   users/{uid}/songs/{songId}   { code, title, createdAt, updatedAt, shared, mixer, ownerName, blocked?, shareId?, from? }
 //       private to its owner unless `shared`; an admin can switch sharing off (`blocked`)
 //   shares/{uuid}                what a share link points at: { owner, song }
 //   beats/{id}                   the site's beats (beats-core.js)
 //   catalog/public               the beats' titles and descriptions, without their code
 //   roles/admin                  not a document but a question: only an admin may ask for it
 import { config, site } from './config.js';
+import { cleanFrom } from './songs-core.js';
 
 let fb = null;
 let auth = null;
@@ -31,7 +32,11 @@ const fromDoc = (id, data) => ({
   ownerName: typeof data.ownerName === 'string' ? data.ownerName : '',
   blocked: data.blocked === true,
   shareId: typeof data.shareId === 'string' ? data.shareId : null,
+  from: cleanFrom(data.from),
 });
+
+// The database said no (or there is nothing there), as opposed to not answering at all.
+const refused = (error) => ['permission-denied', 'not-found', 'invalid-argument'].includes(error?.code);
 
 const beatFromDoc = (id, data) => ({
   id,
@@ -145,6 +150,7 @@ export const cloud = {
       // only ever sent back as it was read: the rules do not let an owner change it
       ...(song.blocked ? { blocked: true } : {}),
       ...(song.shareId ? { shareId: song.shareId } : {}),
+      ...(cleanFrom(song.from) ? { from: cleanFrom(song.from) } : {}),
     });
   },
 
@@ -158,14 +164,16 @@ export const cloud = {
   async deleteShare(shareId) {
     await fb.deleteDoc(fb.doc(db, 'shares', shareId));
   },
-  // Resolves to { owner, song }, or null if the link is not (or no longer) one.
+  // Resolves to { owner, song }, or null if the link is not (or no longer) one. Throws if
+  // the database could not be reached, which is not the same as a closed link.
   async getShare(shareId) {
     await this.init();
     try {
       const snapshot = await fb.getDoc(fb.doc(db, 'shares', shareId));
       return snapshot.exists() ? { owner: snapshot.data().owner, song: snapshot.data().song } : null;
-    } catch {
-      return null;
+    } catch (error) {
+      if (refused(error)) return null;
+      throw error;
     }
   },
 
@@ -180,14 +188,15 @@ export const cloud = {
   },
 
   // Someone else's shared song, by its link. Resolves to null if it does not exist or is
-  // not shared (the rules refuse the read).
+  // not shared (the rules refuse the read); throws if the database could not be reached.
   async getShared(uid, id) {
     await this.init();
     try {
       const snapshot = await fb.getDoc(this.songDoc(uid, id));
       return snapshot.exists() ? { ...fromDoc(id, snapshot.data()), owner: uid } : null;
-    } catch {
-      return null;
+    } catch (error) {
+      if (refused(error)) return null;
+      throw error;
     }
   },
 

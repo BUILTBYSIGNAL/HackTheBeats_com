@@ -17,7 +17,7 @@ export const crate = {
   openMenu: null,
 
   // handlers: { onSelect(id, deck), onCopy(id), onRename(id, title), onDuplicate(id),
-  //             onDelete(id), onShare(id, on), onCopyLink(id), canShare(), isLocked(song) }
+  //             onDelete(id), onShare(id), canShare(), isLocked(song) }
   init({ dialog, mine, beats, close, heading, note }, handlers) {
     this.dialog = dialog;
     this.lists = { mine, beats };
@@ -51,6 +51,7 @@ export const crate = {
         song.trackCount ? `${song.trackCount} ${song.trackCount === 1 ? 'track' : 'tracks'}` : 'one pattern',
         song.knobCount ? `${song.knobCount} ${song.knobCount === 1 ? 'knob' : 'knobs'}` : null,
         own && song.shared ? 'shared' : null,
+        own && song.from ? `from ${song.from.title}` : null,
         // the admin's view of who else can play a beat
         song.audience === 'admin' ? 'only you' : song.audience === 'members' ? 'members' : song.audience === 'everyone' ? 'featured' : null,
       ].filter(Boolean);
@@ -118,8 +119,7 @@ export const crate = {
       </form>
       <div class="beat__actions">
         <button type="button" class="chipbtn" data-action="duplicate">Duplicate</button>
-        <button type="button" class="chipbtn" data-action="share" aria-pressed="false"></button>
-        <button type="button" class="chipbtn" data-action="link" hidden>Copy link</button>
+        <button type="button" class="chipbtn" data-action="share"></button>
         <button type="button" class="chipbtn chipbtn--danger" data-action="delete">Delete</button>
       </div>`;
     const input = menu.querySelector('input');
@@ -128,16 +128,11 @@ export const crate = {
       event.preventDefault();
       if (input.value.trim() && input.value.trim() !== song.title) handlers.onRename?.(song.id, input.value.trim());
     });
-    const [duplicate, share, link, remove] = menu.querySelectorAll('[data-action]');
+    const [duplicate, share, remove] = menu.querySelectorAll('[data-action]');
     duplicate.addEventListener('click', () => handlers.onDuplicate?.(song.id));
 
-    const canShare = handlers.canShare?.();
-    share.textContent = !canShare ? 'Sign in to share' : song.shared ? 'Shared by link' : 'Share by link';
-    share.setAttribute('aria-pressed', String(Boolean(canShare && song.shared)));
-    share.title = canShare ? 'Anyone with the link can open a copy of this song. Turn it off to make it private again.' : '';
-    share.addEventListener('click', () => handlers.onShare?.(song.id, !song.shared));
-    link.hidden = !(canShare && song.shared);
-    link.addEventListener('click', () => handlers.onCopyLink?.(song.id));
+    share.textContent = handlers.canShare?.() ? (song.shared ? 'Shared · link' : 'Share…') : 'Sign in to share';
+    share.addEventListener('click', () => handlers.onShare?.(song.id));
 
     let armed = false;
     remove.addEventListener('click', () => {

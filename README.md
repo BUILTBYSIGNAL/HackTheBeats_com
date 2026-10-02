@@ -177,7 +177,8 @@ the check refuses it, and the dev server will not serve it.
 Positions are remembered per song in the browser; **Reset** returns a song to what its code says.
 
 - **Record** (the dot in the top bar, or `R`) captures the mix to a 16-bit WAV file, about 10 MB a minute.
-- **Share** (the link icon) copies a link that reopens the song with its knob, channel and tempo settings.
+- **Share** (the link icon) opens the share sheet (see [Songs of your own](#songs-of-your-own)). A built-in beat is
+  shared as a link to its own page that carries the deck's knob, switch, channel and tempo settings.
 - **MIDI.** Press *MIDI*, click any knob, fader, pad or button, then move a control on your hardware. Bindings are
   remembered. Needs a browser with Web MIDI (Chrome, Edge, Firefox).
 
@@ -214,14 +215,24 @@ In the song list you can start a **New** song (from a one-track drum loop, or a 
 lead), **Import** a strudel.cc export or a `.js` / `.strudel` file, and
 **Export** all your songs as one strudel.cc-format JSON file. Each of your songs can be renamed, duplicated, shared
 and deleted from its `⋯` menu. To keep a version of a built-in beat, press **Save as my song** after editing, or
-**Save a copy** to take it as it is.
+**Save a copy** to take it as it is. A copy remembers where it came from (the beat, or the shared song and who
+shared it) and says so in the song list and on the curtain: "Remix of …". It never records the original's owner
+or account.
 
 Without an account your songs live in the browser you made them in. Signed in, they are kept in your account and
 follow you between devices.
 
-A song is private unless you switch on **Share by link**. The link is `…/#song=<uuid>`: a random identifier made
-when sharing is switched on, which says nothing about the song or its owner. Switching sharing off closes the link,
-and switching it on again makes a new one, so the old link stays closed.
+A song is private unless you share it. **Share** (or **Share…** in the song's `⋯` menu) opens the share sheet:
+
+- a switch for sharing by link, the link with **Copy**, and **Share…** where the device has a share menu of its own;
+- if the deck has changes that are not saved, a warning, with **Save and share** (a built-in beat: **Save as my song
+  and share**), because the link always plays the latest saved version;
+- what the person who gets the link will find, and **Record audio**.
+
+The link is `…/#song=<uuid>`: a random identifier made when sharing is switched on, which says nothing about the
+song or its owner. Switching sharing off closes the link, and switching it on again makes a new one, so the old
+link stays closed, even if its record is left behind (the player checks that a link is the song's current one). A
+link that leads nowhere says so on the page.
 
 ### Someone else's song never runs as you
 
@@ -235,14 +246,18 @@ site:
   │ the instrument             │           │ the player                 │
   │ you are signed in          │   link    │ nobody is signed in        │
   │ your songs are here        │ ────────▶ │ nothing is saved here      │
-  │                            │           │ the shared song plays      │
+  │                            │           │ the shared song plays,     │
+  │                            │           │ with its knobs and pads    │
   │ a copy opens here, and     │ ◀──────── │ "Edit a copy"              │
   │ asks before it runs        │           │ kept out of search results │
   └────────────────────────────┘           └────────────────────────────┘
 ```
 
-With no second address configured (on localhost, say), a shared song opens in place behind the same "run this?"
-question.
+On the player, whoever follows the link sees who shared it and can play with the song's knobs, channels and pads;
+nothing they do is kept. **Edit a copy** takes the song to the main site, where (after signing in) the question
+reads **Run and keep a copy**: one click runs it and makes it theirs, crediting the original. The question stays,
+because any page could send someone to a `#copy=` address. With no second address configured (on localhost, say),
+a shared song opens in place behind the same question.
 
 ## Accounts and roles
 
@@ -471,7 +486,7 @@ and the offline cache name in `sw.js` together.
     admin.js ............ the Admin sheet      beats-core.js beats and their catalog
     routes-core.js ...... page addresses, titles and descriptions
     analytics.js ........ Google Analytics, with its opt-out
-    tries.js ............ a song's @try suggestions, one tap each
+    share-sheet.js ...... the share sheet           tries.js a song's @try suggestions, one tap each
     onboarding.js ....... First steps
     keys-core.js ........ key names as the visitor's keyboard has them (⌘ on a Mac)
     errors-core.js ...... a song's mistakes in plain words

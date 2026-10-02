@@ -7,10 +7,10 @@ import { crate } from './crate.js';
 import { visuals } from './visuals.js';
 import { loadLibrary, describeSong } from './library.js';
 import { songs, linkToSong } from './songs.js';
-import { withTitle, STARTERS } from './songs-core.js';
+import { withTitle, STARTERS, fromOf, isLive } from './songs-core.js';
 import { cloud } from './cloud.js';
 import { config, site } from './config.js';
-import { SITE_NAME, HOME_TITLE, HOME_DESCRIPTION, beatPath, slugFromPath, songTitle, songDescription } from './routes-core.js';
+import { SITE_NAME, HOME_TITLE, HOME_DESCRIPTION, beatPath, slugFromPath, songTitle, songDescription, creditLine, remixLine, songLinkIn } from './routes-core.js';
 import { VERSION } from './version.js';
 import { persist } from './persist.js';
 import { recorder, saveBlob } from './recorder.js';
@@ -25,6 +25,7 @@ import { isApple, keyLabels, localizeKeys } from './keys-core.js';
 import { explainError } from './errors-core.js';
 import { tries } from './tries.js';
 import { onboarding } from './onboarding.js';
+import { shareSheet } from './share-sheet.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -34,6 +35,7 @@ const els = {
   curtainPlay: $('curtain-play'),
   curtainTitle: $('curtain-title'),
   curtainBy: $('curtain-by'),
+  curtainFrom: $('curtain-from'),
   bpm: $('bpm'),
   bar: $('bar'),
   beat: $('beat'),
@@ -94,6 +96,10 @@ const app = {
   lockedSong: null,
   // a shared song waiting for the visitor to sign in
   pendingShared: null,
+  // a mix link's settings for a beat the visitor has to sign in to play
+  pendingMix: null,
+  // the share of a song that came over from the player to be kept ("Edit a copy")
+  copyIntent: null,
   booted: false,
   gatePeek: false,
   focusId: 'A',
@@ -170,7 +176,9 @@ function renderCurtain() {
   const song = A.song;
   if (!song) return;
   els.curtainTitle.textContent = song.title;
-  els.curtainBy.textContent = [song.by ? `by ${song.by}` : null, song.bpm ? `${song.bpm} bpm` : null].filter(Boolean).join(' · ');
+  els.curtainBy.textContent = creditLine({ by: song.by, ownerName: song.source === 'shared' ? song.ownerName : null, bpm: song.bpm });
+  els.curtainFrom.textContent = remixLine(song.from);
+  els.curtainFrom.hidden = !song.from;
 }
 
 function renderAbout() {
@@ -272,7 +280,7 @@ function setSplit(on) {
 
 function setFollow(on) {
   app.follow = on;
-  persist.set('follow', on);
+  if (!site.guest) persist.set('follow', on);
   els.follow.setAttribute('aria-pressed', String(on));
   players.forEach((player) => {
     player.camera.enabled = on || app.gallery;
@@ -649,8 +657,24 @@ function renderGate() {
   document.body.classList.toggle('is-gated', player.gated);
   if (!show) return;
   $('gate-title').textContent = player.song.title;
-  $('gate-by').textContent = player.song.ownerName ? `shared by ${player.song.ownerName}` : '';
+  $('gate-by').textContent = [player.song.ownerName ? `shared by ${player.song.ownerName}` : null, remixLine(player.song.from) || null].filter(Boolean).join(' · ');
+  $('gate-run').textContent = keepingCopy(player) ? 'Run and keep a copy' : 'Run this song';
   if (appeared) armGate();
+}
+
+// A song sent over from the player with "Edit a copy": its gate keeps it as well as runs it.
+const keepingCopy = (player) => Boolean(app.copyIntent) && player.song?.source === 'shared' && player.song.shareId === app.copyIntent;
+
+// The answer to the gate. Running a song that came over to be kept also keeps it: one
+// click, and it is the listener's own (crediting where it came from).
+async function runGated(player = focused()) {
+  const keep = keepingCopy(player);
+  await player.run();
+  if (!keep || !player.song || player.gated) return;
+  app.copyIntent = null;
+  saveAsNew(player);
+  analytics.event('copy_saved', { source: 'shared', via: 'gate' });
+  setStatus(`Saved "${player.song.title}" to My songs. Click in the code to change it.`, { hold: 9000 });
 }
 
 // The answer has to be meant. Another page can lay a window of its own over this one and
@@ -672,21 +696,65 @@ async function openSharedSong(link) {
   // on the main site a shared song is for editing a copy, which needs an account
   if (app.access === 'preview' && !site.guest) {
     app.pendingShared = link;
-    return void needsAccount('open a copy of this shared song');
+    return void needsAccount('keep your own copy of this song');
   }
-  const share = link.share ? await cloud.getShare(link.share) : { owner: link.owner, song: link.id };
-  if (!share) return setStatus('That shared song is no longer available.');
+  let share;
+  let record;
+  try {
+    share = link.share ? await cloud.getShare(link.share) : { owner: link.owner, song: link.id };
+    record = share && (await cloud.getShared(share.owner, share.song));
+  } catch (error) {
+    console.warn('[shared] could not reach the song', error);
+    return showGone('unreachable', link);
+  }
+  // a link switched off (or replaced by a newer one) stays closed
+  if (!share || !record || !isLive(record, link.share)) return showGone('closed');
   const { owner: uid, song: id } = share;
-  const record = await cloud.getShared(uid, id);
-  if (!record) return setStatus('That shared song is no longer available.');
   // one's own song, opened from its own link, is just the song
   if (cloud.user?.uid === uid && songs.get(id)) return loadSong(id, 'A', { autoplay: false });
-  const song = { ...describeSong(record, 'shared'), owner: uid, ownerName: record.ownerName, shareId: link.share || record.shareId || null };
+  // the deck may hold changes that need dealing with first
+  if (!site.guest && !(await settleEdits(A))) return;
+  const song = { ...describeSong(record, 'shared'), owner: uid, ownerName: record.ownerName, shareId: link.share || record.shareId || null, from: record.from };
   app.gatePeek = false;
+  showGone(null);
   setFocus('A');
   // On the player's own address there is nothing for a song to reach, so it just loads.
   A.load(song, { trust: site.guest });
   navigate(song, { replace: true });
+  if (site.guest) renderGuestIntro(song);
+}
+
+// A link that leads nowhere: say so in place of the stage, and offer a way on. `why` is
+// 'closed' (sharing switched off, or the link replaced), 'unreachable', or null to clear.
+function showGone(why, link = null) {
+  $('gone').hidden = !why;
+  document.body.classList.toggle('is-gone', Boolean(why));
+  if (!why) return;
+  if (A.started) A.stop();
+  const go = $('gone-go');
+  if (why === 'unreachable') {
+    $('gone-title').textContent = 'The song could not be reached just now';
+    $('gone-text').textContent = 'The connection may have dropped. Try again in a moment.';
+    go.textContent = 'Try again';
+    go.onclick = () => openSharedSong(link);
+  } else {
+    $('gone-title').textContent = 'This link no longer works';
+    $('gone-text').textContent = 'Its owner may have switched sharing off, which closes a link for good. Ask them for a new one.';
+    go.textContent = site.guest ? 'Listen to the featured beat' : 'Back to the beats';
+    go.onclick = () => (site.guest ? (location.href = `${config.appOrigin}/`) : showGone(null));
+  }
+  // on the player, there is no copy to take home
+  $('intro-sign-in').hidden = site.guest;
+}
+
+// The player's introduction speaks about the song in front of it, and who shared it.
+function renderGuestIntro(song) {
+  const home = new URL(config.appOrigin).host;
+  const who = song.ownerName || 'Someone';
+  $('intro-title').textContent = `${who} shared "${song.title}" with you.`;
+  $('intro-lede').textContent = `It is code, running live in your browser. Press play, then try its knobs, channels and pads: nothing you do changes their song. To change it or keep a copy, open it on ${home} and sign in, free.`;
+  $('intro-now').textContent = `${who} shared "${song.title}" with you. The knobs, channels and pads are yours to try; to keep a copy of your own, sign in on ${home}.`;
+  $('intro-sign-in').hidden = false;
 }
 
 /* ---------- account ---------- */
@@ -727,7 +795,7 @@ function giveStarter() {
   // once per account in this browser: deleting it should not bring it back
   if (persist.get(`starter:${user.uid}`, false)) return null;
   persist.set(`starter:${user.uid}`, true);
-  return songs.create({ code: withTitle(featured.code, STARTER_TITLE), mixer: featured.mixer || null });
+  return songs.create({ code: withTitle(featured.code, STARTER_TITLE), mixer: featured.mixer || null, from: fromOf(featured) });
 }
 // Put their copy on the deck: it is theirs to change.
 function openStarter(song) {
@@ -766,7 +834,7 @@ async function onAccountChange(user) {
     // the beat they asked for while signed out, if their account can play it
     const asked = wanted && findSong(wanted.id);
     if (pending) openSharedSong(pending);
-    else if (asked && !isLocked(asked)) loadSong(asked.id, 'A', { route: false });
+    else if (asked && !isLocked(asked)) loadSong(asked.id, 'A', { route: false, shared: app.pendingMix?.song === asked.id ? app.pendingMix : null });
     else {
       if (app.lockedSong) {
         app.lockedSong = null;
@@ -808,33 +876,68 @@ async function signOut() {
   els.accountDialog.close();
 }
 
-// Share one's own song: anyone with the link can open (and copy) it.
-async function shareOwnSong(id, on) {
-  if (!cloud.user) {
-    crate.dialog.close();
-    els.accountDialog.showModal();
-    return;
-  }
-  songs.setShared(id, on);
-  if (on) {
-    await songs.flush();
-    copyShareLink(id);
-  } else {
-    setStatus('That song is private again. Its old link no longer works.');
-  }
+/* ---------- sharing ---------- */
+
+// What the share sheet is about: a deck's song, or one of my songs from the list.
+function shareSubject(target) {
+  const player = target.player ?? players.find((entry) => entry.song && entry.song.id === target.songId) ?? null;
+  const onDeck = target.songId ? songs.get(target.songId) ?? player?.song ?? null : player?.song ?? null;
+  // one of my songs as My songs holds it now (the deck's copy predates sharing changes)
+  const song = onDeck?.source === 'mine' ? songs.get(onDeck.id) ?? onDeck : onDeck;
+  return { player: player && song && player.song?.id === song.id ? player : null, song };
 }
 
-async function copyShareLink(id) {
-  const link = songs.shareLink(id);
-  if (!link) return;
-  analytics.event('share', { content_type: 'song' });
-  try {
-    await navigator.clipboard.writeText(link);
-    setStatus('Link copied. Anyone with it can open a copy of this song.');
-  } catch {
-    setStatus(link, { hold: 0 });
+// A built-in beat goes out as its own page's address with the deck's settings, so a link
+// preview shows that beat.
+function mixLink(player, song) {
+  const base = `${config.appOrigin || location.origin}${song.slug ? beatPath(song.slug) : '/'}`;
+  return linkForMix({ song: song.id, ...player.snapshot(), tempo: player.tempo }, base);
+}
+
+// What share-sheet-core.js needs to know, and the words around it.
+function shareInput(target) {
+  const { player, song } = shareSubject(target);
+  if (!song) return { kind: 'loose', title: '' };
+  const base = {
+    songId: song.id,
+    title: song.title,
+    credit: creditLine({ by: song.by, ownerName: song.source === 'shared' ? song.ownerName : null, bpm: song.bpm }),
+    from: remixLine(song.from),
+    edited: Boolean(player?.edited),
+  };
+  if (song.source === 'mine') {
+    const host = new URL(site.split ? config.shareOrigin : location.origin).host;
+    return { ...base, kind: 'own', accounts: cloud.accounts, shared: song.shared, blocked: song.blocked, synced: song.synced, link: songs.shareLink(song.id), host, sharer: cloud.user?.displayName || '' };
   }
-  onboarding.done('share');
+  if (song.source === 'beats' && player) return { ...base, kind: 'beat', audience: song.audience ?? (song.featured ? 'everyone' : 'members'), link: mixLink(player, song) };
+  if (song.source === 'shared') return { ...base, kind: 'theirs', ownerName: song.ownerName, link: linkToSong(song) };
+  return { ...base, kind: 'loose' };
+}
+
+function openShareSheet(target = { player: focused() }) {
+  const { song } = shareSubject(target);
+  if (!song) return;
+  if (needsAccount('share')) return;
+  shareSheet.open(target);
+}
+
+// Switch sharing on (and wait until the link works) or off.
+async function setSharing(id, on) {
+  if (!songs.setShared(id, on)) return;
+  analytics.event('share_link', { on });
+  if (on) await songs.flush();
+  else setStatus('That song is private again. Its old link no longer works.');
+}
+
+// The share sheet's offers: keep the changes first, then share.
+async function shareAction(action, target) {
+  const { player } = shareSubject(target);
+  if (!player) return null;
+  if (action === 'save-share') saveChanges(player);
+  else saveAsNew(player);
+  if (!player.own) return null;
+  if (action !== 'save-new') await setSharing(player.song.id, true);
+  return { player };
 }
 
 /* ---------- tempo, sync and the crossfade ---------- */
@@ -923,6 +1026,7 @@ function finishRecording({ save = true } = {}) {
   const stamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
   const name = `hacking-the-beats ${title} ${stamp}.wav`;
   saveBlob(blob, name);
+  analytics.event('record', { action: 'save', minutes: Math.round(recorder.seconds / 60) });
   setStatus(`Saved ${name} (${(blob.size / 1048576).toFixed(1)} MB)`, { hold: 9000 });
   return blob;
 }
@@ -940,6 +1044,7 @@ async function toggleRecord() {
     return setStatus('Recording could not start');
   }
   els.record.setAttribute('aria-pressed', 'true');
+  analytics.event('record', { action: 'start' });
   const tick = () => {
     const s = Math.floor(recorder.seconds);
     els.recordTime.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -949,28 +1054,6 @@ async function toggleRecord() {
   setStatus(players.some((player) => player.started) ? 'Recording the mix. Press again to save.' : 'Recording. Press play, then press record again to save.');
 }
 recorder.onAutoStop = () => finishRecording();
-
-async function shareMix() {
-  const player = focused();
-  if (!player.song) return;
-  if (needsAccount('share')) return;
-  // One's own song is shared from the account; someone else's by the link it came from;
-  // a built-in beat as a link to its settings.
-  if (player.own) return shareOwnSong(player.song.id, true);
-  const theirs = player.song.source === 'shared' && !player.edited;
-  if (!theirs && (player.song.source !== 'beats' || player.edited)) return setStatus('Save a copy to My songs first; then it can be shared from your account.');
-  const link = theirs
-    ? linkToSong(player.song)
-    : linkForMix({ song: player.song.id, ...player.snapshot(), tempo: player.tempo }, `${site.guest ? config.appOrigin : location.origin}/`);
-  try {
-    await navigator.clipboard.writeText(link);
-    setStatus('Link to this mix copied');
-  } catch {
-    history.replaceState(null, '', link);
-    setStatus('The link to this mix is now in the address bar');
-  }
-  onboarding.done('share');
-}
 
 /* ---------- MIDI ---------- */
 
@@ -1046,16 +1129,6 @@ function showMe(step) {
 
 /* ---------- boot ---------- */
 
-// A link to someone's shared song: #song=<owner>~<id>. `#copy=` is the same song, sent
-// over from the player to be changed or kept.
-const songLinkIn = (hash) => {
-  const found = /[#&](song|copy)=([^&]+)/.exec(hash);
-  if (!found) return null;
-  const [owner, id] = found[2].split('~').map(decodeURIComponent);
-  // a UUID names the share; "owner~id" is how songs were linked before
-  return id ? { kind: found[1], raw: found[2], owner, id } : { kind: found[1], raw: found[2], share: owner };
-};
-
 // Where the site has a separate address for playing shared songs, send each visit to the
 // right one. Returns true if the page is on its way somewhere else.
 function reroute() {
@@ -1066,7 +1139,7 @@ function reroute() {
     return true;
   }
   if (!site.split) return false;
-  const link = songLinkIn(location.hash);
+  const link = songLinkIn(location);
   let to = null;
   if (site.guest && !link) to = `${config.appOrigin}/${location.hash}`;
   else if (!site.guest && link?.kind === 'song') to = `${config.shareOrigin}/#song=${link.raw}`;
@@ -1117,9 +1190,11 @@ async function boot() {
       setSync,
       mix,
       saveMaster: () => {
+        onboarding.done('knob');
+        // the shared-song player keeps nothing
+        if (site.guest) return;
         const { volume, filter, echo, reverb } = master.state;
         persist.set('master', { volume, filter, echo, reverb });
-        onboarding.done('knob');
       },
       onCrossfade: () => {
         renderMixButton();
@@ -1141,8 +1216,7 @@ async function boot() {
       onRename: (id, title) => songs.rename(id, title),
       onDuplicate: (id) => songs.copyOf(songs.get(id)),
       onDelete: (id) => songs.remove(id),
-      onShare: (id, on) => shareOwnSong(id, on),
-      onCopyLink: (id) => copyShareLink(id),
+      onShare: (id) => openShareSheet({ songId: id }),
       canShare: () => Boolean(cloud.user),
     },
   );
@@ -1155,6 +1229,45 @@ async function boot() {
       status: (message) => setStatus(message, { hold: 9000 }),
       signedIn: () => app.access === 'full',
       onTried: (label, on) => on && onboarding.done('tweak'),
+    },
+  );
+  shareSheet.init(
+    {
+      dialog: $('share-sheet'),
+      close: $('share-close'),
+      song: $('share-song'),
+      credit: $('share-credit'),
+      from: $('share-from'),
+      warning: $('share-warning'),
+      warningText: $('share-warning-text'),
+      warningGo: $('share-warning-go'),
+      warningSkip: $('share-warning-skip'),
+      toggleRow: $('share-toggle-row'),
+      toggle: $('share-toggle'),
+      linkRow: $('share-link-row'),
+      link: $('share-link'),
+      copy: $('share-copy'),
+      native: $('share-native'),
+      linkNote: $('share-link-note'),
+      recipient: $('share-recipient'),
+      note: $('share-note'),
+      live: $('share-live'),
+      record: $('share-record'),
+      video: $('share-video'),
+    },
+    {
+      input: shareInput,
+      setShared: setSharing,
+      act: shareAction,
+      shared: (method, kind) => {
+        analytics.event('share', { method, content_type: kind });
+        onboarding.done('share');
+      },
+      opened: (kind) => analytics.event('share_open', { content_type: kind }),
+      record: () => toggleRecord(),
+      recording: () => recorder.active,
+      canRecord: () => app.access === 'full',
+      copyKey: APPLE ? '⌘C' : 'Ctrl+C',
     },
   );
   if (!site.guest) {
@@ -1172,7 +1285,7 @@ async function boot() {
         progress: $('coach-progress'),
         restart: $('coach-restart'),
       },
-      { showMe, signIn, share: shareMix, keys: KEYS, event: (name) => analytics.event(name) },
+      { showMe, signIn, share: () => openShareSheet(), keys: KEYS, event: (name) => analytics.event(name) },
     );
     $('coach-restart').addEventListener('click', () => els.about.close());
   }
@@ -1388,7 +1501,7 @@ async function boot() {
   $('about-close').addEventListener('click', () => els.about.close());
   els.about.addEventListener('click', (event) => event.target === els.about && els.about.close());
   els.record.addEventListener('click', toggleRecord);
-  $('share').addEventListener('click', shareMix);
+  $('share').addEventListener('click', () => openShareSheet());
 
   // editing
   els.edit.addEventListener('click', () => setEditing(!focused().stage.editing));
@@ -1404,7 +1517,7 @@ async function boot() {
     event.preventDefault();
     event.returnValue = '';
   });
-  $('gate-run').addEventListener('click', () => focused().run());
+  $('gate-run').addEventListener('click', () => runGated());
   $('gate-read').addEventListener('click', () => {
     app.gatePeek = true;
     renderGate();
@@ -1431,6 +1544,7 @@ async function boot() {
       }
     }
     if (reason === 'updated' && id) crate.setLoaded({ A: A.song?.id, B: B.song?.id });
+    if (shareSheet.open) shareSheet.render();
   });
   admin.init(
     {
@@ -1551,10 +1665,10 @@ async function boot() {
     const interactive = event.target.closest?.('button, a, input, [role="slider"]');
     const pad = deck.pads.get(key);
     const channel = channelKeys.indexOf(key);
-    // Without an account: play, the list, the next beat, help, and on the main site the
-    // pads, channels and views too. The second deck, mixing and recording need one.
+    // Without an account (and on the shared-song player): play, the list, the next beat,
+    // help, the pads, channels and views. The second deck, mixing and recording need one.
     if (app.access === 'preview') {
-      const mixing = !site.guest && (pad || channel >= 0 || ['[', ']', 'f', 'g'].includes(key));
+      const mixing = pad || channel >= 0 || ['[', ']', 'f', 'g'].includes(key);
       if (!['Escape', ' ', 'ArrowLeft', 'ArrowRight', 'b', '?'].includes(key) && !mixing) return;
     }
 
@@ -1598,7 +1712,7 @@ async function boot() {
 
   // The shared-song player has one job: the song its link names.
   if (site.guest) {
-    const link = songLinkIn(location.hash);
+    const link = songLinkIn(location);
     renderCrate();
     await openSharedSong(link);
     renderHead();
@@ -1627,7 +1741,7 @@ async function boot() {
   const hash = location.hash;
   const shared = mixFromHash(hash);
   const sharedSong = shared && app.songs.find((song) => song.id === shared.song);
-  const songLink = songLinkIn(hash);
+  const songLink = songLinkIn(location);
   if (shared || songLink) history.replaceState(null, '', location.pathname + location.search);
   if (shared && !sharedSong) setStatus('The beat in that link is not in this collection');
   // A beat's own address opens that beat.
@@ -1649,7 +1763,10 @@ async function boot() {
   // a beat this visitor may not play yet is described over the featured one
   const opener = isLocked(wanted) ? featured : wanted;
   if (!isLocked(opener)) await loadSong(opener.id, 'A', { autoplay: false, shared: sharedSong && opener === sharedSong ? shared : null, route: false });
-  if (isLocked(wanted)) showLocked(wanted, { route: false });
+  if (isLocked(wanted)) {
+    showLocked(wanted, { route: false });
+    if (sharedSong === wanted) app.pendingMix = shared;
+  }
   if (sharedSong) navigate(sharedSong, { replace: true });
   renderHead();
   app.booted = true;
@@ -1669,11 +1786,15 @@ async function boot() {
     }
     renderHead();
   });
+  if (songLink?.kind === 'copy') {
+    app.copyIntent = songLink.share || null;
+    analytics.event('copy_arrival', { signed_in: Boolean(cloud.user) });
+  }
   if (songLink) openSharedSong(songLink);
   // A link pasted into the address bar of the open site only changes the part after the
   // #, which does not load the page again by itself.
   window.addEventListener('hashchange', () => {
-    if (songLinkIn(location.hash) || mixFromHash(location.hash)) location.reload();
+    if (songLinkIn(location) || mixFromHash(location.hash)) location.reload();
   });
 
   // Draw the punchcards for the song list once the first song has settled.
