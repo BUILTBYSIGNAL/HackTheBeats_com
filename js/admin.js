@@ -1,4 +1,5 @@
-// The admin sheet: the public beats, and the songs people have shared. Only an admin
+// The admin sheet: the public beats, and the songs people have shared (and which of them
+// the community shelf features). Only an admin
 // account is offered it, and the database refuses these writes from anyone else
 // (firestore.rules), so nothing here is what keeps other people out.
 import { cloud } from './cloud.js';
@@ -6,8 +7,10 @@ import { songs, linkToSong } from './songs.js';
 import { describeSong } from './library.js';
 import { newId } from './songs-core.js';
 import { orderBeats, newBeat, featuredOf, audienceOf, buildCatalog, beatsFromExport } from './beats-core.js';
+import { SHELF_MAX, eligibleForShelf, communityEntry } from './community-core.js';
 
 const describe = (beat) => describeSong({ id: beat.id || 'new', code: beat.code }, 'beats');
+const describeShared = (song) => describeSong({ id: song.id, code: song.code }, 'shared');
 const button = (label, onClick, { pressed, danger, title } = {}) => {
   const el = document.createElement('button');
   el.type = 'button';
@@ -37,6 +40,8 @@ export const admin = {
   els: null,
   beats: [],
   shared: [],
+  // the share ids on the community shelf
+  featured: new Set(),
   onChange: () => {},
   busy: false,
 
@@ -279,7 +284,9 @@ export const admin = {
   /* ---------- shared songs ---------- */
 
   async loadShared() {
-    this.shared = (await cloud.listShared()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const [shared, shelf] = await Promise.all([cloud.listShared(), cloud.listCommunity({ max: SHELF_MAX })]);
+    this.shared = shared.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    this.featured = new Set(shelf.map((entry) => entry.shareId));
     this.renderShared();
   },
 
@@ -301,7 +308,8 @@ export const admin = {
       name.textContent = song.title;
       const meta = document.createElement('span');
       meta.className = 'admin__meta';
-      meta.textContent = [song.ownerName ? `shared by ${song.ownerName}` : null, song.updatedAt ? `changed ${new Date(song.updatedAt).toLocaleDateString()}` : null].filter(Boolean).join(' · ');
+      const featured = Boolean(song.shareId) && this.featured.has(song.shareId);
+      meta.textContent = [song.ownerName ? `shared by ${song.ownerName}` : null, song.updatedAt ? `changed ${new Date(song.updatedAt).toLocaleDateString()}` : null, featured ? 'featured' : null].filter(Boolean).join(' · ');
       const tools = document.createElement('span');
       tools.className = 'admin__tools';
       const open = document.createElement('a');
@@ -310,16 +318,72 @@ export const admin = {
       open.href = linkToSong(song);
       open.target = '_blank';
       open.rel = 'noopener';
-      tools.append(open, confirmButton('Switch sharing off', 'Really switch it off?', () => this.takeDown(song)));
+      tools.append(open, this.featureControl(song, featured), confirmButton('Switch sharing off', 'Really switch it off?', () => this.takeDown(song)));
       row.append(name, tools, meta);
       list.append(row);
     }
+  },
+
+  // Feature or Unfeature, for a song its owner offered to the community shelf.
+  featureControl(song, featured) {
+    if (!eligibleForShelf(song)) {
+      const note = document.createElement('span');
+      note.className = 'admin__offer';
+      note.textContent = 'not offered';
+      note.title = 'Its owner has not offered it to the community shelf';
+      return note;
+    }
+    const toggle = button(featured ? 'Unfeature' : 'Feature', () => this.setFeatured(song, !featured), { title: featured ? 'Take it off the community shelf' : 'Show it under From the community' });
+    toggle.disabled = !featured && this.featured.size >= SHELF_MAX;
+    return toggle;
+  },
+
+  async setFeatured(song, on) {
+    if (this.busy) return;
+    if (on && this.featured.size >= SHELF_MAX) return this.status(`The shelf holds ${SHELF_MAX} songs. Unfeature one first.`);
+    this.busy = true;
+    try {
+      if (on) {
+        await cloud.feature(song.shareId, communityEntry(song, describeShared));
+        this.featured.add(song.shareId);
+        this.status(`"${song.title}" is featured under From the community.`);
+      } else {
+        await cloud.unfeature(song.shareId);
+        this.featured.delete(song.shareId);
+        this.status(`"${song.title}" is no longer featured.`);
+      }
+      // what the admin changed is what everybody is shown: read it back
+      this.onChange();
+    } catch (error) {
+      console.warn('[admin] could not change the shelf', error);
+      this.status(on ? 'That was not featured. Its owner may have withdrawn it.' : 'That did not work. It is still featured.');
+    } finally {
+      this.busy = false;
+    }
+    this.renderShared();
+  },
+
+  // The shelf keeps only songs that are still shared, offered and not switched off: an
+  // owner who switched sharing off may not have reached the database to say so. Resolves
+  // to how many entries were taken off.
+  async syncCommunity() {
+    if (!cloud.user?.admin) return 0;
+    let removed = 0;
+    for (const entry of await cloud.listCommunity({ max: SHELF_MAX })) {
+      const share = await cloud.getShare(entry.shareId);
+      const song = share && (await cloud.getShared(share.owner, share.song));
+      if (eligibleForShelf(song, entry.shareId)) continue;
+      await cloud.unfeature(entry.shareId);
+      removed++;
+    }
+    return removed;
   },
 
   async takeDown(song) {
     try {
       await cloud.takeDown(song.owner, song.id, song.shareId);
       this.shared = this.shared.filter((entry) => !(entry.id === song.id && entry.owner === song.owner));
+      if (song.shareId && this.featured.delete(song.shareId)) this.onChange();
       this.status(`Sharing is off for "${song.title}". Its link no longer works.`);
     } catch (error) {
       console.warn('[admin] could not switch sharing off', error);

@@ -18,6 +18,7 @@ export const shareSheet = {
   // hooks: {
   //   input(target)        → what share-sheet-core.js needs, plus { title, credit, from, songId }
   //   setShared(id, on)    → switch sharing on or off; resolves once the link works
+  //   setFeaturable(id, on) → offer the song to the community shelf, or withdraw it
   //   act(action, target)  → 'save-share' | 'save-new-share' | 'save-new'; resolves to the new target
   //   shared(method, kind) → the link went out ('copy' or 'native')
   //   opened(kind), record(), recording(), canRecord(), copyKey
@@ -28,6 +29,7 @@ export const shareSheet = {
     els.close.addEventListener('click', () => els.dialog.close());
     els.dialog.addEventListener('click', (event) => event.target === els.dialog && els.dialog.close());
     els.toggle.addEventListener('change', () => this.setShared(els.toggle.checked));
+    els.feature?.addEventListener('change', () => this.setFeaturable(els.feature.checked));
     els.copy.addEventListener('click', () => this.copy());
     els.native.addEventListener('click', () => this.nativeShare());
     els.link.addEventListener('focus', () => els.link.select());
@@ -108,6 +110,13 @@ export const shareSheet = {
 
     els.recipient.textContent = view.recipient;
     els.recipient.hidden = !view.recipient;
+    if (els.feature) {
+      els.featureRow.hidden = !view.feature;
+      els.feature.checked = Boolean(view.feature?.on);
+      els.feature.disabled = Boolean(view.feature?.disabled);
+      els.featureNote.textContent = view.feature?.note || '';
+      els.featureNote.hidden = !view.feature;
+    }
     els.note.textContent = view.note;
     els.note.hidden = !view.note;
 
@@ -129,6 +138,14 @@ export const shareSheet = {
     this.busy = false;
     this.render();
     this.announce(on ? 'Sharing is on: the link is ready.' : 'Sharing is off: the old link no longer works.');
+  },
+
+  async setFeaturable(on) {
+    const id = this.input?.songId;
+    if (!id || !this.hooks.setFeaturable) return;
+    await this.hooks.setFeaturable(id, on);
+    this.render();
+    this.announce(on ? 'Offered to the site. If its editors pick it, it appears under From the community.' : 'Withdrawn: the site will not feature it.');
   },
 
   async act(action) {

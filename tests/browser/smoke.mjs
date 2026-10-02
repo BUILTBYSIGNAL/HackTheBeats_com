@@ -247,6 +247,8 @@ async function scenario() {
   document.getElementById('share-close').click();
   h.crate.dialog.close();
   check('a song of my own is shared from one Share item; without accounts the sheet says so', menuItems === 'duplicate,share,delete' && ownSheet.open && !ownSheet.toggle && /needs accounts/.test(ownSheet.note), JSON.stringify({ menuItems, ...ownSheet }));
+  // without accounts there is no community shelf: nothing to offer a song to, nothing listed
+  check('without accounts, no community shelf to offer to or list', document.getElementById('share-feature-row').hidden && document.getElementById('community-section').hidden);
   await sleep(400);
   const ticked = Object.keys(JSON.parse(localStorage.getItem('hacking-the-beats:v1')).onboarding?.done || {});
   check('each first step ticks itself off when it is done, and is remembered', ['play', 'knob', 'mute', 'tweak', 'save'].every((step) => ticked.includes(step) && document.querySelector(`.coach__step[data-step="${step}"]`)?.classList.contains('is-done')), ticked.join(' '));

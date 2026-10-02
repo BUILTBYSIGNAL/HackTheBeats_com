@@ -1,5 +1,8 @@
-// The crate: the listener's own songs and the built-in beats, each with a small punchcard.
+// The crate: the listener's own songs, the community shelf and the built-in beats, each
+// with a small punchcard.
 import { glyphSVG } from './library.js';
+import { hash } from './library-core.js';
+import { shelfLine } from './community-core.js';
 
 const ICONS = {
   more: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.2"/><circle cx="8" cy="8" r="1.2"/><circle cx="12.5" cy="8" r="1.2"/></svg>',
@@ -17,10 +20,11 @@ export const crate = {
   openMenu: null,
 
   // handlers: { onSelect(id, deck), onCopy(id), onRename(id, title), onDuplicate(id),
-  //             onDelete(id), onShare(id), canShare(), isLocked(song) }
-  init({ dialog, mine, beats, close, heading, note }, handlers) {
+  //             onDelete(id), onShare(id), canShare(), isLocked(song),
+  //             onCommunity(shareId, deck) }
+  init({ dialog, mine, beats, close, heading, note, community, communitySection }, handlers) {
     this.dialog = dialog;
-    this.lists = { mine, beats };
+    this.lists = { mine, beats, community, communitySection };
     this.heading = heading;
     this.note = note;
     this.handlers = handlers;
@@ -32,9 +36,10 @@ export const crate = {
   },
 
   // `thumbs` maps a song to the SVG of its punchcard, when one has been drawn.
-  render({ mine, beats }, thumbs = this.thumbs) {
+  render({ mine, beats, community = [] }, thumbs = this.thumbs) {
     this.thumbs = thumbs;
     this.fill(this.lists.mine, mine, true);
+    this.fillCommunity(community);
     this.fill(this.lists.beats, beats, false);
     this.note.textContent = mine.length ? '' : 'Nothing here yet. Change any beat and press Save as my song, copy a beat with the button beside it, or start a New song.';
     this.note.hidden = mine.length > 0;
@@ -91,6 +96,48 @@ export const crate = {
         tool.title = 'Copy to my songs';
         tool.addEventListener('click', () => this.handlers.onCopy?.(song.id));
       }
+      list.append(item);
+    });
+  },
+
+  // The songs the site's editors picked from what people share. Hidden while there are none.
+  fillCommunity(entries) {
+    const { community: list, communitySection: section } = this.lists;
+    if (!list) return;
+    section.hidden = !entries.length;
+    list.replaceChildren();
+    entries.forEach((entry, i) => {
+      const item = document.createElement('li');
+      item.className = 'beat beat--community';
+      item.dataset.share = entry.shareId;
+      item.innerHTML = `
+        <button type="button" class="beat__main">
+          <span class="beat__index">${String(i + 1).padStart(2, '0')}</span>
+          <span class="beat__glyph">${glyphSVG(hash(entry.shareId))}</span>
+          <span class="beat__text">
+            <span class="beat__title"></span>
+            <span class="beat__meta"></span>
+            <span class="beat__blurb"></span>
+          </span>
+        </button>
+        <span class="beat__decks">
+          <button type="button" class="beat__deck" data-deck="A">A</button>
+          <button type="button" class="beat__deck" data-deck="B">B</button>
+        </span>`;
+      item.querySelector('.beat__title').textContent = entry.title;
+      item.querySelector('.beat__meta').textContent = shelfLine(entry);
+      const blurb = item.querySelector('.beat__blurb');
+      blurb.textContent = entry.blurb || '';
+      blurb.hidden = !entry.blurb;
+      const choose = (deck) => {
+        this.dialog.close();
+        this.handlers.onCommunity?.(entry.shareId, deck);
+      };
+      item.querySelector('.beat__main').addEventListener('click', () => choose(this.target));
+      item.querySelectorAll('.beat__deck').forEach((button) => {
+        button.setAttribute('aria-label', `Open ${entry.title} on deck ${button.dataset.deck}`);
+        button.addEventListener('click', () => choose(button.dataset.deck));
+      });
       list.append(item);
     });
   },
@@ -154,7 +201,7 @@ export const crate = {
 
   // Mark which song is on which deck.
   setLoaded(loaded) {
-    this.dialog.querySelectorAll('.beat').forEach((item) => {
+    this.dialog.querySelectorAll('.beat[data-id]').forEach((item) => {
       const decks = Object.entries(loaded)
         .filter(([, id]) => id === item.dataset.id)
         .map(([deck]) => deck);

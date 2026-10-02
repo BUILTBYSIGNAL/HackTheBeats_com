@@ -177,7 +177,7 @@
       </div>
 
       <div class="gate" id="gate" hidden>
-        <p class="curtain__kicker">Shared song</p>
+        <p class="curtain__kicker" id="gate-kicker">Shared song</p>
         <p class="gate__title" id="gate-title"></p>
         <p class="gate__by" id="gate-by"></p>
         <p class="gate__text">
@@ -357,6 +357,12 @@
           <ol class="drawer__list" id="mine-list"></ol>
           <p class="drawer__note" id="mine-note"></p>
         </section>
+        <section class="drawer__section" id="community-section" aria-labelledby="community-title" hidden>
+          <header class="drawer__bar">
+            <h3 class="drawer__heading" id="community-title">From the community</h3>
+          </header>
+          <ol class="drawer__list" id="community-list"></ol>
+        </section>
         <section class="drawer__section" aria-labelledby="beats-title">
           <header class="drawer__bar">
             <h3 class="drawer__heading" id="beats-title">Beats</h3>
@@ -452,6 +458,11 @@
         </div>
         <p class="sheet__fine" id="share-link-note" hidden></p>
         <p id="share-recipient" hidden></p>
+        <label class="share__toggle" id="share-feature-row" hidden>
+          <input type="checkbox" id="share-feature" />
+          <span>Let the site feature this</span>
+        </label>
+        <p class="sheet__fine" id="share-feature-note" hidden></p>
         <p class="sheet__fine" id="share-note" hidden></p>
         <p class="visually-hidden" id="share-live" aria-live="polite"></p>
         <h3>More ways to share</h3>

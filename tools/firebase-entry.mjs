@@ -25,5 +25,7 @@ export {
   deleteDoc,
   query,
   where,
+  orderBy,
+  limit,
   writeBatch,
 } from 'firebase/firestore/lite';

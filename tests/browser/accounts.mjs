@@ -771,10 +771,193 @@ try {
   const opened = await passerby.evaluate(() => window.hackingTheBeats.app.songs.map((song) => song.title).join());
   check("a beat the admin adds is theirs alone until they open it to members", kept === 'Beta,Alpha' && opened === 'Beta,Alpha,New song' && bossSees === 'Beta:everyone,Alpha:members,Gamma:admin,New song:admin', `${kept} → ${opened} · ${bossSees}`);
 
+  /* ---------- the community shelf ---------- */
+
+  // what the database holds for a shelf entry, read past the rules (null if there is none)
+  const shelfDoc = async (shareId) => {
+    const response = await rest(`community/${shareId}`);
+    return response.ok ? (await response.json()).fields : null;
+  };
+  const shelfShare = await owner.evaluate((id) => window.hackingTheBeats.songs.get(id).shareId, first);
+  const sharedRow = (id) => boss.locator(`#admin-shared .admin__row[data-id="${id}"]`);
+  const openShared = async () => {
+    await boss.click('[data-admin-tab="beats"]');
+    await boss.click('[data-admin-tab="shared"]');
+    await boss.waitForFunction((id) => document.querySelector(`#admin-shared .admin__row[data-id="${id}"]`), first, { timeout: 15000 });
+  };
+  // the owner ticks or unticks "Let the site feature this" in the share sheet, opened from the song list
+  const offer = (on) =>
+    owner.evaluate(
+      async ({ id, on }) => {
+        const h = window.hackingTheBeats;
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        h.crate.open('A');
+        // (the song's menu stays open from last time)
+        if (!document.querySelector(`.beat[data-id="${id}"] .beat__menu`)) document.querySelector(`.beat[data-id="${id}"] .beat__tool`).click();
+        document.querySelector(`.beat[data-id="${id}"] .beat__menu [data-action="share"]`).click();
+        const box = document.getElementById('share-feature');
+        const sheet = { row: !document.getElementById('share-feature-row').hidden, label: document.getElementById('share-feature-row').textContent.trim(), note: document.getElementById('share-feature-note').textContent, was: box.checked };
+        if (box.checked !== on) box.click();
+        for (let i = 0; i < 100 && h.songs.get(id).featurable !== on; i++) await sleep(50);
+        await h.songs.flush();
+        await sleep(300);
+        document.getElementById('share-close').click();
+        h.crate.dialog.close();
+        return { ...sheet, now: h.songs.get(id).featurable, remote: (await h.cloud.getOwn(id)).featurable };
+      },
+      { id: first, on },
+    );
+
+  // before its owner offers it, the song is not the admin's to feature
+  await openShared();
+  const unoffered = await sharedRow(first).locator('.admin__offer').textContent();
+  const tooSoon = await boss.evaluate(async (shareId) => {
+    const fb = await import('/vendor/firebase.bundle.js');
+    return fb.setDoc(fb.doc(fb.getFirestore(), 'community', shareId), { title: 'New song', featuredAt: 1 }).then(() => 'allowed', (error) => error.code);
+  }, shelfShare);
+  check('rules: the admin cannot feature a song before its owner offers it, and the sheet says "not offered"', denied(tooSoon) && unoffered === 'not offered', `${tooSoon} / ${unoffered}`);
+
+  const offered = await offer(true);
+  check(
+    'the owner offers a shared song from the share sheet, with the fine print',
+    offered.row && offered.label === 'Let the site feature this' && /title, your name and its header notes appear under From the community\. Untick to withdraw it\./.test(offered.note) && !offered.was && offered.now && offered.remote,
+    JSON.stringify(offered),
+  );
+
+  await openShared();
+  await sharedRow(first).getByRole('button', { name: 'Feature', exact: true }).click();
+  await status('is featured under From the community');
+  const entry = await shelfDoc(shelfShare);
+  const said = JSON.stringify(entry);
+  check(
+    'the admin features it: one public entry, with its title and who shared it, and no code, account or song id',
+    entry?.title?.stringValue === 'New song' && entry?.ownerName?.stringValue === 'One Tester' && Boolean(entry?.featuredAt) && !('code' in entry) && !said.includes('setcps') && !said.includes(links.uid) && !said.includes(first),
+    said,
+  );
+
+  // the rules around the shelf, as the admin, a standard user and the owner
+  const shelfRules = {
+    ...(await boss.evaluate(async (shareId) => {
+      const fb = await import('/vendor/firebase.bundle.js');
+      const db = fb.getFirestore();
+      const attempt = (action) => action().then(() => 'allowed', (error) => error.code || String(error));
+      const good = { title: 'New song', ownerName: 'One Tester', featuredAt: 2 };
+      return {
+        adminWithCode: await attempt(() => fb.setDoc(fb.doc(db, 'community', shareId), { ...good, code: 's("bd")' })),
+        adminWithOwner: await attempt(() => fb.setDoc(fb.doc(db, 'community', shareId), { ...good, owner: 'someone' })),
+      };
+    }, shelfShare)),
+    ...(await passerby.evaluate(async (shareId) => {
+      const fb = await import('/vendor/firebase.bundle.js');
+      const db = fb.getFirestore();
+      const me = fb.getAuth().currentUser.uid;
+      const attempt = (action) => action().then(() => 'allowed', (error) => error.code || String(error));
+      return {
+        userWrite: await attempt(() => fb.setDoc(fb.doc(db, 'community', shareId), { title: 'Mine now', featuredAt: 3 })),
+        userWriteNew: await attempt(() => fb.setDoc(fb.doc(db, 'community', '00000000-0000-4000-8000-0000000000c3'), { title: 'Planted', featuredAt: 3 })),
+        userDelete: await attempt(() => fb.deleteDoc(fb.doc(db, 'community', shareId))),
+        listAll: await attempt(() => fb.getDocs(fb.collection(db, 'community'))),
+        listSome: await attempt(() => fb.getDocs(fb.query(fb.collection(db, 'community'), fb.limit(24)))),
+        listTooMany: await attempt(() => fb.getDocs(fb.query(fb.collection(db, 'community'), fb.limit(49)))),
+        read: await attempt(() => fb.getDoc(fb.doc(db, 'community', shareId))),
+        featurableNotBool: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'offer-1'), { code: 's("bd")', title: 'x', createdAt: 1, updatedAt: 1, shared: false, mixer: [], featurable: 'yes' })),
+        featurableBool: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'offer-2'), { code: 's("bd")', title: 'x', createdAt: 1, updatedAt: 1, shared: false, mixer: [], featurable: false })),
+      };
+    }, shelfShare)),
+  };
+  check('rules: an entry carrying code or an owner field is refused', denied(shelfRules.adminWithCode) && denied(shelfRules.adminWithOwner), JSON.stringify(shelfRules));
+  check('rules: a standard user cannot write or delete community entries', denied(shelfRules.userWrite) && denied(shelfRules.userWriteNew) && denied(shelfRules.userDelete), JSON.stringify(shelfRules));
+  check('rules: the shelf can be read, and listed only with a limit of at most 48', shelfRules.read === 'allowed' && denied(shelfRules.listAll) && shelfRules.listSome === 'allowed' && denied(shelfRules.listTooMany), JSON.stringify(shelfRules));
+  check('rules: featurable must be true or false', denied(shelfRules.featurableNotBool) && shelfRules.featurableBool === 'allowed', JSON.stringify(shelfRules));
+
+  // a visitor with no account sees From the community, and a click goes to the player
+  const shelfVisitor = await visitor(SITE, SPLIT);
+  await shelfVisitor.waitForFunction(() => !document.getElementById('community-section').hidden, null, { timeout: 15000 });
+  const shelf = await shelfVisitor.evaluate((shareId) => {
+    const row = document.querySelector(`#community-list .beat[data-share="${shareId}"]`);
+    const sections = [...document.querySelectorAll('#crate .drawer__heading')].map((el) => el.textContent);
+    return { title: row?.querySelector('.beat__title').textContent, meta: row?.querySelector('.beat__meta').textContent, glyph: Boolean(row?.querySelector('.beat__glyph svg rect')), sections };
+  }, shelfShare);
+  check(
+    'signed out, the song list shows From the community, between My songs and Beats',
+    shelf.title === 'New song' && /^shared by One Tester · 132 bpm/.test(shelf.meta || '') && shelf.glyph && shelf.sections.join() === 'My songs,From the community,Beats',
+    JSON.stringify(shelf),
+  );
+  await shelfVisitor.evaluate((shareId) => {
+    window.hackingTheBeats.crate.open('A');
+    document.querySelector(`#community-list .beat[data-share="${shareId}"] .beat__main`).click();
+  }, shelfShare);
+  await shelfVisitor.waitForURL((url) => url.origin === PLAYER && url.pathname === `/s/${shelfShare}`, { timeout: 15000 });
+  await arrive(shelfVisitor);
+  await shelfVisitor.waitForFunction(() => window.hackingTheBeats.players.A.song?.source === 'shared' && window.hackingTheBeats.players.A.ready, null, { timeout: 30000 });
+  check('and a click plays it on the shared-song player', await shelfVisitor.evaluate(() => window.hackingTheBeats.site.guest && window.hackingTheBeats.players.A.song.title === 'New song'));
+  await shelfVisitor.context().close();
+
+  // signed in, it opens on the chosen deck, behind the question
+  await listener.goto(SITE);
+  await arrive(listener);
+  await listener.waitForFunction(() => !document.getElementById('community-section').hidden, null, { timeout: 15000 });
+  const deckA = await listener.evaluate(() => window.hackingTheBeats.players.A.song?.id);
+  await listener.evaluate((shareId) => {
+    window.hackingTheBeats.crate.open('A');
+    document.querySelector(`#community-list .beat[data-share="${shareId}"] .beat__deck[data-deck="B"]`).click();
+  }, shelfShare);
+  await listener.waitForFunction(() => window.hackingTheBeats.players.B.gated, null, { timeout: 15000 });
+  const fromShelf = await listener.evaluate(() => {
+    const h = window.hackingTheBeats;
+    return { gate: !document.getElementById('gate').hidden, kicker: document.getElementById('gate-kicker').textContent, title: document.getElementById('gate-title').textContent, focus: h.app.focusId, ready: h.players.B.ready, deckA: h.players.A.song?.id, origin: location.origin };
+  });
+  check(
+    'signed in, a click opens it on the chosen deck behind the question, which says "From the community"',
+    fromShelf.gate && fromShelf.kicker === 'From the community' && fromShelf.title === 'New song' && fromShelf.focus === 'B' && !fromShelf.ready && fromShelf.deckA === deckA && fromShelf.origin === new URL(SITE).origin,
+    JSON.stringify(fromShelf),
+  );
+
+  // the owner unticks: the entry is gone
+  const withdrawn = await offer(false);
+  const afterWithdraw = await shelfDoc(shelfShare);
+  check('the owner unticks it, and its entry is gone', withdrawn.was && !withdrawn.now && !withdrawn.remote && afterWithdraw === null, JSON.stringify({ ...withdrawn, entry: afterWithdraw }));
+
+  // an entry left behind by a song that is no longer offered is tidied away by the admin's visit
+  const spare = await owner.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const song = h.songs.create({ code: '/*\n  @title Spare Lantern\n  A test song for the shelf.\n*/\nsetcps(100/60/4)\nKEYS: note("c3 e3 g3").s("triangle")\n' });
+    h.songs.setShared(song.id, true);
+    await h.songs.flush();
+    h.songs.setFeaturable(song.id, true);
+    await h.songs.flush();
+    return { id: song.id, shareId: h.songs.get(song.id).shareId };
+  });
+  await boss.click('[data-admin-tab="beats"]');
+  await boss.click('[data-admin-tab="shared"]');
+  await boss.waitForFunction((id) => document.querySelector(`#admin-shared .admin__row[data-id="${id}"]`), spare.id, { timeout: 15000 });
+  await sharedRow(spare.id).getByRole('button', { name: 'Feature', exact: true }).click();
+  await status('"Spare Lantern" is featured');
+  const featuredSpare = Boolean(await shelfDoc(spare.shareId));
+  await owner.evaluate(async (id) => {
+    const h = window.hackingTheBeats;
+    const fb = await import('/vendor/firebase.bundle.js');
+    // the owner's account stops offering it without the entry being removed (a lost connection, say)
+    await fb.updateDoc(fb.doc(fb.getFirestore(), 'users', h.cloud.user.uid, 'songs', id), { featurable: false });
+  }, spare.id);
+  const tidied = await boss.evaluate(() => window.hackingTheBeats.admin.syncCommunity());
+  check('an entry whose song is no longer offered is taken off the shelf by the admin\'s visit', featuredSpare && tidied === 1 && (await shelfDoc(spare.shareId)) === null, `${featuredSpare} / ${tidied}`);
+  await owner.evaluate(async (id) => {
+    window.hackingTheBeats.songs.remove(id);
+    await new Promise((r) => setTimeout(r, 800));
+  }, spare.id);
+
+  // offered again, and featured again
+  const reoffered = await offer(true);
+  await openShared();
+  await sharedRow(first).getByRole('button', { name: 'Feature', exact: true }).click();
+  await status('"New song" is featured');
+  check('it can be offered and featured again', reoffered.now && reoffered.remote && Boolean(await shelfDoc(shelfShare)));
+
   // the admin takes a shared song down
   await boss.click('[data-admin-tab="shared"]');
   await boss.waitForFunction((id) => document.querySelector(`#admin-shared .admin__row[data-id="${id}"]`), first, { timeout: 15000 });
-  const takeDown = boss.locator(`#admin-shared .admin__row[data-id="${first}"]`).getByRole('button');
+  const takeDown = boss.locator(`#admin-shared .admin__row[data-id="${first}"]`).locator('button.chipbtn--danger');
   await takeDown.click();
   await takeDown.click();
   await status('Sharing is off');
@@ -799,6 +982,7 @@ try {
     return { local: { shared: local.shared, blocked: local.blocked }, remote: { shared: remote.shared, blocked: remote.blocked, saved: remote.code.includes('one more change') }, forced };
   }, first);
   check('the admin can switch a shared song off, which closes its link', gone === null);
+  check('and takes it off the community shelf', (await shelfDoc(shelfShare)) === null);
   check('its owner keeps the song and can still save it, but cannot share it again', again.local.blocked && !again.local.shared && again.remote.blocked && !again.remote.shared && again.remote.saved && denied(again.forced), JSON.stringify(again));
 
   check('no errors on any page', errors.length === 0, errors.slice(0, 3).join(' | '));

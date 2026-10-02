@@ -9,7 +9,7 @@ import { sharePath } from './routes-core.js';
 const KEY = 'hacking-the-beats:songs';
 const UPLOAD_DELAY = 1500;
 
-// id → { id, code, createdAt, updatedAt, mixer, shared, shareId, owner, synced, blocked, from }
+// id → { id, code, createdAt, updatedAt, mixer, shared, shareId, owner, synced, blocked, from, featurable }
 const records = new Map();
 const described = new Map();
 const listeners = new Set();
@@ -64,12 +64,19 @@ async function adoptBlock(id) {
   const remote = await cloud.getOwn(id).catch(() => null);
   const record = records.get(id);
   if (!remote?.blocked || !record) return false;
-  records.set(id, { ...record, shared: false, blocked: true });
+  records.set(id, { ...record, shared: false, blocked: true, featurable: false });
   described.delete(id);
   write();
   changed('updated', id);
   statusListener(`Sharing for "${titleOf(record.code) || 'Untitled'}" was switched off by the site.`);
   return true;
+}
+
+// Close a song's link. Its entry on the community shelf goes first: the owner's right to
+// remove that comes from the link's own record (firestore.rules).
+function closeLink(record) {
+  const withdrawn = record.featurable ? cloud.unfeature(record.shareId).catch((error) => console.warn('[songs] could not withdraw it from the shelf', error)) : Promise.resolve();
+  return withdrawn.then(() => cloud.deleteShare(record.shareId));
 }
 
 // Write one song to the account a moment after its last change.
@@ -116,7 +123,7 @@ export const songs = {
   describe(record) {
     const cached = described.get(record.id);
     if (cached && cached.record === record) return cached.song;
-    const song = { ...describeSong(record, 'mine'), mixer: record.mixer || null, shared: Boolean(record.shared), shareId: record.shareId || null, blocked: Boolean(record.blocked), synced: Boolean(record.synced), owner: record.owner || null, from: cleanFrom(record.from), createdAt: record.createdAt, updatedAt: record.updatedAt };
+    const song = { ...describeSong(record, 'mine'), mixer: record.mixer || null, shared: Boolean(record.shared), shareId: record.shareId || null, blocked: Boolean(record.blocked), featurable: Boolean(record.featurable), synced: Boolean(record.synced), owner: record.owner || null, from: cleanFrom(record.from), createdAt: record.createdAt, updatedAt: record.updatedAt };
     described.set(record.id, { record, song });
     return song;
   },
@@ -153,7 +160,7 @@ export const songs = {
     if (!record) return null;
     const next = { ...record, ...patch, updatedAt: Date.now(), synced: false };
     const same = (key) => JSON.stringify(next[key]) === JSON.stringify(record[key]);
-    if (['code', 'mixer', 'shared', 'shareId', 'from'].every(same)) return this.describe(record);
+    if (['code', 'mixer', 'shared', 'shareId', 'from', 'featurable'].every(same)) return this.describe(record);
     return this.put(next, 'updated');
   },
 
@@ -171,7 +178,7 @@ export const songs = {
     described.delete(id);
     write();
     if (cloud.user && record.owner === cloud.user.uid) {
-      if (record.shareId) cloud.deleteShare(record.shareId).catch(() => {});
+      if (record.shareId) closeLink(record).catch(() => {});
       cloud.deleteSong(id).catch((error) => {
         console.warn('[songs] could not delete from the account', error);
         statusListener('Could not delete the song from your account just now.');
@@ -190,9 +197,20 @@ export const songs = {
     const record = records.get(id);
     if (!record) return null;
     if (shared) return this.update(id, { shared: true, shareId: record.shareId || newUuid() });
-    // switching off forgets the link for good: sharing again makes a new one
-    if (record.shareId) cloud.deleteShare(record.shareId).catch((error) => console.warn('[songs] could not remove the link', error));
-    return this.update(id, { shared: false, shareId: null });
+    // switching off forgets the link for good: sharing again makes a new one. It also
+    // withdraws the song from the community shelf.
+    if (record.shareId) closeLink(record).catch((error) => console.warn('[songs] could not remove the link', error));
+    return this.update(id, { shared: false, shareId: null, featurable: false });
+  },
+  // Offer a shared song to the site's community shelf, or withdraw it. Only while it is
+  // shared and the site has not switched it off; the editors decide whether to feature it.
+  setFeaturable(id, on) {
+    const record = records.get(id);
+    if (!cloud.user || !record) return null;
+    if (on && (!record.shared || !record.shareId || record.blocked)) return null;
+    if (Boolean(record.featurable) === Boolean(on)) return this.describe(record);
+    if (!on && record.shareId) cloud.unfeature(record.shareId).catch((error) => console.warn('[songs] could not withdraw it from the shelf', error));
+    return this.update(id, { featurable: Boolean(on) });
   },
   shareLink(id) {
     const record = records.get(id);

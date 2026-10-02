@@ -8,13 +8,14 @@
 //   dismissed  the person chose to share without their changes
 //   accounts   sharing one's own songs is possible here (a hosted site with accounts)
 //   shared, blocked, synced   the song's own state (own songs)
+//   featurable the owner has offered the song to the site's community shelf
 //   busy       the link is being made
 //   link       the address to share, once there is one
 //   audience   who can play a built-in beat: 'everyone', 'members' or 'admin'
 //   title, host, sharer, ownerName   words for the sentences
 export function sheetState(s) {
   // intro: what is being shared, when that is not obvious; offer: the better way to share it
-  const out = { intro: '', warning: null, offer: null, toggle: null, link: null, recipient: '', note: '' };
+  const out = { intro: '', warning: null, offer: null, toggle: null, link: null, recipient: '', note: '', feature: null };
   const warn = (text, primary, secondary = null) => (s.dismissed ? null : { text, primary, secondary });
 
   if (s.kind === 'own') {
@@ -36,6 +37,12 @@ export function sheetState(s) {
     if (!s.busy && s.link && !s.synced) out.link.note = 'Your account could not be reached just now: the link will work once the song has been saved there.';
     const by = s.sharer ? `, shared by ${s.sharer}` : '';
     out.recipient = `They will find "${s.title}" on ${s.host}${by}, with its knobs, channels and pads to play with. They can't change your song, but they can keep a copy of their own that credits you.`;
+    // offering it to the community shelf, while it is shared
+    out.feature = {
+      on: Boolean(s.featurable),
+      disabled: Boolean(s.busy),
+      note: "If the site's editors pick it, its title, your name and its header notes appear under From the community. Untick to withdraw it.",
+    };
     return out;
   }
 
