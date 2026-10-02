@@ -307,6 +307,18 @@ export class Stage {
         this.syncInlineSliders();
         this.callbacks.onDocChange?.();
       }),
+      // ⌘+Enter on a Mac runs the code, as Ctrl+Enter does everywhere. (CodeMirror's own
+      // keys would add a blank line.)
+      Prec.highest(
+        EditorView.domEventHandlers({
+          keydown: (event) => {
+            if (!this.editing || !event.metaKey || event.key !== 'Enter') return false;
+            event.preventDefault();
+            this.callbacks.onRun?.();
+            return true;
+          },
+        }),
+      ),
     ];
 
     this.view.dispatch({
@@ -352,13 +364,22 @@ export class Stage {
     ];
   }
 
-  // Unlock the code for typing, or lock it again.
+  // Unlock the code for typing, or lock it again. The caret starts where the reader is
+  // looking, not back at the top.
   setEditable(on) {
     this.editing = on;
     this.cancelReveal();
     this.root.classList.toggle('is-editing', on);
     this.view.dispatch({ effects: this.lock.reconfigure(this.lockFor(on)) });
-    if (on) this.view.focus();
+    if (!on) return;
+    const { view } = this;
+    const box = view.scrollDOM.getBoundingClientRect();
+    const caretAt = view.coordsAtPos(view.state.selection.main.head);
+    if (!caretAt || caretAt.top < box.top || caretAt.bottom > box.bottom) {
+      const line = view.lineBlockAtHeight(view.scrollDOM.scrollTop + 24);
+      view.dispatch({ selection: { anchor: line.from } });
+    }
+    view.focus();
   }
 
   // What the code on stage is compared with to mark changed lines: the shape of the song
@@ -523,6 +544,17 @@ export class Stage {
     this.view.dispatch({ changes: { from: slider.from, to: slider.to, insert: text } });
   }
 
+  // Make a suggested change (several ranges at once, as planTry gives them) and bring the
+  // first of them into view, where its line is marked as changed. The camera keeps its
+  // hands off for a while so the reader can see what happened.
+  applyChanges(changes) {
+    if (!changes.length) return;
+    this.view.dispatch({ changes: changes.map(({ from, to, insert }) => ({ from, to, insert })) });
+    // (the first change starts where it did: nothing before it moved)
+    this.glideTo(changes[0].from, 0.35);
+    this.handsOffUntil = performance.now() + 8000;
+  }
+
   writeSwitch(j, text) {
     const item = this.state.switches[j];
     if (!item || this.view.state.sliceDoc(item.from, item.to) === text) return;
@@ -574,9 +606,14 @@ export class Stage {
   scrollToTrack(index, { force = false, align = 0.18 } = {}) {
     const track = this.state.tracks.find((entry) => entry.index === index);
     if (!track || (!force && this.handsOff)) return;
+    this.glideTo(track.from, align);
+  }
+
+  // Glide the code so that the line at `pos` sits `align` of the way down the stage.
+  glideTo(pos, align) {
     const scroller = this.view.scrollDOM;
     const target = () => {
-      const block = this.view.lineBlockAt(Math.min(track.from, this.view.state.doc.length));
+      const block = this.view.lineBlockAt(Math.min(pos, this.view.state.doc.length));
       const offset = this.view.contentDOM.offsetTop;
       return clamp(block.top + offset - scroller.clientHeight * align, 0, scroller.scrollHeight - scroller.clientHeight);
     };

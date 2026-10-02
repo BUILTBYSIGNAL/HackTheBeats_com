@@ -36,7 +36,7 @@ export const crate = {
     this.thumbs = thumbs;
     this.fill(this.lists.mine, mine, true);
     this.fill(this.lists.beats, beats, false);
-    this.note.textContent = mine.length ? '' : 'Nothing here yet. Press Edit on any beat to make it your own, or start a new song.';
+    this.note.textContent = mine.length ? '' : 'Nothing here yet. Change any beat and press Save as my song, copy a beat with the button beside it, or start a New song.';
     this.note.hidden = mine.length > 0;
   },
 

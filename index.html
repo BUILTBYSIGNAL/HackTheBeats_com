@@ -83,6 +83,10 @@
       <canvas class="scope" id="scope" aria-hidden="true"></canvas>
 
       <div class="actions">
+        <button type="button" class="iconbtn iconbtn--list" id="open-list" aria-label="Songs">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.5M2.5 8h.5M2.5 12h.5" /></svg>
+          <span class="iconbtn__label">Songs</span>
+        </button>
         <button type="button" class="iconbtn iconbtn--rec" id="record" aria-pressed="false" aria-label="Record the mix to a file">
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle class="rec-dot" cx="8" cy="8" r="4" /></svg>
           <span class="rec-time" id="record-time"></span>
@@ -119,11 +123,11 @@
       </div>
 
       <div class="stagebar" role="group" aria-label="Code and view">
-        <button type="button" class="stagebar__btn stagebar__btn--go" id="update" title="Run the edited code (Ctrl+Enter)" hidden>Update</button>
+        <button type="button" class="stagebar__btn stagebar__btn--go" id="update" title="Run the edited code (Ctrl+Enter)" data-keys hidden>Update</button>
         <button type="button" class="stagebar__btn" id="edit" aria-pressed="false" title="Unlock the code for editing">Edit</button>
         <button type="button" class="stagebar__btn" id="save-copy" title="Save this as one of my songs" hidden>Save a copy</button>
         <span class="stagebar__unsaved" id="unsaved" hidden>Unsaved changes</span>
-        <button type="button" class="stagebar__btn stagebar__btn--save" id="save" title="Save over this song (Ctrl+S)" hidden>Save</button>
+        <button type="button" class="stagebar__btn stagebar__btn--save" id="save" title="Save over this song (Ctrl+S)" data-keys hidden>Save</button>
         <button type="button" class="stagebar__btn stagebar__btn--save" id="save-new" title="Keep this version as a new song of mine" hidden>Save as new</button>
         <button type="button" class="stagebar__btn" id="save-beat" title="Replace the public beat with this version, for everyone" hidden>Update the beat</button>
         <button type="button" class="stagebar__btn" id="revert" title="Throw these changes away" hidden>Revert</button>
@@ -132,6 +136,28 @@
         <button type="button" class="stagebar__btn" id="split" aria-pressed="false" title="Show both decks side by side">Split</button>
         <button type="button" class="stagebar__btn" id="gallery" title="Full screen, code only (G)">Gallery</button>
       </div>
+
+      <div class="tries" id="tries" role="group" aria-label="Changes to try" hidden>
+        <span class="tries__label" aria-hidden="true">Try</span>
+        <div class="tries__chips" id="tries-chips"></div>
+      </div>
+
+      <section class="coach" id="coach" aria-labelledby="coach-title" hidden>
+        <header class="coach__head">
+          <h2 class="coach__title" id="coach-title">First steps</h2>
+          <span class="coach__count" id="coach-count"></span>
+          <button type="button" class="iconbtn coach__close" id="coach-close" aria-label="Close the first steps">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+          </button>
+        </header>
+        <ol class="coach__steps" id="coach-steps"></ol>
+        <div class="coach__end" id="coach-end" hidden>
+          <p>That's the loop: play it, bend it, change it, keep it, pass it on. Press <kbd>?</kbd> for every key.</p>
+          <button type="button" class="pillbtn pillbtn--go" id="coach-done">Done</button>
+        </div>
+        <button type="button" class="textbtn coach__never" id="coach-never">Don't show these again</button>
+        <p class="visually-hidden" id="coach-live" aria-live="polite"></p>
+      </section>
 
       <div class="hud" id="hud">
         <p class="hud__now"><span id="hud-title"></span><span class="hud__bar" id="hud-bar"></span></p>
@@ -177,7 +203,12 @@
 
       <div class="notice" id="notice" role="alert" hidden>
         <p class="notice__title" id="notice-title"></p>
+        <p class="notice__hint" id="notice-hint" hidden></p>
         <p class="notice__detail" id="notice-detail"></p>
+        <details class="notice__raw" id="notice-raw" hidden>
+          <summary>What the browser said</summary>
+          <p class="notice__detail" id="notice-raw-text"></p>
+        </details>
       </div>
 
       <p class="status" id="status" role="status" aria-live="polite"></p>
@@ -193,6 +224,7 @@
       </div>
       <canvas class="ribbon__canvas" id="ribbon" role="img" aria-label="Arrangement: which tracks play in each of 32 bars. Click a bar to jump there."></canvas>
       <div class="ribbon__tools">
+        <button type="button" class="ribbon__btn" id="coach-toggle" aria-expanded="false" aria-controls="coach" hidden>Steps <span id="coach-progress"></span></button>
         <button type="button" class="ribbon__btn" id="midi-button" aria-pressed="false" title="Bind a MIDI controller to the deck">MIDI</button>
         <button type="button" class="ribbon__btn" id="deck-toggle" aria-expanded="true" aria-controls="deck">
           <span>Controls</span>
@@ -231,7 +263,8 @@
       <div class="panel panel--pads" data-panel="pads">
         <header class="panel__head">
           <h2 class="panel__title">Pads</h2>
-          <span class="panel__note">hold</span>
+          <span class="panel__note panel__note--hold">hold</span>
+          <button type="button" class="textbtn pads__latch" id="pads-latch" aria-pressed="false" title="Tap a pad to switch it on, and again to switch it off">Latch</button>
         </header>
         <div class="pads" id="pads"></div>
       </div>
@@ -259,15 +292,16 @@
       <div class="intro__pitch">
         <h2 class="intro__title" id="intro-title">This is music made by code.</h2>
         <p class="intro__lede" id="intro-lede">
-          Every sound you hear comes from the code above, running live in your browser. Press play and watch it work. Sign in, free,
-          to take the controls.
+          Every sound you hear comes from the code above, running live in your browser. Press play, then take the knobs: no account
+          needed.
         </p>
       </div>
       <ul class="intro__points" id="intro-points">
-        <li><strong>Mix it.</strong> Two decks in time with each other, a crossfader, and a knob for every number in the song.</li>
-        <li><strong>Change it.</strong> Edit the code while it plays. The music carries on with your change.</li>
-        <li><strong>Keep it.</strong> Your versions are saved to your account, and you can share one by link.</li>
+        <li><strong>Mix it.</strong> A knob for every number in the song, a channel for every part, and pads to throw it around. Free.</li>
+        <li><strong>Change it.</strong> Edit the code while it plays, and the music carries on with your change. With an account.</li>
+        <li><strong>Keep it.</strong> Save your versions, mix two decks, record, and share a song by link. With an account.</li>
       </ul>
+      <p class="intro__now" id="intro-now"><strong>The knobs are yours.</strong> Sign in, free, to change the code, keep your version and share it.</p>
       <div class="intro__action">
         <button type="button" class="pillbtn pillbtn--go" id="intro-sign-in">Sign in with Google</button>
         <p class="intro__fine" id="intro-fine">
@@ -303,12 +337,13 @@
           <header class="drawer__bar">
             <h3 class="drawer__heading" id="mine-title">My songs</h3>
             <div class="drawer__tools">
-              <button type="button" class="textbtn" id="song-new">New</button>
+              <button type="button" class="textbtn" id="song-new" aria-expanded="false" aria-controls="starters">New</button>
               <button type="button" class="textbtn" id="song-import">Import</button>
               <button type="button" class="textbtn" id="song-export">Export</button>
               <input type="file" id="song-file" accept=".json,.js,.strudel,.str,.txt,application/json,text/plain" multiple hidden />
             </div>
           </header>
+          <div class="drawer__starters" id="starters" role="group" aria-label="Start a new song from" hidden></div>
           <ol class="drawer__list" id="mine-list"></ol>
           <p class="drawer__note" id="mine-note"></p>
         </section>
@@ -332,8 +367,8 @@
       <div class="sheet__body">
         <div id="account-out">
           <p>
-            An account opens the whole site: the decks, every knob, editing the code, and your own songs, kept in your account and
-            shareable by link. It is free.
+            The knobs, channels and pads are free to use. An account adds the rest: editing the code, a second deck, recording, MIDI,
+            and your own songs, kept in your account and shareable by link. It is free.
           </p>
           <div class="sheet__row">
             <button type="button" class="pillbtn pillbtn--go" id="sign-in">Sign in with Google</button>
@@ -429,6 +464,8 @@
 
         <section class="sheet__song" id="about-song"></section>
 
+        <p class="sheet__row"><button type="button" class="pillbtn" id="coach-restart">Show the first steps again</button></p>
+
         <h3>Keys</h3>
         <dl class="keys">
           <div><dt><kbd>Space</kbd></dt><dd>Play or stop the deck in focus</dd></div>
@@ -442,7 +479,8 @@
           <div><dt><kbd>R</kbd> <kbd>B</kbd></dt><dd>Record the mix to a WAV file; open the beats list</dd></div>
           <div><dt>On a knob</dt><dd>Arrows adjust, <kbd>Shift</kbd> for fine, <kbd>Enter</kbd> or double-click resets</dd></div>
           <div><dt>In the code</dt><dd>Click a track label to mute it, click a highlighted number to find its knob, drag an inline slider</dd></div>
-          <div><dt>Editing</dt><dd>Click in the code (or press <strong>Edit</strong>) to change it. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> runs your changes without stopping the music, <kbd>Ctrl</kbd>+<kbd>S</kbd> saves, <kbd>Esc</kbd> leaves the code. Changed lines are marked until you save.</dd></div>
+          <div><dt><kbd data-mod>Ctrl</kbd>+<kbd>.</kbd></dt><dd>Stop the deck in focus (works while typing in the code, too)</dd></div>
+          <div><dt>Editing</dt><dd>Click in the code (or press <strong>Edit</strong>) to change it. <kbd data-mod>Ctrl</kbd>+<kbd>Enter</kbd> runs your changes without stopping the music, <kbd data-mod>Ctrl</kbd>+<kbd>S</kbd> saves, <kbd>Esc</kbd> leaves the code. Changed lines are marked until you save.</dd></div>
         </dl>
 
         <h3>MIDI controller</h3>

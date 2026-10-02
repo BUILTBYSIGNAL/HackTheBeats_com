@@ -102,10 +102,63 @@ try {
     const h = window.hackingTheBeats;
     return { access: h.app.access, featured: h.players.A.song.featured, ready: h.players.A.ready, inert: getComputedStyle(document.querySelector('#pane-a .cm-content')).pointerEvents };
   });
-  check('signed out, the site is a small player with an introduction', wall.access === 'preview' && (await shown(one, 'intro')) && !(await shown(one, 'deck')) && wall.inert === 'none', JSON.stringify(wall));
+  // the code can be clicked (labels mute, numbers find their knob) but not typed into
+  check('signed out, the site starts as the featured beat and an introduction', wall.access === 'preview' && (await shown(one, 'intro')) && !(await shown(one, 'deck')) && wall.inert === 'auto', JSON.stringify(wall));
   await one.click('#curtain-play');
   await one.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 30000 });
   check('the featured beat plays without an account', wall.featured && wall.ready);
+
+  // once it plays, the knobs, channels and pads are theirs; what needs an account stays out of sight
+  await settle(one);
+  const controls = await one.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const A = h.players.A;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const hidden = (id) => getComputedStyle(document.getElementById(id)).display === 'none';
+    const out = { hidden: ['chip-b', 'record', 'share', 'midi-button', 'split'].filter(hidden), mixrow: getComputedStyle(document.querySelector('.mixrow')).display === 'none' };
+    if (A.sliders.length) {
+      h.deck.knobs[0].set(A.sliders[0].min, { silent: false });
+      await sleep(400);
+      out.kept = JSON.parse(localStorage.getItem('hacking-the-beats:v1') || '{}').songs?.[A.song.id]?.sliders?.[0] === A.sliders[0].value;
+    } else out.kept = true;
+    const label = document.querySelector('#pane-a .hb-label');
+    label.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+    const index = Number(label.dataset.track);
+    out.labelMutes = A.mixer.tracks[index].mute;
+    A.mixer.setMute(index, false);
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '1', bubbles: true }));
+    out.keyMutes = A.mixer.tracks[0].mute;
+    A.mixer.setMute(0, false);
+    out.unsavedDot = document.getElementById('chip-a').classList.contains('is-unsaved');
+    document.getElementById('edit').click();
+    out.editAsks = document.getElementById('account-dialog').open && !A.stage.editing;
+    document.getElementById('account-dialog').close();
+    return out;
+  });
+  check(
+    'signed out, the knobs, channels and pads work once it plays; the rest waits for an account',
+    (await shown(one, 'deck')) && controls.hidden.length === 5 && controls.mixrow && controls.kept && controls.labelMutes && controls.keyMutes && !controls.unsavedDot && controls.editAsks,
+    JSON.stringify(controls),
+  );
+
+  // a suggestion can be tried without an account: nothing is kept, and nothing is said to be unsaved
+  const tried = await one.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const A = h.players.A;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const chip = () => document.querySelector('#tries .tries__chip');
+    if (!chip()) return { none: true };
+    const original = A.code;
+    chip().click();
+    for (let i = 0; i < 80 && chip()?.getAttribute('aria-pressed') !== 'true'; i++) await sleep(100);
+    const on = { changed: A.code !== original, dot: document.getElementById('chip-a').classList.contains('is-unsaved'), save: !document.getElementById('save-new').hidden };
+    chip().click();
+    for (let i = 0; i < 80 && chip()?.getAttribute('aria-pressed') !== 'false'; i++) await sleep(100);
+    const steps = [...document.querySelectorAll('.coach__step')].map((li) => li.dataset.step + (li.classList.contains('is-done') ? '+' : ''));
+    return { ...on, back: A.code === original && !A.edited, steps };
+  });
+  check('signed out, a suggestion can be tried, with nothing to save', !tried.none && tried.changed && !tried.dot && !tried.save && tried.back, JSON.stringify(tried));
+  check('signed out, the first steps end with signing in', tried.steps?.join() === 'play+,knob+,mute+,tweak+,signin', tried.steps?.join());
 
   const lockedBeat = await one.evaluate(() => {
     const h = window.hackingTheBeats;
@@ -133,6 +186,9 @@ try {
   const unlocked = await one.evaluate(() => ({ access: window.hackingTheBeats.app.access, panel: !document.getElementById('locked').hidden, standard: !window.hackingTheBeats.cloud.user.admin && document.getElementById('open-admin').hidden }));
   check('signing in opens the whole site, and the beat that was asked for, without a reload', unlocked.access === 'full' && !unlocked.panel && (await shown(one, 'deck')) && !(await shown(one, 'intro')), JSON.stringify(unlocked));
   check('a new account is a standard user', unlocked.standard);
+  const stepsIn = await one.evaluate(() => [...document.querySelectorAll('.coach__step')].map((li) => li.dataset.step + (li.classList.contains('is-done') ? '+' : '')));
+  // (this account already holds a song of its own, made before signing in: that step is done)
+  check('with an account the first steps go on to keeping and sharing, and remember what was done', stepsIn.join() === 'play+,knob+,mute+,tweak+,save+,share', stepsIn.join());
   await one.evaluate(() => window.hackingTheBeats.songs.flush());
   const afterSignIn = await one.evaluate(async () => {
     const h = window.hackingTheBeats;
@@ -273,7 +329,7 @@ try {
   await settle(one);
   const out = await one.evaluate(() => ({ mine: window.hackingTheBeats.songs.list().length, stored: JSON.parse(localStorage.getItem('hacking-the-beats:songs') || '[]').length, path: location.pathname }));
   check("signing out removes the account's songs from the browser", out.mine === 0 && out.stored === 0, JSON.stringify(out));
-  check('signing out goes back to the small player and the featured beat', (await shown(one, 'intro')) && !(await shown(one, 'deck')) && out.path === '/');
+  check('signing out goes back to the featured beat, with its controls but no second deck', (await shown(one, 'intro')) && (await shown(one, 'deck')) && !(await shown(one, 'chip-b')) && !(await shown(one, 'record')) && out.path === '/');
   await one.evaluate(() => window.hackingTheBeats.cloud.signInForTest({ sub: 'one', email: 'one@example.com', name: 'One Tester' }));
   await one.waitForFunction((count) => window.hackingTheBeats.songs.list().length === count, links.count, { timeout: 15000 });
   check('signing in again brings them back', true, `${links.count} songs`);

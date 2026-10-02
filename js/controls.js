@@ -232,10 +232,11 @@ export function createCrossfader(options) {
 }
 
 /**
- * A pad that is on for as long as it is held. Shift-click (or Shift with its key) latches it.
- * options: { id, label, hint, keyHint, onChange(on) }
+ * A pad that is on for as long as it is held. Shift-click (or Shift with its key) latches it,
+ * and so does every press while latchMode() says so (a touch screen has no Shift).
+ * options: { id, label, hint, keyHint, onChange(on), latchMode() }
  */
-export function createPad({ id, label, hint, keyHint, onChange }) {
+export function createPad({ id, label, hint, keyHint, onChange, latchMode = () => false }) {
   const el = document.createElement('button');
   el.type = 'button';
   el.className = 'pad';
@@ -270,14 +271,14 @@ export function createPad({ id, label, hint, keyHint, onChange }) {
   el.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return;
     el.setPointerCapture(event.pointerId);
-    press(true, event.shiftKey);
+    press(true, event.shiftKey || latchMode());
   });
   el.addEventListener('pointerup', () => press(false));
   el.addEventListener('pointercancel', () => press(false));
   el.addEventListener('keydown', (event) => {
     if ((event.key === ' ' || event.key === 'Enter') && !event.repeat) {
       event.preventDefault();
-      press(true, event.shiftKey);
+      press(true, event.shiftKey || latchMode());
     }
   });
   el.addEventListener('keyup', (event) => {
@@ -291,5 +292,10 @@ export function createPad({ id, label, hint, keyHint, onChange }) {
   el.addEventListener('blur', () => press(false));
 
   register(id, el, { press: (down) => press(down) });
-  return { el, press, isOn: () => on };
+  // let go, latched or not
+  const release = () => {
+    latched = false;
+    set(false);
+  };
+  return { el, press, release, isOn: () => on };
 }

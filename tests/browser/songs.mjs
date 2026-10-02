@@ -62,9 +62,35 @@ const results = await page.evaluate(async () => {
       peak = Math.max(peak, h.master.peak());
       await sleep(40);
     }
+    // every suggestion the song makes has to run, and come off again cleanly
+    const original = A.code;
+    const tries = [];
+    for (const [index, chip] of [...document.querySelectorAll('#tries .tries__chip')].entries()) {
+      const label = chip.textContent;
+      if (chip.disabled) {
+        tries.push(`${label} (does not fit)`);
+        continue;
+      }
+      const chipAt = () => document.querySelectorAll('#tries .tries__chip')[index];
+      chipAt().click();
+      let waited = 0;
+      while (waited < 8000 && (h.tries.busy || chipAt()?.getAttribute('aria-pressed') !== 'true')) {
+        await sleep(100);
+        waited += 100;
+      }
+      const ran = chipAt()?.getAttribute('aria-pressed') === 'true' && !A.problem;
+      chipAt()?.click();
+      waited = 0;
+      while (waited < 8000 && (h.tries.busy || chipAt()?.getAttribute('aria-pressed') !== 'false')) {
+        await sleep(100);
+        waited += 100;
+      }
+      if (!ran || A.code !== original) tries.push(`${label} (${ran ? 'did not come off cleanly' : 'did not run'})`);
+    }
     rows.push({
+      tries: tries,
       title: song.title,
-      ok: !A.failure && A.started && peak > 0.01,
+      ok: !A.failure && A.started && peak > 0.01 && tries.length === 0,
       seconds: ((performance.now() - began) / 1000 - 2).toFixed(1),
       peak: peak.toFixed(2),
       tracks: A.mixer.tracks.length,
@@ -84,6 +110,7 @@ for (const row of results) {
   if (!row.ok) failures++;
   console.log(`${row.ok ? '✓' : '✗'} ${row.title.padEnd(28)} ${String(row.tracks).padStart(2)} tracks ${String(row.knobs).padStart(2)} knobs  peak ${row.peak}  ready in ${row.seconds}s${row.failure ? `  ${row.failure}` : ''}`);
   for (const note of row.silent) console.log(`    silent part: ${note}`);
+  for (const note of row.tries) console.log(`    suggestion: ${note}`);
 }
 if (errors.length) console.log(`\npage errors:\n  ${[...new Set(errors)].slice(0, 8).join('\n  ')}`);
 if (offline) {

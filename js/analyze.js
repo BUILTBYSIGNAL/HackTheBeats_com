@@ -3,4 +3,4 @@ import { parse } from '../vendor/strudel.bundle.js';
 import { createAnalyzer } from './analyze-core.js';
 
 export const analyze = createAnalyzer(parse);
-export { sliderText, sliderReadout, applySliderValues, applySaved, shapeOf } from './analyze-core.js';
+export { sliderText, sliderReadout, applySliderValues, applySaved, shapeOf, planTry, applyChanges } from './analyze-core.js';

@@ -7,7 +7,7 @@ import { crate } from './crate.js';
 import { visuals } from './visuals.js';
 import { loadLibrary, describeSong } from './library.js';
 import { songs, linkToSong } from './songs.js';
-import { withTitle } from './songs-core.js';
+import { withTitle, STARTERS } from './songs-core.js';
 import { cloud } from './cloud.js';
 import { config, site } from './config.js';
 import { SITE_NAME, HOME_TITLE, HOME_DESCRIPTION, beatPath, slugFromPath, songTitle, songDescription } from './routes-core.js';
@@ -21,6 +21,10 @@ import { register, registry } from './controls.js';
 import { ARRANGEMENT_BARS } from './arrangement.js';
 import { admin } from './admin.js';
 import { analytics } from './analytics.js';
+import { isApple, keyLabels, localizeKeys } from './keys-core.js';
+import { explainError } from './errors-core.js';
+import { tries } from './tries.js';
+import { onboarding } from './onboarding.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -36,7 +40,10 @@ const els = {
   status: $('status'),
   notice: $('notice'),
   noticeTitle: $('notice-title'),
+  noticeHint: $('notice-hint'),
   noticeDetail: $('notice-detail'),
+  noticeRaw: $('notice-raw'),
+  noticeRawText: $('notice-raw-text'),
   aboutSong: $('about-song'),
   about: $('about'),
   deckToggle: $('deck-toggle'),
@@ -100,6 +107,10 @@ const app = {
   lastPosition: '',
 };
 const focused = () => byId[app.focusId];
+// ⌘ on a Mac, Ctrl everywhere else
+const APPLE = isApple(navigator.userAgentData?.platform || navigator.platform);
+const KEYS = keyLabels(APPLE);
+const coarse = () => !matchMedia('(pointer: fine)').matches;
 // the deck you mostly hear, by where the crossfader sits
 const audible = () => (master.state.crossfade < 0.5 ? A : B);
 const bothPlaying = () => A.started && B.started;
@@ -121,12 +132,21 @@ function setStatus(message, { hold = 6000, progress = false } = {}) {
 const allSongs = () => [...songs.list(), ...app.songs];
 const findSong = (id) => songs.get(id) || app.songs.find((song) => song.id === id) || null;
 
+// A mistake in the code is said in plain words where we can; the browser's own message
+// stays one click away.
 function renderNotice() {
   const failure = focused().failure || focused().problem;
   els.notice.hidden = !failure;
+  document.body.classList.toggle('has-notice', Boolean(failure));
   if (!failure) return;
+  const { hint } = explainError(failure.detail);
   els.noticeTitle.textContent = failure.title;
+  els.noticeHint.hidden = !hint;
+  els.noticeHint.textContent = hint || '';
+  els.noticeDetail.hidden = Boolean(hint);
   els.noticeDetail.textContent = failure.detail || '';
+  els.noticeRaw.hidden = !hint || !failure.detail;
+  els.noticeRawText.textContent = failure.detail || '';
 }
 
 /* ---------- rendering ---------- */
@@ -140,7 +160,8 @@ function renderChip(player) {
   const chip = $(`chip-${id}`);
   chip.dataset.transport = player.transport;
   chip.classList.toggle('is-empty', !song);
-  chip.classList.toggle('is-unsaved', Boolean(song) && player.edited && !player.gated);
+  // (signed out, a change cannot be kept, so it is not called unsaved)
+  chip.classList.toggle('is-unsaved', Boolean(song) && player.edited && !player.gated && app.access === 'full');
   $(`play-${id}`).setAttribute('aria-label', `${{ idle: 'Play', loading: 'Loading', playing: 'Stop' }[player.transport]} deck ${player.id}`);
   $(`play-${id}`).disabled = !song;
 }
@@ -225,6 +246,7 @@ function renderFocus() {
   renderAbout();
   renderRibbonRows();
   renderNotice();
+  renderTries();
   app.lastPosition = null;
   renderPosition();
   visuals.invalidate();
@@ -234,6 +256,12 @@ function setFocus(id) {
   if (app.focusId === id) return;
   app.focusId = id;
   renderFocus();
+}
+
+// The suggestions over the stage, and whether the first steps can offer one.
+function renderTries() {
+  tries.render();
+  onboarding.setAudience({ access: app.access, hasTries: Boolean(tries.root && !tries.root.hidden) });
 }
 
 function setSplit(on) {
@@ -292,6 +320,7 @@ function setAccess(access) {
   app.access = access;
   document.body.classList.toggle('is-preview', access === 'preview');
   document.body.classList.toggle('is-guest', site.guest);
+  renderTries();
   if (access !== 'preview') return;
   // leave nothing running that the small player has no control for
   players.forEach((player) => player.stage.editing && player.setEditable(false));
@@ -427,7 +456,7 @@ function renderEditing() {
   const unsaved = Boolean(player.song) && player.edited && !player.gated && app.access === 'full';
   els.edit.setAttribute('aria-pressed', String(editing));
   els.edit.textContent = editing ? 'Done' : 'Edit';
-  els.edit.title = editing ? 'Leave the code (Esc)' : 'Change the code (or just click in it)';
+  els.edit.title = editing ? 'Leave the code (Esc)' : app.access !== 'full' ? 'Sign in to change the code' : coarse() ? 'Change the code' : 'Change the code (or just click in it)';
   els.edit.disabled = !player.song || player.gated;
   els.edit.hidden = site.guest;
   els.update.hidden = !editing;
@@ -439,20 +468,27 @@ function renderEditing() {
   els.saveNew.textContent = player.own ? 'Save as new' : 'Save as my song';
   els.saveBeat.hidden = !(unsaved && cloud.user?.admin && player.song.source === 'beats' && app.libraryMode === 'database');
   els.revert.hidden = !unsaved;
-  els.saveCopy.hidden = !player.song || player.own || player.gated || unsaved;
+  els.saveCopy.hidden = !player.song || player.own || player.gated || unsaved || app.access !== 'full';
   document.body.classList.toggle('is-editing', editing);
   document.body.classList.toggle('is-unsaved', unsaved);
 }
 
-let editHintShown = false;
+// A one-time hint is shown once in this browser, not once per visit.
+function firstTime(name) {
+  const hints = persist.get('hints', {});
+  if (hints[name]) return false;
+  persist.set('hints', { ...hints, [name]: true });
+  return true;
+}
+
 function setEditing(on, player = focused()) {
   if (!player.song || player.gated) return;
   if (site.guest) return takeHome(player);
   if (on && needsAccount('edit the code')) return;
   player.setEditable(on);
-  if (on && !editHintShown) {
-    editHintShown = true;
-    setStatus('Change anything. Ctrl+Enter runs it without stopping the music; nothing is saved until you press Save.', { hold: 9000 });
+  if (on && firstTime('edit')) {
+    const run = coarse() ? 'Update' : `${KEYS.run} (or Update)`;
+    setStatus(`Change anything. ${run} runs it without stopping the music; nothing is saved until you press Save.`, { hold: 9000 });
   }
 }
 
@@ -493,6 +529,7 @@ function saveAsNew(player = focused()) {
   syncEditor(player, song.code);
   player.adopt(song);
   if (player.dirty) player.update();
+  onboarding.done('save');
   setStatus(song.title === from.title ? `Saved "${song.title}" to My songs.` : `Saved as "${song.title}" in My songs. You can rename it from the song list.`);
 }
 const saveCopy = saveAsNew;
@@ -505,6 +542,7 @@ function saveChanges(player = focused()) {
   if (!updated) return;
   player.adopt(updated);
   if (player.dirty) player.update();
+  onboarding.done('save');
   setStatus(`Saved "${updated.title}".`);
 }
 
@@ -707,6 +745,14 @@ async function onAccountChange(user) {
   if (!site.guest && cloud.accounts) persist.set('signedIn', Boolean(user));
   const synced = songs.setUser(user).then(renderAccount);
   app.synced = synced;
+  if (user) {
+    onboarding.done('signin');
+    // an account that has kept or shared a song before has done those steps already
+    synced.then(() => {
+      if (songs.list().some((song) => song.title !== STARTER_TITLE)) onboarding.done('save');
+      if (songs.list().some((song) => song.shared)) onboarding.done('share');
+    });
+  }
   // the first time round, start-up is still under way and loads everything itself
   if (!app.booted) return synced;
   await reloadLibrary().catch((error) => console.warn('[library] could not reload', error));
@@ -727,7 +773,9 @@ async function onAccountChange(user) {
         renderLocked();
         if (location.pathname !== '/') history.replaceState(null, '', '/');
       }
-      if (starter) openStarter(starter);
+      // a change tried before signing in stays on the deck, ready to keep
+      if (A.edited) setStatus('Your change is still on the deck: press Save as my song to keep it.', { hold: 9000 });
+      else if (starter) openStarter(starter);
     }
   } else {
     // signed out: back to the featured beat, at the front door
@@ -786,6 +834,7 @@ async function copyShareLink(id) {
   } catch {
     setStatus(link, { hold: 0 });
   }
+  onboarding.done('share');
 }
 
 /* ---------- tempo, sync and the crossfade ---------- */
@@ -920,6 +969,7 @@ async function shareMix() {
     history.replaceState(null, '', link);
     setStatus('The link to this mix is now in the address bar');
   }
+  onboarding.done('share');
 }
 
 /* ---------- MIDI ---------- */
@@ -964,6 +1014,34 @@ function watchAudioClock(player) {
       setStatus('No sound is coming out: the audio output is not running. Check your sound device, then press play again.', { hold: 0 });
     }
   }, 1500);
+}
+
+/* ---------- first steps: where each one is done ---------- */
+
+const visible = (el) => Boolean(el) && !el.hidden && el.getClientRects().length > 0;
+function showDeck(tab) {
+  if (document.body.classList.contains('deck-collapsed')) els.deckToggle.click();
+  deck.showTab(tab);
+}
+function showMe(step) {
+  const player = focused();
+  if (step === 'play') return $(`play-${player.id.toLowerCase()}`);
+  if (step === 'knob') {
+    showDeck(player.sliders.length || player.switches.length ? 'knobs' : 'master');
+    return deck.knobs[0]?.dial || deck.switchKnobs[0]?.dial || deck.masterKnobs.filter.dial;
+  }
+  if (step === 'mute') {
+    showDeck('mixer');
+    if (player.mixer.tracks.length) player.stage.scrollToTrack(0, { force: true });
+    return deck.strips[0]?.mute || null;
+  }
+  if (step === 'tweak') {
+    const chip = $('tries').querySelector('.tries__chip:not(:disabled)');
+    return visible(chip) ? chip : els.edit;
+  }
+  if (step === 'save') return [els.saveNew, els.save, els.saveCopy].find(visible) || els.edit;
+  if (step === 'share') return $('share');
+  return null;
 }
 
 /* ---------- boot ---------- */
@@ -1020,6 +1098,8 @@ async function boot() {
       strips: $('strips'),
       stripsEmpty: $('strips-empty'),
       pads: $('pads'),
+      latch: $('pads-latch'),
+      latchNote: document.querySelector('.panel__note--hold'),
       master: $('master'),
       crossfader: $('crossfader'),
       sync: els.sync,
@@ -1032,12 +1112,14 @@ async function boot() {
       setTempo: (multiplier) => {
         tempoTarget().setTempo(multiplier);
         syncTempo();
+        onboarding.done('knob');
       },
       setSync,
       mix,
       saveMaster: () => {
         const { volume, filter, echo, reverb } = master.state;
         persist.set('master', { volume, filter, echo, reverb });
+        onboarding.done('knob');
       },
       onCrossfade: () => {
         renderMixButton();
@@ -1053,6 +1135,7 @@ async function boot() {
       onCopy: (id) => {
         if (needsAccount('keep a copy')) return;
         const song = songs.copyOf(findSong(id));
+        onboarding.done('save');
         setStatus(`"${song.title}" is now in My songs.`);
       },
       onRename: (id, title) => songs.rename(id, title),
@@ -1063,16 +1146,70 @@ async function boot() {
       canShare: () => Boolean(cloud.user),
     },
   );
-  $('song-new').addEventListener('click', async () => {
+  tries.init(
+    { root: $('tries'), list: $('tries-chips') },
+    {
+      focused,
+      // the shared-song player is for listening
+      canUse: () => !site.guest,
+      status: (message) => setStatus(message, { hold: 9000 }),
+      signedIn: () => app.access === 'full',
+      onTried: (label, on) => on && onboarding.done('tweak'),
+    },
+  );
+  if (!site.guest) {
+    onboarding.init(
+      {
+        coach: $('coach'),
+        count: $('coach-count'),
+        steps: $('coach-steps'),
+        close: $('coach-close'),
+        end: $('coach-end'),
+        done: $('coach-done'),
+        never: $('coach-never'),
+        live: $('coach-live'),
+        toggle: $('coach-toggle'),
+        progress: $('coach-progress'),
+        restart: $('coach-restart'),
+      },
+      { showMe, signIn, share: shareMix, keys: KEYS, event: (name) => analytics.event(name) },
+    );
+    $('coach-restart').addEventListener('click', () => els.about.close());
+  }
+
+  // New: first choose what to start from (songs-core.js STARTERS)
+  const starters = $('starters');
+  const showStarters = (on) => {
+    starters.hidden = !on;
+    $('song-new').setAttribute('aria-expanded', String(on));
+  };
+  for (const { kind, label, blurb } of STARTERS) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'starter';
+    button.dataset.starter = kind;
+    button.innerHTML = '<span class="starter__label"></span><span class="starter__blurb"></span>';
+    button.querySelector('.starter__label').textContent = label;
+    button.querySelector('.starter__blurb').textContent = blurb;
+    button.addEventListener('click', async () => {
+      // the deck the list was opened for ("Songs · deck B")
+      const deckId = crate.target;
+      // the deck may hold changes that need dealing with first
+      if (!(await settleEdits(byId[deckId]))) return;
+      const song = songs.createBlank(kind);
+      showStarters(false);
+      crate.dialog.close();
+      await loadSong(song.id, deckId);
+      setEditing(true, byId[deckId]);
+    });
+    starters.append(button);
+  }
+  $('song-new').addEventListener('click', () => {
     if (needsAccount('start a song')) return;
-    const deckId = app.focusId;
-    // the deck may hold changes that need dealing with first
-    if (!(await settleEdits(byId[deckId]))) return;
-    const song = songs.createBlank();
-    crate.dialog.close();
-    await loadSong(song.id, deckId);
-    setEditing(true, byId[deckId]);
+    showStarters(starters.hidden);
+    if (!starters.hidden) starters.querySelector('.starter').focus();
   });
+  crate.dialog.addEventListener('close', () => showStarters(false));
   $('song-import').addEventListener('click', () => $('song-file').click());
   $('song-file').addEventListener('change', async (event) => {
     let count = 0;
@@ -1107,14 +1244,30 @@ async function boot() {
     player.on('structure', mine(() => {
       renderRibbonRows();
       visuals.invalidate();
+      renderTries();
     }));
+    // first steps: a knob turned, a track muted, the code changed and run
+    player.on('slider', () => onboarding.done('knob'));
+    player.on('switch', () => onboarding.done('knob'));
+    player.on('mixer', (reason) => (reason === 'mute' || reason === 'solo') && onboarding.done('mute'));
+    player.on('updated', () => player.edited && onboarding.done('tweak'));
     player.on('unsaved', () => {
       renderChip(player);
       if (player === focused()) renderEditing();
     });
-    // A click in the code starts editing, for someone with an account and a mouse.
+    // A click in the code starts editing, for someone with an account and a mouse. On a
+    // touch screen a tap is usually meant for the music (a track name, a number), so the
+    // keyboard waits for the Edit button; signed out, the code is there to play with.
     player.wantEdit = () => {
-      if (app.access !== 'full' || !player.song || player.gated || app.gallery || !matchMedia('(pointer: fine)').matches) return;
+      if (!player.song || player.gated || app.gallery || site.guest) return;
+      if (app.access !== 'full') {
+        if (firstTime('preview-code')) setStatus('Sign in, free, to change the code. Meanwhile, click a track name to mute it, or a lit number to find its knob.', { hold: 9000 });
+        return;
+      }
+      if (coarse()) {
+        if (firstTime('touch-edit')) setStatus('To change the code, press Edit.', { hold: 6000 });
+        return;
+      }
       setFocus(player.id);
       setEditing(true, player);
     };
@@ -1131,13 +1284,16 @@ async function boot() {
       if (player === focused()) {
         renderGate();
         renderEditing();
+        renderTries();
       }
     });
     player.on('ready', renderReadouts);
+    player.on('ready', mine(renderTries));
     player.on('transport', (state) => {
       renderChip(player);
       if (player === focused()) document.body.dataset.transport = state;
       if (state === 'playing') document.body.classList.add('has-played');
+      if (state === 'playing') onboarding.done('play');
     });
     player.on('toggle', (started) => {
       document.body.classList.toggle('is-playing', A.started || B.started);
@@ -1226,6 +1382,7 @@ async function boot() {
   $('prev').addEventListener('click', () => step(-1));
   $('next').addEventListener('click', () => step(1));
   $('open-crate').addEventListener('click', () => (site.guest ? (location.href = `${config.appOrigin}/`) : crate.open(app.focusId)));
+  $('open-list').addEventListener('click', () => crate.open(app.focusId));
   $('load-b').addEventListener('click', () => crate.open('B'));
   $('open-about').addEventListener('click', () => els.about.showModal());
   $('about-close').addEventListener('click', () => els.about.close());
@@ -1305,6 +1462,10 @@ async function boot() {
   // who is here decides which beats they are given, so start-up waits to be told
   const ready = cloud.init().catch((error) => console.warn('[account] accounts are unavailable', error));
 
+  // key names as this keyboard has them
+  document.querySelectorAll('[data-keys]').forEach((el) => (el.title = localizeKeys(el.title, APPLE)));
+  document.querySelectorAll('kbd[data-mod]').forEach((el) => (el.textContent = KEYS.mod));
+
   $('version').textContent = `v${VERSION}`;
   $('about-version').textContent = `v${VERSION}`;
   $('source-link').href = `source/hacking-the-beats-${VERSION}.tar.gz`;
@@ -1357,9 +1518,17 @@ async function boot() {
     if (document.querySelector('dialog[open]')) return;
     const inEditor = Boolean(event.target.closest?.('.cm-content[contenteditable="true"]'));
     if (event.metaKey || event.ctrlKey) {
-      // Ctrl+Enter inside the editor is handled by the editor itself
+      // Stop. In the code, Ctrl+. is the editor's own; ⌘. on a Mac arrives here.
+      if (event.key === '.') {
+        if (!(inEditor && event.ctrlKey)) {
+          event.preventDefault();
+          focused().stop();
+        }
+        return;
+      }
       if (app.access === 'preview') return;
-      if (event.key === 'Enter' && !(inEditor && event.ctrlKey)) {
+      // Ctrl+Enter and ⌘+Enter inside the editor are handled by the editor itself
+      if (event.key === 'Enter' && !inEditor) {
         event.preventDefault();
         focused().update();
       } else if (event.key.toLowerCase() === 's') {
@@ -1379,11 +1548,15 @@ async function boot() {
     // typing in the code is just typing
     if (event.altKey || inEditor) return;
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
-    // the small player: play, the list, the next beat, help
-    if (app.access === 'preview' && !['Escape', ' ', 'ArrowLeft', 'ArrowRight', 'b', '?'].includes(key)) return;
     const interactive = event.target.closest?.('button, a, input, [role="slider"]');
     const pad = deck.pads.get(key);
     const channel = channelKeys.indexOf(key);
+    // Without an account: play, the list, the next beat, help, and on the main site the
+    // pads, channels and views too. The second deck, mixing and recording need one.
+    if (app.access === 'preview') {
+      const mixing = !site.guest && (pad || channel >= 0 || ['[', ']', 'f', 'g'].includes(key));
+      if (!['Escape', ' ', 'ArrowLeft', 'ArrowRight', 'b', '?'].includes(key) && !mixing) return;
+    }
 
     if (key === 'Escape') {
       if (midi.learning) toggleLearn();
@@ -1396,7 +1569,7 @@ async function boot() {
       event.preventDefault();
       focused().toggle();
     } else if (pad) {
-      if (!event.repeat) pad.press(true, event.shiftKey);
+      if (!event.repeat) pad.press(true, event.shiftKey || deck.latch);
     } else if (key === 'ArrowRight' && !interactive) step(1);
     else if (key === 'ArrowLeft' && !interactive) step(-1);
     else if (channel >= 0 && focused().mixer.tracks[channel]) focused().mixer.setMute(channel);
@@ -1512,6 +1685,6 @@ async function boot() {
 }
 
 // A handle for tests and for poking around in the console.
-window.hackingTheBeats = { app, players: byId, master, deck, recorder, midi, visuals, runtime, registry, crate, thumbs, songs, cloud, config, site, admin, analytics, finishRecording, VERSION };
+window.hackingTheBeats = { app, players: byId, master, deck, recorder, midi, visuals, runtime, registry, crate, thumbs, songs, cloud, config, site, admin, analytics, tries, onboarding, finishRecording, VERSION };
 
 boot();

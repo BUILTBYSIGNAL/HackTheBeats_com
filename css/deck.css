@@ -74,6 +74,14 @@
   color: var(--hb-ink);
   background: var(--hb-raise);
 }
+/* pads: hold, or with Latch on, tap on and tap off */
+.panel--pads .panel__note--hold {
+  margin-left: auto;
+}
+.pads__latch[aria-pressed='true'] {
+  color: var(--hb-accent-ink);
+  background: var(--hb-accent);
+}
 
 .knobs,
 .strips {

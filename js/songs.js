@@ -131,10 +131,10 @@ export const songs = {
     return this.put({ id: newId(), code, mixer, createdAt, updatedAt: Date.now(), shared: false, owner: uid, synced: false }, 'created');
   },
 
-  // A new song from the starter template.
-  createBlank() {
+  // A new song from one of the starters (songs-core.js STARTERS).
+  createBlank(kind = 'full') {
     const title = uniqueTitle('New song', this.list().map((song) => song.title));
-    return this.create({ code: templateSong(title) });
+    return this.create({ code: templateSong(title, kind) });
   },
 
   // One's own copy of any song (a built-in beat, a shared song, or another of one's own).

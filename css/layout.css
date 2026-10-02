@@ -217,6 +217,11 @@ body[data-transport='loading'] .curtain__play .spinner {
   stroke-linejoin: round;
 }
 
+/* the song list, on a phone (elsewhere the brand button opens it) */
+.iconbtn--list {
+  display: none;
+}
+
 /* record: the dot fills and a timer appears while recording */
 .iconbtn--rec {
   display: flex;
@@ -406,6 +411,9 @@ body[data-transport='loading'] .curtain__play .spinner {
   align-items: center;
   gap: 4px;
 }
+.ribbon__btn[hidden] {
+  display: none !important;
+}
 .ribbon__btn {
   display: flex;
   align-items: center;
@@ -554,6 +562,37 @@ dialog::backdrop {
 }
 .drawer__note[hidden] {
   display: none;
+}
+/* New: which starting point */
+.drawer__starters {
+  display: grid;
+  gap: 6px;
+  padding: 8px 16px 4px var(--hb-gutter);
+}
+.drawer__starters[hidden] {
+  display: none;
+}
+.starter {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  text-align: left;
+  border: 1px solid var(--hb-line);
+  border-radius: 6px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.starter:hover,
+.starter:focus-visible {
+  border-color: var(--hb-accent);
+  background: var(--hb-raise);
+}
+.starter__label {
+  color: var(--hb-ink);
+  font-weight: 500;
+}
+.starter__blurb {
+  color: var(--hb-ink-3);
+  font-size: 12.5px;
 }
 .drawer__foot {
   padding: 12px var(--hb-gutter);
@@ -851,6 +890,21 @@ body.is-gallery {
   .actions {
     margin-left: auto;
   }
+  .iconbtn--list {
+    display: flex;
+    gap: 6px;
+    width: auto;
+    padding: 0 10px;
+    border-radius: 999px;
+  }
+  .iconbtn__label {
+    font: 500 10.5px/1 var(--hb-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .is-guest .iconbtn--list {
+    display: none;
+  }
   .ribbon {
     gap: 10px;
   }
@@ -992,21 +1046,61 @@ body.is-gallery {
   font-size: 11.5px;
   line-height: 1.5;
 }
-/* what an account unlocks is not shown until there is one */
-.is-preview .deck,
-.is-preview .stagebar,
+/* Once something has played, the deck takes the space: the introduction folds down to one
+   line and the button. */
+.intro__now {
+  display: none;
+}
+.is-preview:not(.is-guest).has-played .intro {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding-block: 10px;
+}
+.is-preview:not(.is-guest).has-played .intro__pitch,
+.is-preview:not(.is-guest).has-played .intro__points,
+.is-preview:not(.is-guest).has-played .intro__fine {
+  display: none;
+}
+.is-preview:not(.is-guest).has-played .intro__now {
+  display: block;
+  color: var(--hb-ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.intro__now strong {
+  color: var(--hb-ink);
+  font-weight: 500;
+}
+/* Signed out, the controls arrive with the music: the first screen is the curtain and the
+   introduction, and once something has played the knobs, channels and pads are theirs.
+   What an account unlocks is not shown until there is one. */
+.is-preview:not(.has-played) .deck,
+.is-preview:not(.has-played) #deck-toggle,
+.is-preview:not(.has-played) .stagebar,
+.is-preview .mixrow,
+.is-preview #midi-button,
+.is-preview #split,
 .is-preview #chip-b,
 .is-preview #record,
 .is-preview #share,
-.is-preview .ribbon__tools,
 .is-preview #mine-section,
 .is-preview .beat__decks,
 .is-preview .readouts,
 .is-preview .scope {
   display: none;
 }
-/* the code is there to watch: its sliders and labels do nothing yet */
-.is-preview .editor .cm-content {
+/* first steps are about the music, so they wait for it */
+body:not(.has-played) #coach-toggle {
+  display: none;
+}
+/* the shared-song player: a song to listen to, for now */
+.is-guest .deck,
+.is-guest .stagebar,
+.is-guest .ribbon__tools {
+  display: none;
+}
+/* its code is there to watch: its sliders and labels do nothing */
+.is-guest .editor .cm-content {
   pointer-events: none;
 }
 .is-preview .actions {
@@ -1147,6 +1241,10 @@ body > .consent {
   .is-preview .curtain__hint {
     display: none;
   }
+  /* after the first play the deck needs the room; Sign in stays in the top bar */
+  .is-preview:not(.is-guest).has-played .intro {
+    display: none;
+  }
   .sitefoot__legal {
     font-size: 10px;
   }
@@ -1160,6 +1258,10 @@ body > .consent {
     overflow-y: auto;
     border-top: 0;
     border-left: 1px solid var(--hb-line-soft);
+  }
+  /* the deck takes that column once something has played */
+  .is-preview:not(.is-guest).has-played .intro {
+    display: none;
   }
   .sitefoot {
     display: none;

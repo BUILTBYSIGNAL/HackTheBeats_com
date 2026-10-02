@@ -4,6 +4,10 @@
   Three rhythms that only line up now and then, written for this repository.
   Every part is the same idea, "spread this many hits over that many steps", with different numbers.
   "drive" sharpens the bass; "space" is how far away the bells are.
+  @try Five kicks, not three: `bd(3,8)` -> `bd(5,8)`
+  @try Hats on seven: `hh(5,8)` -> `hh(7,8)` in HATS
+  @try 909 kit: `RolandTR808` -> `RolandTR909`
+  @try Dorian bells: `E4:phrygian` -> `E4:dorian`
   Public domain (CC0): take it apart.
 */
 setcps(138/60/4)

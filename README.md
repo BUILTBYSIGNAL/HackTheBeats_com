@@ -87,6 +87,7 @@ Drop a file into `beats/` and reload:
   @by Your Name
   Any other lines here show up in the About panel, and in search results.
   mood: 0 minor, 1 major
+  @try Glass pad: `s("sawtooth")` -> `s("triangle")`
 */
 setcps(84/60/4)
 
@@ -106,6 +107,7 @@ PAD: n("<[0,2,4] [3,5,7] [-2,0,2] [1,3,5]>")  // a label makes a channel
 | A plain number the header explains (`mood: 0 minor, 1 major` above `const mood = 0`) | A switch. Turning it re-runs the song. |
 | `._punchcard()`, `._scope()`, and the other inline visuals | Drawn under that line while it plays. |
 | `@title`, `@by`, and the other header lines | The song's name, credit, About text and page description. Strudel's shorthand `// "title" @by name` works too. |
+| ``@try Label: `find` -> `replace` `` in the header | A suggestion over the stage. One tap rewrites the code and runs it; another tap puts it back. Several changes go in one line, separated by `;`, and ``in NAME`` keeps them to one track. A suggestion that would rewrite a knob's number, or no longer matches the code, is greyed out. Up to four are shown. |
 
 The same pattern exported twice is shown once (the newest wins), and empty patterns are skipped.
 
@@ -140,9 +142,10 @@ the check refuses it, and the dev server will not serve it.
 
 ### The stage
 
-- **Editing.** Click in the code (or press **Edit**) and type. `Ctrl+Enter` (or **Update**) runs your changes
-  without stopping the music; a mistake is reported and the last good version keeps playing. Knobs and channels
-  follow the new code. `Esc` or **Done** leaves the code.
+- **Editing.** Click in the code (or press **Edit**, which is there before anything plays) and type. On a touch
+  screen a tap is for the music, so editing starts with **Edit**. `Ctrl+Enter` (`⌘↩` on a Mac) or **Update** runs
+  your changes without stopping the music; a mistake is reported in plain words, with the line it is on, and the
+  last good version keeps playing. Knobs and channels follow the new code. `Esc` or **Done** leaves the code.
 - **Saving.** Nothing you type is saved until you say so. Lines that differ from the saved song are marked down
   the side, the stage bar says **Unsaved changes**, and the deck's title gets a dot. **Save** writes over your own
   song; **Save as new** keeps your version as a new song and leaves the original as it was; **Revert** throws the
@@ -152,6 +155,12 @@ the check refuses it, and the dev server will not serve it.
 - **Focus.** Click a channel's name to isolate that track's code and visual; click again (or `Esc`) to release.
 - **Split** shows both decks' code side by side. **Gallery** is full screen, code only, larger type.
 - Click a track label in the code to mute it; click a highlighted number to jump to its knob.
+- **Try.** A song's `@try` lines are offered over the code, top left. One tap makes the change and runs it, with the
+  changed line marked; another tap puts it back. Nothing is saved by trying, so they work without an account.
+- **First steps.** A short list in the corner of the stage, opened by itself after the first play: press play, turn
+  a knob, mute a track, try a change, then sign in (or, with an account, keep your version and share it). Each step
+  ticks itself off when it is done, and **Show me** points at where. It can be closed (the ribbon's **Steps**
+  button brings it back) or dismissed for good; the About sheet has **Show the first steps again**.
 
 ### The deck
 
@@ -160,7 +169,7 @@ the check refuses it, and the dev server will not serve it.
 | **Decks A / B** | Two songs at once. Click a deck to focus it (its knobs and channels are shown); click again to choose a beat for it. |
 | **Song knobs** | One per `slider()` in the code. Turning a knob rewrites the number in the code as you go. |
 | **Channels** | One per labelled pattern. Level with a real meter, mute, solo. |
-| **Pads** | Hold to engage, Shift-click to latch: echo throw, filter drop, reverb wash, half-time, stutter, no drums. |
+| **Pads** | Hold to engage, Shift-click to latch (or switch **Latch** on: tap on, tap off): echo throw, filter drop, reverb wash, half-time, stutter, no drums. |
 | **Master** | Filter, tempo-synced echo, reverb, tempo, volume, and the crossfader. A limiter keeps the output under full scale; the meter turns orange while it is working. |
 | **Sync / Mix** | With Sync on, a deck started while the other plays comes in on its bar line at its tempo. **Mix** starts the other deck that way and fades across over eight bars. |
 | **Arrangement** | Which tracks play in each of 32 bars. Click a bar to jump there; open it for track names. |
@@ -178,10 +187,11 @@ Positions are remembered per song in the browser; **Reset** returns a song to wh
   M      mix to the other   1 … =   mute channels 1–12     F G     follow · gallery
   R      record             B  ?    song list · help       Esc     leave the code
 
-  Ctrl+Enter   run the edited code        Ctrl+S   save
+  Ctrl+Enter   run the edited code        Ctrl+S   save        Ctrl+.   stop
 ```
 
-While you are typing in the code, the single-key shortcuts are off.
+On a Mac these are `⌘↩`, `⌘S` and `⌘.`, and the site shows them that way. While you are typing in the code, the
+single-key shortcuts are off.
 
 ### Where the sound goes
 
@@ -200,7 +210,8 @@ Everything after Strudel is a plain WebAudio chain, so the master controls respo
 
 ## Songs of your own
 
-In the song list you can start a **New** song, **Import** a strudel.cc export or a `.js` / `.strudel` file, and
+In the song list you can start a **New** song (from a one-track drum loop, or a full song with drums, bass and a
+lead), **Import** a strudel.cc export or a `.js` / `.strudel` file, and
 **Export** all your songs as one strudel.cc-format JSON file. Each of your songs can be renamed, duplicated, shared
 and deleted from its `⋯` menu. To keep a version of a built-in beat, press **Save as my song** after editing, or
 **Save a copy** to take it as it is.
@@ -239,7 +250,7 @@ Accounts are optional, and off in a fresh copy. With them on (see [Deploy your o
 
 | Who | What they get |
 | --- | --- |
-| Not signed in | A small player: the **featured beat**, the code lighting up, and an introduction with a Sign in button. |
+| Not signed in | The **featured beat**, the code lighting up, and an introduction with a Sign in button. Once it plays, its controls are theirs: knobs, channels, pads and the master effects (positions are remembered in their browser), and clicking a track label in the code mutes it. Editing, saving, sharing, recording, the second deck and MIDI need an account. |
 | Signed in | The whole instrument: both decks, knobs, mixer, pads, editing, their own songs, sharing, recording, MIDI. Their beats are the featured one and any the admin has opened to members. A new member is given **User demo**, their own copy of the featured beat, to change as they like. |
 | Admin | The same, plus every beat, and the **Admin** sheet (account button → Admin). |
 
@@ -400,7 +411,8 @@ npm run test:accounts              # sign-in, saving, sharing, roles and the sec
                                    # on local emulators
 ```
 
-`test:accounts` needs the Firebase CLI and Java (for the Firestore emulator). Chromium runs on a silent virtual
+`test:accounts` needs the Firebase CLI and Java (for the Firestore emulator). Homebrew's `openjdk` is not on the
+`PATH` by itself: run it as `PATH="/opt/homebrew/opt/openjdk/bin:$PATH" npm run test:accounts`. Chromium runs on a silent virtual
 audio output; Firefox and WebKit play through the speakers, turned right down after the levels are measured.
 
 ## Samples and offline use
@@ -459,6 +471,10 @@ and the offline cache name in `sw.js` together.
     admin.js ............ the Admin sheet      beats-core.js beats and their catalog
     routes-core.js ...... page addresses, titles and descriptions
     analytics.js ........ Google Analytics, with its opt-out
+    tries.js ............ a song's @try suggestions, one tap each
+    onboarding.js ....... First steps
+    keys-core.js ........ key names as the visitor's keyboard has them (⌘ on a Mac)
+    errors-core.js ...... a song's mistakes in plain words
     *-core.js ........... the pure logic of each, shared with the build and the unit tests
   tools/ ................ dev server, site build, share pictures, engine build,
                           sample vendoring, the publish check

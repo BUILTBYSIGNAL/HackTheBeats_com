@@ -3,6 +3,9 @@
   @by SIGNAL
   A four-on-the-floor sketch written for this repository, so a fresh copy has something to play.
   Turn "cut" to open the bass, and "air" to push the chords further back in the room.
+  @try 808 kit: `RolandTR909` -> `RolandTR808`
+  @try Bass up an octave: `<c2 c2 ab1 bb1>` -> `<c3 c3 ab2 bb2>`
+  @try Straight hats: `[~ hh]*4` -> `hh*8`
   Public domain (CC0): take it apart.
 */
 setcps(122/60/4)

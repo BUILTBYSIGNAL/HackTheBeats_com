@@ -47,7 +47,7 @@ const words = (name) =>
 // header with @title / @by lines, the same tags in line comments, and Strudel's own
 // shorthand: // "coastline" @by eddyflux
 function parseMeta(code, comments) {
-  const meta = { title: null, by: null, notes: [] };
+  const meta = { title: null, by: null, notes: [], tries: [] };
   const firstCode = code.search(/^[ \t]*[^\s/*]/m);
   const leading = comments.filter((comment) => firstCode < 0 || comment.start < firstCode);
   for (const comment of leading.length ? leading : comments.filter((c) => c.type === 'Block').slice(0, 1)) {
@@ -62,6 +62,10 @@ function parseMeta(code, comments) {
       } else if (tag) {
         if (tag[1] === 'title') meta.title ??= tag[2].trim();
         else if (tag[1] === 'by') meta.by ??= tag[2].trim();
+        else if (tag[1] === 'try') {
+          const item = parseTry(tag[2]);
+          if (item) meta.tries.push(item);
+        }
       } else {
         meta.notes.push(line);
       }
@@ -96,7 +100,7 @@ export const createAnalyzer = (parse) => function analyze(code) {
   try {
     ast = parse(code, { ecmaVersion: 2022, allowAwaitOutsideFunction: true, onComment: comments });
   } catch (error) {
-    return { error, tracks: [], sliders: [], switches: [], meta: parseMeta(code, comments) };
+    return { error, tracks: [], sliders: [], switches: [], comments, meta: parseMeta(code, comments) };
   }
 
   // Tracks: top-level `label: pattern` statements.
@@ -215,8 +219,97 @@ export const createAnalyzer = (parse) => function analyze(code) {
     }
   });
 
-  return { tracks, sliders, switches, meta };
+  return { tracks, sliders, switches, comments, meta };
 };
+
+/* ---------- suggested changes: @try lines ---------- */
+
+// A song can suggest changes to try, one per line in its opening comment:
+//
+//   @try Swap to an 808 kit: `RolandTR909` -> `RolandTR808`
+//   @try Busier: `hh*8` -> `hh*16`; `bd*4` -> `bd*8`
+//   @try Glass bell: `s("triangle")` -> `s("sine")` in BELL
+//
+// "in BELL" keeps the change to that track. A line that does not read like this is left out.
+//   → { label, changes: [{ find, replace }], track } or null
+export function parseTry(text) {
+  const head = String(text).match(/^(.{1,48}?):\s*(`.*)$/);
+  if (!head) return null;
+  const label = head[1].trim();
+  let rest = head[2];
+  const changes = [];
+  for (;;) {
+    const pair = rest.match(/^`([^`]+)`\s*(?:->|→)\s*`([^`]+)`\s*/);
+    if (!pair || pair[1] === pair[2]) return null;
+    changes.push({ find: pair[1], replace: pair[2] });
+    rest = rest.slice(pair[0].length);
+    if (!rest.startsWith(';')) break;
+    rest = rest.slice(1).trimStart();
+  }
+  const scope = rest.match(/^in\s+([A-Za-z_$][\w$]*)\s*$/);
+  if (rest && !scope) return null;
+  return label ? { label, changes, track: scope ? scope[1] : null } : null;
+}
+
+// Every place `needle` is written in [from, to), outside comments (the song's own @try line
+// says the same words).
+function occurrences(code, needle, [from, to], comments) {
+  const found = [];
+  for (let at = code.indexOf(needle, from); at >= 0 && at + needle.length <= to; at = code.indexOf(needle, at + needle.length)) {
+    const end = at + needle.length;
+    if (!comments.some((comment) => at < comment.end && end > comment.start)) found.push({ from: at, to: end });
+  }
+  return found;
+}
+const inside = (range, ranges) => ranges.some((outer) => outer.from <= range.from && range.to <= outer.to);
+const overlaps = (a, b) => a.from < b.to && b.from < a.to;
+
+// Whether a suggestion is applied, read from the code itself, so it survives knob moves,
+// reloads and edits by hand:
+//   'off'   every change can be made (the code says `find`)
+//   'on'    every change has been made (the code says `replace`)
+//   'gone'  neither: the code has moved on, or the change would touch a deck-owned number
+// `changes` is the edit that toggles it: [{ from, to, insert }], in order.
+export function planTry(code, item, analysis) {
+  const gone = { state: 'gone', changes: [] };
+  if (!item || analysis.error) return gone;
+  let scope = [0, code.length];
+  if (item.track) {
+    const bare = (label) => label.replace(/^_+|_+$/g, '');
+    const track = analysis.tracks.find((entry) => entry.label === item.track || bare(entry.label) === bare(item.track));
+    if (!track) return gone;
+    scope = [track.from, track.to];
+  }
+  const comments = analysis.comments || [];
+  const numbers = [...analysis.sliders, ...(analysis.switches || [])];
+  const states = new Set();
+  const edits = [];
+  for (const { find, replace } of item.changes) {
+    const finds = occurrences(code, find, scope, comments);
+    const replaces = occurrences(code, replace, scope, comments);
+    if (finds.length && replaces.every((range) => inside(range, finds))) {
+      states.add('off');
+      edits.push(...finds.map((range) => ({ ...range, insert: replace })));
+    } else if (replaces.length && finds.every((range) => inside(range, replaces))) {
+      states.add('on');
+      edits.push(...replaces.map((range) => ({ ...range, insert: find })));
+    } else {
+      return gone;
+    }
+  }
+  if (states.size !== 1) return gone;
+  edits.sort((a, b) => a.from - b.from);
+  if (edits.some((edit, i) => i > 0 && edit.from < edits[i - 1].to)) return gone;
+  if (edits.some((edit) => numbers.some((number) => overlaps(edit, number)))) return gone;
+  return { state: [...states][0], changes: edits };
+}
+
+// The code with the changes made (from planTry).
+export function applyChanges(code, changes) {
+  let out = code;
+  for (const { from, to, insert } of [...changes].sort((a, b) => b.from - a.from)) out = out.slice(0, from) + insert + out.slice(to);
+  return out;
+}
 
 // "voice: 0 none, 1 choir" (possibly continued on the next lines) → [{ value, label }]
 function legendFor(name, notes) {
