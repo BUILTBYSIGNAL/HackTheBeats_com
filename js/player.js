@@ -590,8 +590,9 @@ export class Player {
 
   /* ---------- editing ---------- */
 
-  setEditable(on) {
-    this.stage.setEditable(on);
+  // `at`: where the caret goes (a position in the code), or null for where the reader is
+  setEditable(on, at = null) {
+    this.stage.setEditable(on, at);
     this.emit('editable', on);
   }
 

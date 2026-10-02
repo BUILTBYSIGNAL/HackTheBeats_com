@@ -132,6 +132,7 @@
         <button type="button" class="stagebar__btn" id="save-beat" title="Replace the public beat with this version, for everyone" hidden>Update the beat</button>
         <button type="button" class="stagebar__btn" id="revert" title="Throw these changes away" hidden>Revert</button>
         <span class="stagebar__gap" aria-hidden="true"></span>
+        <button type="button" class="stagebar__btn" id="map-toggle" aria-expanded="false" aria-controls="map" title="Song map: the parts of the code, and where they are">Map</button>
         <button type="button" class="stagebar__btn" id="follow" aria-pressed="false" title="The code follows the music (F)">Follow</button>
         <button type="button" class="stagebar__btn" id="split" aria-pressed="false" title="Show both decks side by side">Split</button>
         <button type="button" class="stagebar__btn" id="gallery" title="Full screen, code only (G)">Gallery</button>
@@ -141,6 +142,25 @@
         <span class="tries__label" aria-hidden="true">Try</span>
         <div class="tries__chips" id="tries-chips"></div>
       </div>
+
+      <nav class="map" id="map" aria-labelledby="map-title" hidden>
+        <header class="map__head">
+          <h2 class="map__title" id="map-title">Song map</h2>
+          <button type="button" class="iconbtn map__close" id="map-close" aria-label="Close the song map">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+          </button>
+        </header>
+        <div class="map__list" id="map-list"></div>
+        <p class="map__empty" id="map-empty" hidden>Nothing to map until the code runs.</p>
+        <div class="map__card" id="map-card" hidden>
+          <p class="map__card-title"></p>
+          <p class="map__card-where"></p>
+          <ul class="map__card-details"></ul>
+          <p class="map__card-note"></p>
+          <code class="map__card-code"></code>
+          <button type="button" class="chipbtn chipbtn--go map__card-edit">Edit this part</button>
+        </div>
+      </nav>
 
       <section class="coach" id="coach" aria-labelledby="coach-title" hidden>
         <header class="coach__head">

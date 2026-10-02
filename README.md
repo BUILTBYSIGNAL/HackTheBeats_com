@@ -155,6 +155,12 @@ the check refuses it, and the dev server will not serve it.
 - **Focus.** Click a channel's name to isolate that track's code and visual; click again (or `Esc`) to release.
 - **Split** shows both decks' code side by side. **Gallery** is full screen, code only, larger type.
 - Click a track label in the code to mute it; click a highlighted number to jump to its knob.
+- **Song map.** The sections of the code, listed in the empty margin beside it (or behind **Map** in the stage
+  bar when the window is too narrow): setup (tempo, sample packs, the header), knobs and switches, parts, and the
+  helpers parts share. Each is described from the code itself (its sounds, its effects in plain words, the knobs it
+  uses, a comment its author left beside it) when you rest the pointer on it or tab to it. Click one to glide the
+  code there; **Edit this part** opens the code with the caret at its start. A part's dot pulses with its track and
+  dims when it is muted.
 - **Try.** A song's `@try` lines are offered over the code, top left. One tap makes the change and runs it, with the
   changed line marked; another tap puts it back. Nothing is saved by trying, so they work without an account.
 - **First steps.** A short list in the corner of the stage, opened by itself after the first play: press play, turn
@@ -523,6 +529,7 @@ and the offline cache name in `sw.js` together.
     analytics.js ........ Google Analytics, with its opt-out
     share-sheet.js ...... the share sheet           tries.js a song's @try suggestions, one tap each
     onboarding.js ....... First steps
+    outline.js .......... the song map beside the code      outline-core.js finds its sections
     keys-core.js ........ key names as the visitor's keyboard has them (⌘ on a Mac)
     errors-core.js ...... a song's mistakes in plain words
     *-core.js ........... the pure logic of each, shared with the build and the unit tests

@@ -630,6 +630,298 @@ body:not(.has-played) .coach,
   }
 }
 
+/* ---------- the song map: the sections of the code, and where they are ---------- */
+
+/* opened from the Map button, over the stage */
+.map {
+  position: absolute;
+  z-index: 6;
+  left: var(--hb-gutter);
+  top: 52px;
+  display: none;
+  flex-direction: column;
+  width: min(272px, calc(100% - 2 * var(--hb-gutter)));
+  max-height: calc(100% - 116px);
+  padding: 10px 6px 8px;
+  background: var(--hb-bg-deep);
+  border: 1px solid var(--hb-line);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+.map-open .map {
+  display: flex;
+}
+/* docked: in the empty margin beside the code, quiet until it is used */
+.map-docked .map {
+  z-index: 3;
+  display: flex;
+  left: 12px;
+  top: 56px;
+  bottom: 60px;
+  width: min(280px, calc(var(--map-free, 0px) - 28px));
+  max-height: none;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  opacity: 0.72;
+  transition: opacity 0.2s;
+}
+.map-docked .map:hover,
+.map-docked .map:focus-within {
+  opacity: 1;
+}
+.map-docked .map__close {
+  display: none;
+}
+.map[hidden],
+body:not(.has-played) .map,
+.is-gallery .map,
+.is-locked .map,
+.is-gated .map,
+.is-gone .map {
+  display: none;
+}
+body:not(.has-played) #map-toggle,
+.is-gated #map-toggle,
+.is-gone #map-toggle {
+  display: none;
+}
+#map-toggle[aria-expanded='true'] {
+  color: var(--hb-bg-deep);
+  background: var(--hb-ink);
+}
+.map__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 6px 8px;
+}
+.map__title {
+  font: 500 10.5px/1 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-ink-2);
+}
+.map__close {
+  width: 28px;
+  height: 28px;
+  margin: -6px -2px -6px auto;
+}
+.map__list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hb-line) transparent;
+}
+.map__heading {
+  padding: 3px 8px;
+  font: 500 9.5px/1 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-ink-4);
+}
+.map__items {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.map__item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 8px;
+  width: 100%;
+  padding: 3px 8px 4px;
+  border-radius: 5px;
+  text-align: left;
+  color: var(--hb-ink-2);
+}
+.map__item:hover,
+.map__item:focus-visible {
+  color: var(--hb-ink);
+  background: var(--hb-raise);
+}
+.map__item[aria-current] {
+  box-shadow: inset 2px 0 0 var(--hb-accent);
+}
+.map__text {
+  display: grid;
+  min-width: 0;
+}
+.map__label,
+.map__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map__label {
+  font: 500 12.5px/1.35 var(--hb-mono);
+}
+.map__sub {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--hb-ink-3);
+}
+.map__line {
+  font: 400 10.5px/1.6 var(--hb-mono);
+  color: var(--hb-ink-4);
+}
+/* a small mark per entry; a part's is a dot that pulses with its track */
+.map__mark {
+  justify-self: center;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border: 1px solid var(--hb-ink-4);
+  border-radius: 2px;
+}
+.map__item--knob .map__mark,
+.map__item--switch .map__mark {
+  border-radius: 50%;
+}
+.map__item--helper .map__mark {
+  border-style: dashed;
+}
+.map__item--part .map__mark {
+  width: 8px;
+  height: 8px;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hb-accent) calc(var(--lv, 0) * 100%), var(--hb-ink-5));
+  transform: scale(calc(0.85 + var(--lv, 0) * 0.45));
+}
+.map__item.is-muted {
+  opacity: 0.45;
+}
+.map__item.is-muted .map__mark {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--hb-ink-4);
+  transform: none;
+}
+.map__empty {
+  padding: 4px 8px;
+  color: var(--hb-ink-3);
+  font-size: 12.5px;
+}
+.map__empty[hidden] {
+  display: none;
+}
+/* the card: what a section is and does, beside its entry */
+.map__card {
+  position: absolute;
+  z-index: 1;
+  left: calc(100% + 10px);
+  display: grid;
+  gap: 6px;
+  width: 300px;
+  padding: 12px 14px;
+  color: var(--hb-ink-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  background: var(--hb-bg-deep);
+  border: 1px solid var(--hb-line);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+}
+.map__card[hidden],
+.map__card-note[hidden],
+.map__card-code[hidden],
+.map__card-edit[hidden] {
+  display: none;
+}
+.map__card-title {
+  font: 600 13px/1.3 var(--hb-mono);
+  color: var(--hb-ink);
+}
+.map__card-where {
+  margin-top: -4px;
+  font: 400 10px/1.4 var(--hb-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hb-ink-4);
+}
+.map__card-details {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.map__card-details code,
+.map__card-code {
+  color: var(--hb-ink);
+  font-size: 11.5px;
+}
+.map__card-note {
+  padding-left: 8px;
+  border-left: 2px solid var(--hb-line);
+  color: var(--hb-ink-3);
+  font-style: italic;
+}
+.map__card-code {
+  display: block;
+  padding: 4px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--hb-panel);
+  border-radius: 4px;
+}
+.map__card-edit {
+  justify-self: start;
+  margin-top: 2px;
+}
+/* the lines of the section just chosen, for a moment */
+.editor .cm-line.hb-mapped {
+  animation: hb-mapped 2.2s var(--hb-ease) forwards;
+}
+@keyframes hb-mapped {
+  0%,
+  35% {
+    background-color: color-mix(in srgb, var(--hb-accent) 15%, transparent);
+    box-shadow: inset 3px 0 0 var(--hb-accent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: inset 3px 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor .cm-line.hb-mapped {
+    animation: none;
+    background-color: color-mix(in srgb, var(--hb-accent) 14%, transparent);
+  }
+  .map__item--part .map__mark {
+    transform: none;
+  }
+}
+/* a phone: the map opens above the view buttons, full width, and has no card */
+@media (max-width: 860px) {
+  .map {
+    left: var(--hb-gutter);
+    right: var(--hb-gutter);
+    top: auto;
+    bottom: 52px;
+    width: auto;
+    max-height: 62%;
+  }
+  .map__item {
+    padding-block: 8px;
+  }
+  .map__card {
+    display: none !important;
+  }
+  .map-open .coach {
+    display: none;
+  }
+}
+
 /* ---------- gallery ---------- */
 
 .hud {

@@ -141,6 +141,34 @@ async function scenario() {
     check('the opening beat offers suggestions to try', false, A.song.title);
   }
 
+  // the song map: the sections of the code, each a click away (here behind the Map button)
+  const map = document.getElementById('map');
+  const mapShown = () => getComputedStyle(map).display !== 'none';
+  if (!document.body.classList.contains('map-docked')) document.getElementById('map-toggle').click();
+  const labels = (kind) => [...map.querySelectorAll(`.map__item--${kind} .map__label`)].map((el) => el.textContent);
+  const listed = { shown: mapShown(), parts: labels('part'), knobs: labels('knob') };
+  check("the song map lists the beat's parts and knobs", listed.shown && listed.parts.join() === A.mixer.tracks.map((track) => track.name).join() && A.sliders.every((slider) => listed.knobs.includes(slider.title)), JSON.stringify(listed));
+  const lastPart = [...map.querySelectorAll('.map__item--part')].at(-1);
+  const mapped = A.stage.state.tracks.at(-1);
+  A.stage.view.scrollDOM.scrollTop = 0;
+  lastPart.scrollIntoView({ block: 'nearest' });
+  await sleep(100);
+  lastPart.click();
+  await sleep(1400);
+  const box = A.stage.view.scrollDOM.getBoundingClientRect();
+  const spot = A.stage.view.coordsAtPos(mapped.from);
+  const marked = [...A.stage.view.contentDOM.querySelectorAll('.cm-line.hb-mapped')];
+  check('choosing a part in the map brings its code into view and marks it', spot && spot.top >= box.top && spot.bottom <= box.bottom && marked[0]?.textContent.startsWith(A.code.slice(mapped.labelFrom, mapped.labelTo)), `${marked.length} lines marked`);
+  lastPart.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+  const card = document.getElementById('map-card');
+  const described = { shown: !card.hidden && getComputedStyle(card).display !== 'none', title: card.querySelector('.map__card-title').textContent, text: card.querySelector('.map__card-details').textContent, edit: card.querySelector('.map__card-edit').textContent };
+  check('hovering an entry shows what that part plays and does', described.shown && described.title === A.mixer.tracks.at(-1).name && /Sounds|Notes/.test(described.text) && /Effects/.test(described.text) && described.edit === 'Edit this part', JSON.stringify(described));
+  card.querySelector('.map__card-edit').click();
+  const caret = A.stage.view.state.selection.main.head;
+  check('"Edit this part" opens the code with the caret at that part', A.stage.editing && caret === mapped.from, `caret on line ${A.stage.view.state.doc.lineAt(caret).number}, part on line ${A.stage.view.state.doc.lineAt(mapped.from).number}`);
+  if (A.stage.editing) document.getElementById('edit').click();
+  h.songMap.setOpen(false);
+
   // locked by default: typing must not change the code
   const code = A.mirror.code;
   A.mirror.editor.contentDOM.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: 'x', bubbles: true, cancelable: true }));
@@ -316,10 +344,13 @@ async function scenario() {
   check('New offers starting points, and the drum loop is a song of my own to edit', started && offered.join() === 'loop,full' && A.mixer.tracks.length === 1 && A.stage.editing && !h.crate.dialog.open, offered.join());
   if (A.stage.editing) document.getElementById('edit').click();
 
+  h.songMap.setOpen(true);
   document.getElementById('gallery').click();
   await sleep(200);
   check('gallery hides the controls', document.body.classList.contains('is-gallery') && getComputedStyle(document.getElementById('deck')).display === 'none');
+  check('and the song map', getComputedStyle(document.getElementById('map')).display === 'none');
   document.getElementById('hud-exit').click();
+  h.songMap.setOpen(false);
 
   A.stop();
   check('stop stops', await until(() => !A.started, 3000));
@@ -525,6 +556,18 @@ async function phone(browser) {
     return { open: true, overlap: a.bottom > b.top && a.top < b.bottom && a.right > b.left && a.left < b.right };
   });
   check('first steps sit clear of the view buttons', clear.open && !clear.overlap, JSON.stringify(clear));
+  await page.tap('#map-toggle');
+  const mapOpened = await page.evaluate(() => getComputedStyle(document.getElementById('map')).display !== 'none' && document.querySelectorAll('#map .map__item--part').length > 0);
+  await page.locator('#map .map__item--part').last().tap();
+  await page.waitForTimeout(1400);
+  const jumped = await page.evaluate(() => {
+    // where the editor has the part's first line, against what is scrolled into view
+    const { view } = window.hackingTheBeats.players.A.stage;
+    const block = view.lineBlockAt(window.hackingTheBeats.players.A.stage.state.tracks.at(-1).from);
+    const top = block.top + view.contentDOM.offsetTop - view.scrollDOM.scrollTop;
+    return { closed: getComputedStyle(document.getElementById('map')).display === 'none', inView: top >= 0 && top + block.height <= view.scrollDOM.clientHeight };
+  });
+  check('on a phone, Map opens the song map; choosing a part jumps there and puts the map away', mapOpened && jumped.closed && jumped.inView, JSON.stringify({ mapOpened, ...jumped }));
   await context.close();
   return results;
 }
@@ -575,12 +618,23 @@ for (const name of engines) {
       tips.push(await page.evaluate((el) => getComputedStyle(document.getElementById(el), '::before').content, id));
     }
     await page.mouse.move(700, 450);
+    preResults.push(['the song map waits for the music', await page.evaluate(() => getComputedStyle(document.getElementById('map')).display === 'none' && getComputedStyle(document.getElementById('map-toggle')).display === 'none')]);
     preResults.push(['the top bar\'s icon buttons say what they are on hover', tips.join() === '"Record the mix to a file (R)","Share this song","About and keyboard shortcuts (?)"', tips.join(' | ')]);
     await page.click('#curtain-play');
     await page.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 45000 });
     await page.waitForTimeout(1500);
 
     const results = [...preResults, ...(await page.evaluate(scenario))];
+    // a wide window: the song map sits in the margin beside the code, with no button
+    await page.setViewportSize({ width: 1720, height: 1000 });
+    await page.waitForTimeout(400);
+    const docked = await page.evaluate(() => {
+      const scroller = window.hackingTheBeats.players.A.stage.view.scrollDOM;
+      const code = scroller.getBoundingClientRect().left + parseFloat(getComputedStyle(scroller).paddingLeft);
+      const map = document.getElementById('map');
+      return { docked: document.body.classList.contains('map-docked'), shown: getComputedStyle(map).display !== 'none', button: !document.getElementById('map-toggle').hidden, clear: map.getBoundingClientRect().right <= code };
+    });
+    results.push(['in a wide window the song map sits beside the code, clear of it', docked.docked && docked.shown && !docked.button && docked.clear, JSON.stringify(docked)]);
     results.push(['no errors in the console', errors.length === 0, errors.slice(0, 3).join(' | ')]);
     results.push(...(await addresses(browser)));
     results.push(...(await sharing(browser)));

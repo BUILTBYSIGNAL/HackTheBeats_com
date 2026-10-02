@@ -100,7 +100,7 @@ export const createAnalyzer = (parse) => function analyze(code) {
   try {
     ast = parse(code, { ecmaVersion: 2022, allowAwaitOutsideFunction: true, onComment: comments });
   } catch (error) {
-    return { error, tracks: [], sliders: [], switches: [], comments, meta: parseMeta(code, comments) };
+    return { error, tracks: [], sliders: [], switches: [], comments, meta: parseMeta(code, comments), body: [] };
   }
 
   // Tracks: top-level `label: pattern` statements.
@@ -219,7 +219,8 @@ export const createAnalyzer = (parse) => function analyze(code) {
     }
   });
 
-  return { tracks, sliders, switches, comments, meta };
+  // (body: the top-level statements, for the song map in outline-core.js)
+  return { tracks, sliders, switches, comments, meta, body: ast.body };
 };
 
 /* ---------- suggested changes: @try lines ---------- */

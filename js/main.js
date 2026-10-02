@@ -26,6 +26,7 @@ import { explainError } from './errors-core.js';
 import { tries } from './tries.js';
 import { onboarding } from './onboarding.js';
 import { shareSheet } from './share-sheet.js';
+import { songMap } from './outline.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -255,6 +256,7 @@ function renderFocus() {
   renderRibbonRows();
   renderNotice();
   renderTries();
+  songMap.render();
   app.lastPosition = null;
   renderPosition();
   visuals.invalidate();
@@ -489,11 +491,12 @@ function firstTime(name) {
   return true;
 }
 
-function setEditing(on, player = focused()) {
+// `at`: where the caret starts (the song map's "Edit this part"), or where the reader is.
+function setEditing(on, player = focused(), at = null) {
   if (!player.song || player.gated) return;
   if (site.guest) return takeHome(player);
   if (on && needsAccount('edit the code')) return;
-  player.setEditable(on);
+  player.setEditable(on, at);
   if (on && firstTime('edit')) {
     const run = coarse() ? 'Update' : `${KEYS.run} (or Update)`;
     setStatus(`Change anything. ${run} runs it without stopping the music; nothing is saved until you press Save.`, { hold: 9000 });
@@ -1238,6 +1241,24 @@ async function boot() {
       onTried: (label, on) => on && onboarding.done('tweak'),
     },
   );
+  // the song map: the sections of the code, beside it or behind the Map button
+  songMap.init(
+    { root: $('map'), list: $('map-list'), empty: $('map-empty'), card: $('map-card'), toggle: $('map-toggle'), close: $('map-close'), stage: els.stage, panes: [$('pane-a'), $('pane-b')] },
+    {
+      players,
+      focused,
+      access: () => (site.guest ? 'guest' : app.access),
+      edit: (player, at) => {
+        setFocus(player.id);
+        setEditing(true, player, at);
+      },
+      signIn: () => needsAccount('edit the code'),
+      releaseFocus: (player) => {
+        player.stage.setFocus(player.stage.focus);
+        deck.syncFocus();
+      },
+    },
+  );
   shareSheet.init(
     {
       dialog: $('share-sheet'),
@@ -1818,5 +1839,6 @@ async function boot() {
 
 // A handle for tests and for poking around in the console.
 window.hackingTheBeats = { app, players: byId, master, deck, recorder, midi, visuals, runtime, registry, crate, thumbs, songs, cloud, config, site, admin, analytics, tries, onboarding, finishRecording, VERSION };
+window.hackingTheBeats.songMap = songMap;
 
 boot();

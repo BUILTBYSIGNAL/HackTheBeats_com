@@ -365,8 +365,8 @@ export class Stage {
   }
 
   // Unlock the code for typing, or lock it again. The caret starts where the reader is
-  // looking, not back at the top.
-  setEditable(on) {
+  // looking, not back at the top (or at `at`, a position in the code, when one is given).
+  setEditable(on, at = null) {
     this.editing = on;
     this.cancelReveal();
     this.root.classList.toggle('is-editing', on);
@@ -375,7 +375,9 @@ export class Stage {
     const { view } = this;
     const box = view.scrollDOM.getBoundingClientRect();
     const caretAt = view.coordsAtPos(view.state.selection.main.head);
-    if (!caretAt || caretAt.top < box.top || caretAt.bottom > box.bottom) {
+    if (at !== null) {
+      view.dispatch({ selection: { anchor: clamp(at, 0, view.state.doc.length) } });
+    } else if (!caretAt || caretAt.top < box.top || caretAt.bottom > box.bottom) {
       const line = view.lineBlockAtHeight(view.scrollDOM.scrollTop + 24);
       view.dispatch({ selection: { anchor: line.from } });
     }
