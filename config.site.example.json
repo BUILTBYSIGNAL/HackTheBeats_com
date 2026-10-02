@@ -1,0 +1,12 @@
+{
+  "firebase": {
+    "apiKey": "your-web-api-key",
+    "authDomain": "example.org",
+    "projectId": "your-project-id",
+    "appId": "your-web-app-id"
+  },
+  "appOrigin": "https://example.org",
+  "shareOrigin": "https://play.example.org",
+  "contact": "hello@example.org",
+  "analytics": ""
+}

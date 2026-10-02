@@ -1,0 +1,45 @@
+/*
+  @title Low Tide
+  @by SIGNAL
+  A slow one written for this repository. Nothing but the built-in synths.
+  mood: 0 minor, 1 major
+  "swell" opens the pad; "echo" sets how much of the melody comes back.
+  Public domain (CC0): take it apart.
+*/
+setcps(84/60/4)
+
+const mood = 0
+const swell = slider(1200, 300, 5000)
+const echo = slider(0.4, 0, 0.8)
+
+const key = ["A2:minor", "A2:major"][mood]
+
+PAD: n("<[0,2,4] [3,5,7] [-2,0,2] [1,3,5]>")
+  .scale(key)
+  .s("sawtooth")
+  .lpf(swell)
+  .attack(0.4)
+  .release(1.2)
+  .room(0.6)
+  .gain(0.22)
+  ._scope()
+
+SUB: n("<0 3 -2 1>")
+  .scale(key)
+  .s("sine")
+  .gain(0.5)
+  ._scope()
+
+BELL: n("~ 7 ~ 9 ~ 11 9 ~")
+  .scale(key)
+  .s("triangle")
+  .delay(echo)
+  .room(0.5)
+  .gain(0.2)
+  .mask("<0 1 1 1 1 1 0 1>/2")
+  ._punchcard()
+
+PULSE: s("bd ~ ~ bd ~ ~ bd ~, ~ ~ ~ ~ rim ~ ~ ~")
+  .gain(0.6)
+  .mask("<0 0 1 1 1 1 1 1>/2")
+  ._punchcard()

@@ -1,0 +1,40 @@
+/*
+  @title First Light
+  @by SIGNAL
+  A four-on-the-floor sketch written for this repository, so a fresh copy has something to play.
+  Turn "cut" to open the bass, and "air" to push the chords further back in the room.
+  Public domain (CC0): take it apart.
+*/
+setcps(122/60/4)
+
+const cut = slider(900, 200, 4000)
+const air = slider(0.35, 0, 0.9)
+
+DRUMS: s("bd*4, [~ cp]*2, [~ hh]*4")
+  .bank("RolandTR909")
+  .gain(0.8)
+  ._punchcard()
+
+BASS: note("<c2 c2 ab1 bb1>*2")
+  .struct("x ~ x x ~ x ~ x")
+  .s("sawtooth")
+  .lpf(cut)
+  .gain(0.45)
+  ._scope()
+
+CHORDS: note("<[c4,eb4,g4] [c4,eb4,g4] [ab3,c4,eb4] [bb3,d4,f4]>")
+  .struct("~ x ~ x")
+  .s("triangle")
+  .room(air)
+  .gain(0.3)
+  .mask("<0 1 1 1>/4")
+  ._punchcard()
+
+LEAD: n("0 ~ 2 4 ~ 7 4 ~")
+  .scale("C4:minor")
+  .s("square")
+  .lpf(1800)
+  .delay(0.35)
+  .gain(0.18)
+  .mask("<0 0 1 1>/4")
+  ._punchcard()

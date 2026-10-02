@@ -1,0 +1,720 @@
+/* The stage: locked code, live notation, inline visuals, and the opening curtain. */
+
+.stage {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---------- panes: one per deck ---------- */
+
+.panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  height: 100%;
+}
+.pane {
+  position: relative;
+  display: none;
+  min-width: 0;
+  min-height: 0;
+}
+body[data-focus='A'] .pane[data-deck='A'],
+body[data-focus='B'] .pane[data-deck='B'] {
+  display: block;
+}
+/* split: both decks side by side, the one in focus at full strength */
+.panes[data-view='split'] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.panes[data-view='split'] .pane {
+  display: block;
+  opacity: 0.5;
+  transition: opacity 0.3s var(--hb-ease);
+}
+.panes[data-view='split'] .pane + .pane {
+  border-left: 1px solid var(--hb-line-soft);
+}
+body[data-focus='A'] .panes[data-view='split'] .pane[data-deck='A'],
+body[data-focus='B'] .panes[data-view='split'] .pane[data-deck='B'] {
+  opacity: 1;
+}
+.pane__tag {
+  display: none;
+  position: absolute;
+  z-index: 2;
+  top: 5px;
+  left: 12px;
+  max-width: 60%;
+  padding: 5px 9px;
+  font: 500 10.5px/1 var(--hb-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hb-ink-3);
+  background: var(--hb-bg-deep);
+  border: 1px solid var(--hb-line-soft);
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.panes[data-view='split'] .pane__tag {
+  display: block;
+}
+.pane__empty {
+  display: none;
+}
+.pane[data-deck='B']:not(.has-song) .editor {
+  visibility: hidden;
+}
+.pane[data-deck='B']:not(.has-song) .pane__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: var(--hb-gutter);
+  text-align: center;
+  color: var(--hb-ink-3);
+}
+.pane__empty p {
+  max-width: 36ch;
+}
+.pane__empty-title {
+  font: 200 clamp(26px, 4vw, 44px) / 1 var(--hb-sans);
+  letter-spacing: -0.03em;
+  color: var(--hb-ink);
+}
+
+/* ---------- the editor ---------- */
+
+.editor {
+  height: 100%;
+}
+/* A beat's own page carries its code in the HTML. It shows faintly, laid out like the
+   editor, until the editor takes its place. */
+.prerender {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  overflow: hidden;
+  padding: 30px 20px 0 calc(max(4px, (100% - 1080px) / 2) + 18px + 2ch);
+  font: 400 14.5px/1.8 var(--hb-mono);
+  font-variant-ligatures: none;
+  white-space: pre-wrap;
+  color: var(--hb-ink-3);
+  opacity: 0.35;
+  pointer-events: none;
+}
+.editor .cm-editor {
+  height: 100%;
+  background: transparent;
+}
+.editor .cm-scroller {
+  overflow: auto;
+  font: 400 14.5px/1.8 var(--hb-mono);
+  font-variant-ligatures: none;
+  padding: 30px 0 0 max(4px, calc((100% - 1080px) / 2));
+  scrollbar-width: thin;
+  scrollbar-color: var(--hb-line) transparent;
+}
+.editor .cm-content {
+  padding: 0 0 36vh;
+}
+/* locked (the default): the code is there to watch, not to select */
+.pane:not(.is-editing) .editor .cm-content {
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  caret-color: transparent;
+}
+.pane:not(.is-editing) .editor .cm-selectionLayer,
+.pane:not(.is-editing) .editor .cm-cursorLayer {
+  display: none !important;
+}
+/* editing: a caret, a selection, and a mark down the side to say so */
+.pane.is-editing .editor .cm-content {
+  caret-color: var(--hb-accent);
+}
+.pane.is-editing .editor .cm-cursor {
+  border-left: 2px solid var(--hb-accent);
+}
+.pane.is-editing .editor .cm-selectionBackground {
+  background: color-mix(in srgb, var(--hb-accent) 30%, transparent) !important;
+}
+.pane.is-editing::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 2;
+  width: 2px;
+  background: var(--hb-accent);
+}
+/* Wrapped rows hang two characters in from the line's own indentation (--ind is set per
+   line), so a long chain reads as one statement rather than a ragged block. */
+.editor .cm-line {
+  padding: 0 20px 0 calc(18px + (var(--ind, 0) + 2) * 1ch);
+  text-indent: calc((var(--ind, 0) + 2) * -1ch);
+}
+.editor .cm-gutters {
+  font-size: 11px;
+  user-select: none;
+}
+.editor .cm-lineNumbers .cm-gutterElement {
+  padding: 0 10px 0 12px;
+  min-width: 40px;
+}
+
+/* Strudel's inline slider, sitting in front of the number it controls */
+.editor .cm-slider {
+  display: inline-block;
+  vertical-align: middle;
+  text-indent: 0;
+}
+.editor .cm-slider input[type='range'] {
+  width: 72px !important;
+  height: 14px;
+  margin: 0 6px 0 2px !important;
+  transform: none !important;
+  vertical-align: middle;
+  accent-color: var(--hb-accent);
+  cursor: ew-resize;
+}
+.is-revealing .editor .cm-slider {
+  visibility: hidden;
+}
+
+/* soft floor so code fades into the deck instead of being cut */
+.stage::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 56px;
+  background: linear-gradient(to top, var(--hb-bg), transparent);
+  pointer-events: none;
+}
+
+/* ---------- type-on ---------- */
+
+.hb-veil {
+  opacity: 0;
+}
+.hb-caret {
+  display: inline-block;
+  width: 0.58em;
+  height: 1.15em;
+  margin-bottom: -0.2em;
+  background: var(--hb-accent);
+}
+.editor .cm-content canvas {
+  display: block;
+  box-sizing: content-box;
+  max-width: calc(100% - 38px);
+  padding: 6px 0 12px 18px;
+  transition: opacity 0.7s var(--hb-ease);
+}
+.is-revealing .cm-content canvas {
+  opacity: 0;
+  transition: none;
+}
+
+/* ---------- tracks ---------- */
+
+.editor .cm-line.hb-trk {
+  /* --lv is the track's activity (0..1), set per frame on the pane */
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--hb-accent) calc(var(--lv, 0) * 100%), var(--hb-line));
+  transition: opacity 0.3s var(--hb-ease);
+}
+.editor .cm-line.hb-trk.is-muted {
+  opacity: 0.3;
+}
+.editor .cm-line.hb-trk.is-muted + canvas,
+.editor .cm-line.hb-trk.is-muted + canvas + canvas {
+  opacity: 0.18;
+}
+
+.hb-label {
+  cursor: pointer;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--hb-accent) calc(var(--lv, 0) * 55%), var(--hb-raise));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hb-accent) calc(var(--lv, 0) * 55%), var(--hb-raise));
+}
+.hb-label:hover {
+  background: var(--hb-line);
+  box-shadow: 0 0 0 3px var(--hb-line);
+}
+.hb-label.is-muted {
+  text-decoration: line-through;
+  text-decoration-color: var(--hb-ink-3);
+}
+.hb-label.is-solo {
+  background: var(--hb-accent);
+  box-shadow: 0 0 0 3px var(--hb-accent);
+}
+.hb-label.is-solo span,
+.hb-label.is-solo {
+  color: var(--hb-accent-ink) !important;
+}
+
+/* focus: one track's code and visual, everything else recedes */
+.pane.has-focus .editor .cm-line {
+  opacity: 0.14;
+  transition: opacity 0.35s var(--hb-ease);
+}
+.pane.has-focus .editor .cm-line.is-focus {
+  opacity: 1;
+}
+.pane.has-focus .editor .cm-content canvas {
+  opacity: 0.08;
+}
+.pane.has-focus .editor .cm-line.is-focus + canvas,
+.pane.has-focus .editor .cm-line.is-focus + canvas + canvas {
+  opacity: 1;
+}
+
+/* ---------- live notation ---------- */
+
+.hb-hit {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--hb-accent) 26%, transparent);
+  box-shadow: 0 0 0 1.5px var(--hb-accent);
+}
+.hb-hit span,
+.hb-hit {
+  color: #fff !important;
+}
+
+/* numbers owned by the deck */
+.hb-num {
+  cursor: pointer;
+  border-bottom: 1px dashed color-mix(in srgb, var(--hb-accent) 70%, transparent);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.hb-num span,
+.hb-num {
+  color: var(--hb-accent) !important;
+}
+.hb-num.is-hot {
+  border-bottom-color: transparent;
+  border-radius: 2px;
+  background: var(--hb-accent);
+  box-shadow: 0 0 0 3px var(--hb-accent);
+}
+.hb-num.is-hot span,
+.hb-num.is-hot {
+  color: var(--hb-accent-ink) !important;
+}
+
+/* ---------- view controls ---------- */
+
+.stagebar {
+  position: absolute;
+  z-index: 3;
+  top: 10px;
+  right: var(--hb-gutter);
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: color-mix(in srgb, var(--hb-bg-deep) 88%, transparent);
+  border: 1px solid var(--hb-line-soft);
+  border-radius: 6px;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.stagebar:hover,
+.stagebar:focus-within {
+  opacity: 1;
+}
+.stagebar__btn {
+  padding: 6px 9px;
+  border-radius: 4px;
+  font: 500 10px/1 var(--hb-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hb-ink-3);
+}
+.stagebar__btn:hover {
+  color: var(--hb-ink);
+}
+.stagebar__btn[aria-pressed='true'] {
+  color: var(--hb-bg-deep);
+  background: var(--hb-ink);
+}
+.stagebar__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.stagebar__btn[hidden] {
+  display: none;
+}
+#edit[aria-pressed='true'] {
+  background: var(--hb-accent);
+  color: var(--hb-accent-ink);
+}
+/* something to save: said in words, and the buttons that deal with it */
+.stagebar__unsaved {
+  align-self: center;
+  padding: 0 8px 0 6px;
+  font: 500 10px/1 var(--hb-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hb-accent);
+  white-space: nowrap;
+}
+.stagebar__unsaved::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--hb-accent);
+  vertical-align: 1px;
+}
+.stagebar__unsaved[hidden] {
+  display: none;
+}
+.stagebar__btn--save {
+  color: var(--hb-ink);
+  border: 1px solid var(--hb-line);
+}
+.is-unsaved .stagebar {
+  opacity: 1;
+}
+/* a line that differs from the saved song */
+.editor .cm-line.hb-changed {
+  box-shadow: inset 3px 0 0 var(--hb-accent);
+  background: color-mix(in srgb, var(--hb-accent) 7%, transparent);
+}
+/* with an account, the code is there to be clicked into */
+body:not(.is-preview) .pane:not(.is-editing) .editor .cm-line {
+  cursor: text;
+}
+
+/* Update lights up when the code on stage is ahead of what is playing */
+.stagebar__btn--go.is-dirty {
+  color: var(--hb-accent-ink);
+  background: var(--hb-accent);
+}
+.stagebar__gap {
+  width: 1px;
+  margin: 3px 3px;
+  background: var(--hb-line);
+}
+.is-editing .stagebar {
+  opacity: 1;
+}
+body:not(.has-played) .stagebar,
+.is-gallery .stagebar {
+  display: none;
+}
+
+/* ---------- gallery ---------- */
+
+.hud {
+  display: none;
+}
+.is-gallery .editor .cm-scroller {
+  font-size: clamp(15px, 1.3vw, 23px);
+  padding-top: 8vh;
+}
+.is-gallery .editor .cm-gutters {
+  display: none;
+}
+.is-gallery .hud {
+  position: absolute;
+  z-index: 3;
+  inset: auto var(--hb-gutter) 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+.hud-awake.is-gallery .hud {
+  opacity: 1;
+  pointer-events: auto;
+}
+.hud__now {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font: 300 20px/1 var(--hb-sans);
+  letter-spacing: -0.02em;
+}
+.hud__bar {
+  font: 400 12px/1 var(--hb-mono);
+  color: var(--hb-ink-3);
+}
+.is-gallery:not(.hud-awake) .stage {
+  cursor: none;
+}
+
+/* ---------- curtain ---------- */
+
+.curtain {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px var(--hb-gutter) 48px;
+  text-align: center;
+  background: radial-gradient(ellipse at 50% 46%, rgba(34, 34, 34, 0.96) 0%, rgba(34, 34, 34, 0.86) 42%, rgba(34, 34, 34, 0.5) 100%);
+  transition: opacity 0.6s var(--hb-ease), visibility 0s linear 0.6s;
+}
+.is-gated .curtain,
+.has-played .curtain {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.curtain__kicker {
+  color: var(--hb-ink-3);
+}
+.curtain__title {
+  font: 200 clamp(40px, 8.5vw, 104px) / 0.95 var(--hb-sans);
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+  max-width: 14ch;
+}
+.curtain__by {
+  color: var(--hb-ink-3);
+  font: 400 13px/1 var(--hb-mono);
+  min-height: 13px;
+}
+.curtain__play {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin: 18px 0 10px;
+  /* stays round when the stage is short */
+  flex: none;
+  border-radius: 50%;
+  background: var(--hb-accent);
+  color: var(--hb-accent-ink);
+  transition: transform 0.2s var(--hb-ease);
+}
+.curtain__play::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--hb-accent);
+  animation: hb-ring 2.4s var(--hb-ease) infinite;
+}
+@keyframes hb-ring {
+  from {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+.curtain__play:hover {
+  transform: scale(1.06);
+}
+.curtain__play:active {
+  transform: scale(0.97);
+}
+.curtain__play svg {
+  width: 30px;
+  height: 30px;
+  transform: translateX(2px);
+}
+.curtain__play .spinner {
+  width: 26px;
+  height: 26px;
+}
+.curtain__hint {
+  color: var(--hb-ink-3);
+  font-size: 13px;
+  max-width: 34ch;
+}
+
+/* ---------- someone else's song: shown, not yet run ---------- */
+
+.gate {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 10px;
+  width: min(480px, calc(100% - 2 * var(--hb-gutter)));
+  padding: 22px 24px 24px;
+  background: var(--hb-bg-deep);
+  border: 1px solid var(--hb-line);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.gate[hidden] {
+  display: none;
+}
+/* a beat that needs an account: what it is, and how to get in */
+.locked {
+  width: min(520px, calc(100% - 2 * var(--hb-gutter)));
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+}
+.locked__notes {
+  display: grid;
+  gap: 3px;
+  color: var(--hb-ink-3);
+  font: 400 12px/1.5 var(--hb-mono);
+}
+.locked__notes:empty {
+  display: none;
+}
+/* while it is up, the stage behind it is not the beat it describes */
+.is-locked .curtain,
+.is-locked .panes {
+  visibility: hidden;
+}
+.gate__title {
+  font: 300 30px/1.1 var(--hb-sans);
+  letter-spacing: -0.02em;
+}
+.gate__by {
+  color: var(--hb-ink-3);
+  font: 400 12.5px/1 var(--hb-mono);
+}
+.gate__by:empty {
+  display: none;
+}
+.gate__text {
+  color: var(--hb-ink-2);
+  font-size: 13.5px;
+}
+.gate__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* ---------- messages ---------- */
+
+.notice {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 2 * var(--hb-gutter)));
+  padding: 14px 16px;
+  background: var(--hb-bg-deep);
+  border: 1px solid var(--hb-accent);
+  border-radius: 8px;
+}
+.notice__title {
+  font-weight: 600;
+}
+.notice__detail {
+  margin-top: 4px;
+  color: var(--hb-ink-3);
+  font: 400 12.5px/1.5 var(--hb-mono);
+  overflow-wrap: anywhere;
+}
+
+.status {
+  position: absolute;
+  z-index: 5;
+  left: var(--hb-gutter);
+  bottom: 12px;
+  max-width: min(620px, calc(100% - 2 * var(--hb-gutter)));
+  padding: 6px 10px;
+  font: 400 11.5px/1.4 var(--hb-mono);
+  color: var(--hb-ink-2);
+  background: color-mix(in srgb, var(--hb-bg-deep) 92%, transparent);
+  border: 1px solid var(--hb-line-soft);
+  border-radius: 6px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.3s, transform 0.3s var(--hb-ease);
+  pointer-events: none;
+}
+.status.is-visible {
+  opacity: 1;
+  transform: none;
+}
+.is-gallery .status {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .editor .cm-scroller {
+    font-size: 11.5px;
+    padding-top: 18px;
+  }
+  .editor .cm-line {
+    padding: 0 12px 0 calc(12px + (var(--ind, 0) + 2) * 1ch);
+  }
+  .editor .cm-lineNumbers .cm-gutterElement {
+    min-width: 30px;
+    padding: 0 6px 0 8px;
+  }
+  .editor .cm-content canvas {
+    padding-left: 12px;
+    max-width: calc(100% - 24px);
+  }
+  .curtain {
+    background: radial-gradient(ellipse at 50% 46%, rgba(34, 34, 34, 0.97) 0%, rgba(34, 34, 34, 0.9) 60%, rgba(34, 34, 34, 0.7) 100%);
+  }
+  /* on a phone the view buttons sit at the foot of the stage, clear of the code */
+  .stagebar {
+    top: auto;
+    bottom: 10px;
+  }
+  .status {
+    bottom: 50px;
+  }
+  /* two decks side by side do not fit a phone: split shows the one in focus */
+  .panes[data-view='split'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body[data-focus='A'] .panes[data-view='split'] .pane[data-deck='B'],
+  body[data-focus='B'] .panes[data-view='split'] .pane[data-deck='A'] {
+    display: none;
+  }
+  #split {
+    display: none;
+  }
+}
+
+/* short screens: a compact curtain */
+@media (max-height: 540px) {
+  .curtain {
+    gap: 8px;
+    padding-bottom: 20px;
+  }
+  .curtain__title {
+    font-size: clamp(28px, 9vh, 48px);
+  }
+  .curtain__play {
+    width: 60px;
+    height: 60px;
+    margin: 8px 0 4px;
+  }
+  .curtain__play svg {
+    width: 22px;
+    height: 22px;
+  }
+  .curtain__hint,
+  .curtain__kicker {
+    display: none;
+  }
+}

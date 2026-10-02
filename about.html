@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>About Hacking the Beats — live-coded music, built on Strudel</title>
+    <meta name="description" content="What Hacking the Beats is, how to mix and edit its live-coded songs, and credits for Strudel, the songs and the sample packs." />
+    <meta name="color-scheme" content="dark" />
+    <!--seo-->
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/page.css" />
+  </head>
+  <body>
+    <a class="home" href="./">← Hacking the Beats</a>
+    <h1>About</h1>
+    <p class="lede">
+      Hacking the Beats is a place to watch music being made by code, and to play with it. Every song here is a short program. It
+      runs in your browser, and what you hear is what the code on screen is doing at that moment.
+    </p>
+
+    <h2>What you are looking at</h2>
+    <p>
+      The stage shows a song's code. Each note lights up as it plays, and the patterns draw themselves under the lines that make
+      them. Nothing is a recording: the sound is generated as the code runs, so changing the code changes the music.
+    </p>
+    <p>
+      The songs are written in <a href="https://strudel.cc" target="_blank" rel="noopener">Strudel</a>, a language for live-coding
+      music in JavaScript. Anything you can play on strudel.cc can be played here.
+    </p>
+
+    <h2>What you can do</h2>
+    <p>
+      Anyone can press play on the featured beat and watch it work. The rest needs an account, which is free and takes one click
+      with Google:
+    </p>
+    <ul>
+      <li><strong>Mix.</strong> Two decks play two songs at once, kept in time with each other, with a crossfader between them.</li>
+      <li><strong>Turn the knobs.</strong> Every <code>slider()</code> in a song becomes a knob on the deck and a slider in the code.</li>
+      <li><strong>Work the channels.</strong> Each labelled pattern is a channel with a level, a meter, mute and solo.</li>
+      <li><strong>Play the pads.</strong> Echo, filter drop, reverb wash, half-time, stutter and no drums, for as long as you hold them.</li>
+      <li><strong>Edit the code.</strong> Press Edit, change anything, and press Ctrl+Enter. The music carries on with your change.</li>
+      <li><strong>Keep your own songs.</strong> Your version is saved to your account; the original is never changed. You can share one of your songs by link, and anyone with the link can listen.</li>
+      <li><strong>Record.</strong> Capture the mix as a WAV file.</li>
+      <li><strong>Plug in a controller.</strong> Any knob, fader, pad or button can be bound to a MIDI controller.</li>
+    </ul>
+
+    <h2>The beats</h2>
+    <ul class="beats">
+      <!--beats-->
+    </ul>
+
+    <h2>Who runs it</h2>
+    <p>
+      Hacking the Beats is owned and operated by <strong>Built By Signal LLC</strong>, a venture-building company that works
+      under the name SIGNAL: <a href="https://builtbysignal.com" target="_blank" rel="noopener">builtbysignal.com</a>.
+    </p>
+
+    <h2>Built on Strudel</h2>
+    <p>
+      The music engine is <a href="https://strudel.cc" target="_blank" rel="noopener">Strudel</a>, the JavaScript port of TidalCycles,
+      © Strudel contributors, licensed under the
+      <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU Affero General Public License v3</a>.
+      Its source is at <a href="https://codeberg.org/uzu/strudel" target="_blank" rel="noopener">codeberg.org/uzu/strudel</a>.
+    </p>
+    <p>
+      This site's own code is © Built By Signal LLC. It is free software under the same licence and comes with no warranty. You can
+      <a id="source-link" href="source/" download>download the source of this version</a> (<a href="LICENSE">licence</a>). The
+      archive holds everything needed to rebuild the site, including the script that bundles the unmodified Strudel packages.
+      The same code is on GitHub:
+      <a href="https://github.com/BUILTBYSIGNAL/hackthebeats_com" target="_blank" rel="noopener">github.com/BUILTBYSIGNAL/hackthebeats_com</a>.
+    </p>
+
+    <h2>Songs and sounds</h2>
+    <p>
+      Each song is credited in its own code. Songs credited to other artists are their work, transcribed or arranged here, and stay
+      theirs.
+    </p>
+    <p>
+      No sounds are stored on this site. Samples are fetched as a song plays from the public packs it names, which belong to their
+      authors: Strudel's default drum machines, <a href="https://github.com/tidalcycles/Dirt-Samples" target="_blank" rel="noopener">Dirt-Samples</a>
+      and soundfonts, and packs such as
+      <a href="https://github.com/algorave-dave/samples" target="_blank" rel="noopener">algorave-dave/samples</a>,
+      <a href="https://github.com/eddyflux/crate" target="_blank" rel="noopener">eddyflux/crate</a>,
+      <a href="https://github.com/switchangel/beginningtrance" target="_blank" rel="noopener">switchangel/beginningtrance</a> and
+      <a href="https://github.com/kyrsive/ily2-sounds" target="_blank" rel="noopener">kyrsive/ily2-sounds</a>. Spoken words come from
+      <a href="https://shabda.ndre.gr" target="_blank" rel="noopener">Shabda</a>.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      If something here is yours and you would like it credited differently or taken down, or you have a question, write to
+      <a data-contact>the site owner</a>.
+    </p>
+
+    <footer class="pagefoot">
+      <p>© Built By Signal LLC · <a href="./">Open the player</a> · <a href="privacy">Privacy</a> · <span id="version"></span></p>
+      <a class="signal" href="https://builtbysignal.com" target="_blank" rel="noopener" aria-label="Built by SIGNAL (opens in a new window)">
+        <svg class="signal__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="5" fill="#181A1F" /><rect x="14" y="7" width="4" height="18" fill="#DD5E2E" /></svg>
+        <span>Built by <strong>SIGNAL</strong></span>
+      </a>
+    </footer>
+
+    <script src="site-config.js"></script>
+    <script type="module">
+      // the contact address is set once, in the site's settings (js/config.js)
+      import { config } from './js/config.js';
+      import { VERSION } from './js/version.js';
+      import { analytics } from './js/analytics.js';
+      analytics.start();
+      document.getElementById('version').textContent = `v${VERSION}`;
+      document.getElementById('source-link').href = `source/hacking-the-beats-${VERSION}.tar.gz`;
+      if (config.contact) {
+        for (const link of document.querySelectorAll('[data-contact]')) {
+          link.href = `mailto:${config.contact}`;
+          link.textContent = config.contact;
+        }
+      }
+    </script>
+  </body>
+</html>

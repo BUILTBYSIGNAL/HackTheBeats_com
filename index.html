@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- every page of the site is served from this file or a copy of it, at any depth -->
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Hacking the Beats — live-coded music you can watch, mix and edit</title>
+    <meta name="description" content="Live-coded music as an art piece. Watch Strudel code play itself, mix beats on a two-deck DJ panel, and edit the code in your browser." />
+    <!--seo-->
+    <meta name="theme-color" content="#191919" />
+    <meta name="color-scheme" content="dark" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23191919'/%3E%3Crect x='6' y='7' width='6' height='5' fill='%23eceae4'/%3E%3Crect x='20' y='7' width='6' height='5' fill='%23eceae4' opacity='.5'/%3E%3Crect x='13' y='14' width='6' height='5' fill='%23ff6b35'/%3E%3Crect x='6' y='21' width='6' height='5' fill='%23eceae4' opacity='.5'/%3E%3Crect x='20' y='21' width='6' height='5' fill='%23eceae4'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/layout.css" />
+    <link rel="stylesheet" href="css/stage.css" />
+    <link rel="stylesheet" href="css/deck.css" />
+    <link rel="stylesheet" href="css/controls.css" />
+  </head>
+  <body data-transport="idle" data-focus="A">
+    <header class="topbar">
+      <button type="button" class="brand" id="open-crate" aria-label="Open the list of beats">
+        <svg class="brand__mark" viewBox="0 0 20 20" aria-hidden="true">
+          <rect x="1" y="2" width="5" height="4" /><rect x="14" y="2" width="5" height="4" opacity=".45" />
+          <rect class="brand__dot" x="7.5" y="8" width="5" height="4" />
+          <rect x="1" y="14" width="5" height="4" opacity=".45" /><rect x="14" y="14" width="5" height="4" />
+        </svg>
+        <span class="brand__name">Hacking the Beats</span>
+        <span class="brand__version" id="version"></span>
+      </button>
+      <h1 class="visually-hidden">Hacking the Beats</h1>
+
+      <div class="decks" role="group" aria-label="Decks">
+        <div class="deckchip" id="chip-a" data-deck="A" data-transport="idle">
+          <button type="button" class="deckchip__play" id="play-a" aria-label="Play deck A">
+            <svg class="icon-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z" /></svg>
+            <svg class="icon-stop" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1" /></svg>
+            <span class="spinner" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="deckchip__main" id="deck-a" aria-pressed="true">
+            <span class="deckchip__id">A</span>
+            <span class="deckchip__title" id="title-a">&nbsp;</span>
+            <span class="deckchip__meta" id="meta-a"></span>
+          </button>
+        </div>
+        <div class="deckchip" id="chip-b" data-deck="B" data-transport="idle">
+          <button type="button" class="deckchip__play" id="play-b" aria-label="Play deck B">
+            <svg class="icon-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z" /></svg>
+            <svg class="icon-stop" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1" /></svg>
+            <span class="spinner" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="deckchip__main" id="deck-b" aria-pressed="false">
+            <span class="deckchip__id">B</span>
+            <span class="deckchip__title" id="title-b">Load a beat</span>
+            <span class="deckchip__meta" id="meta-b"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="transport" role="group" aria-label="Change the beat on the deck in focus">
+        <button type="button" class="iconbtn" id="prev" aria-label="Previous beat">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3v10M12.5 3.5 6.5 8l6 4.5z" /></svg>
+        </button>
+        <button type="button" class="iconbtn" id="next" aria-label="Next beat">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12 3v10M3.5 3.5 9.5 8l-6 4.5z" /></svg>
+        </button>
+      </div>
+
+      <dl class="readouts">
+        <div class="readout">
+          <dt>bpm</dt>
+          <dd id="bpm">—</dd>
+        </div>
+        <div class="readout">
+          <dt>bar</dt>
+          <dd><span id="bar">—</span><span class="readout__minor" id="beat"></span></dd>
+        </div>
+      </dl>
+
+      <canvas class="scope" id="scope" aria-hidden="true"></canvas>
+
+      <div class="actions">
+        <button type="button" class="iconbtn iconbtn--rec" id="record" aria-pressed="false" aria-label="Record the mix to a file">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle class="rec-dot" cx="8" cy="8" r="4" /></svg>
+          <span class="rec-time" id="record-time"></span>
+        </button>
+        <button type="button" class="iconbtn" id="share" aria-label="Copy a link to this mix">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.8 9.2a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.7.7M9.2 6.8a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7l.7-.7" /></svg>
+        </button>
+        <button type="button" class="iconbtn" id="open-about" aria-label="About and keyboard shortcuts">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 6a2 2 0 1 1 3 1.7c-.7.4-1 .8-1 1.6M8 11.8v.2" /></svg>
+        </button>
+        <button type="button" class="iconbtn iconbtn--account" id="account" aria-label="Sign in" hidden>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="6" r="2.6" /><path d="M3 13.2c.8-2.1 2.7-3.2 5-3.2s4.2 1.1 5 3.2" /></svg>
+          <span class="account__initial" id="account-initial"></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="stage" id="stage">
+      <div class="panes" id="panes">
+        <section class="pane" id="pane-a" data-deck="A" aria-label="Deck A code">
+          <button type="button" class="pane__tag" id="tag-a">A</button>
+          <div class="editor" id="editor-a"></div>
+          <!--prerender-->
+        </section>
+        <section class="pane" id="pane-b" data-deck="B" aria-label="Deck B code">
+          <button type="button" class="pane__tag" id="tag-b">B</button>
+          <div class="editor" id="editor-b"></div>
+          <div class="pane__empty" id="empty-b">
+            <p class="pane__empty-title">Deck B is empty</p>
+            <p>Load a second beat here, then bring it in with the crossfader or <strong>Mix</strong>.</p>
+            <button type="button" class="pillbtn" id="load-b">Choose a beat</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="stagebar" role="group" aria-label="Code and view">
+        <button type="button" class="stagebar__btn stagebar__btn--go" id="update" title="Run the edited code (Ctrl+Enter)" hidden>Update</button>
+        <button type="button" class="stagebar__btn" id="edit" aria-pressed="false" title="Unlock the code for editing">Edit</button>
+        <button type="button" class="stagebar__btn" id="save-copy" title="Save this as one of my songs" hidden>Save a copy</button>
+        <span class="stagebar__unsaved" id="unsaved" hidden>Unsaved changes</span>
+        <button type="button" class="stagebar__btn stagebar__btn--save" id="save" title="Save over this song (Ctrl+S)" hidden>Save</button>
+        <button type="button" class="stagebar__btn stagebar__btn--save" id="save-new" title="Keep this version as a new song of mine" hidden>Save as new</button>
+        <button type="button" class="stagebar__btn" id="save-beat" title="Replace the public beat with this version, for everyone" hidden>Update the beat</button>
+        <button type="button" class="stagebar__btn" id="revert" title="Throw these changes away" hidden>Revert</button>
+        <span class="stagebar__gap" aria-hidden="true"></span>
+        <button type="button" class="stagebar__btn" id="follow" aria-pressed="false" title="The code follows the music (F)">Follow</button>
+        <button type="button" class="stagebar__btn" id="split" aria-pressed="false" title="Show both decks side by side">Split</button>
+        <button type="button" class="stagebar__btn" id="gallery" title="Full screen, code only (G)">Gallery</button>
+      </div>
+
+      <div class="hud" id="hud">
+        <p class="hud__now"><span id="hud-title"></span><span class="hud__bar" id="hud-bar"></span></p>
+        <button type="button" class="pillbtn" id="hud-exit">Exit gallery</button>
+      </div>
+
+      <div class="curtain" id="curtain">
+        <p class="curtain__kicker">Live-coded music · press play</p>
+        <p class="curtain__title" id="curtain-title">&nbsp;</p>
+        <p class="curtain__by" id="curtain-by"></p>
+        <button type="button" class="curtain__play" id="curtain-play" aria-label="Play">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z" /></svg>
+          <span class="spinner" aria-hidden="true"></span>
+        </button>
+        <p class="curtain__hint">The code is the score. It plays itself — you mix it.</p>
+      </div>
+
+      <div class="gate" id="gate" hidden>
+        <p class="curtain__kicker">Shared song</p>
+        <p class="gate__title" id="gate-title"></p>
+        <p class="gate__by" id="gate-by"></p>
+        <p class="gate__text">
+          A song is code, and running it lets that code act as you on this site. The code is on the stage behind this message: read it,
+          and run it only if you trust who sent it.
+        </p>
+        <div class="gate__actions">
+          <button type="button" class="pillbtn pillbtn--go" id="gate-run">Run this song</button>
+          <button type="button" class="pillbtn" id="gate-read">Read the code first</button>
+        </div>
+      </div>
+
+      <div class="gate locked" id="locked" hidden>
+        <p class="curtain__kicker">Sign in to play</p>
+        <p class="gate__title" id="locked-title"></p>
+        <p class="gate__by" id="locked-by"></p>
+        <p class="gate__text" id="locked-text"></p>
+        <div class="locked__notes" id="locked-notes"></div>
+        <div class="gate__actions">
+          <button type="button" class="pillbtn pillbtn--go" id="locked-sign-in">Sign in with Google</button>
+          <button type="button" class="pillbtn" id="locked-featured">Play the featured beat</button>
+        </div>
+      </div>
+
+      <div class="notice" id="notice" role="alert" hidden>
+        <p class="notice__title" id="notice-title"></p>
+        <p class="notice__detail" id="notice-detail"></p>
+      </div>
+
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </main>
+
+    <div class="ribbon" id="ribbon-row">
+      <div class="ribbon__side">
+        <button type="button" class="ribbon__label" id="ribbon-toggle" aria-expanded="false" title="Show the arrangement with track names">
+          <span>Arrangement</span>
+          <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 7.5 6 4l3.5 3.5" /></svg>
+        </button>
+        <ol class="ribbon__rows" id="ribbon-rows"></ol>
+      </div>
+      <canvas class="ribbon__canvas" id="ribbon" role="img" aria-label="Arrangement: which tracks play in each of 32 bars. Click a bar to jump there."></canvas>
+      <div class="ribbon__tools">
+        <button type="button" class="ribbon__btn" id="midi-button" aria-pressed="false" title="Bind a MIDI controller to the deck">MIDI</button>
+        <button type="button" class="ribbon__btn" id="deck-toggle" aria-expanded="true" aria-controls="deck">
+          <span>Controls</span>
+          <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" /></svg>
+        </button>
+      </div>
+    </div>
+
+    <section class="deck" id="deck" data-tab="knobs" data-deck="A" aria-label="Controls">
+      <div class="deck__tabs" role="group" aria-label="Control groups">
+        <button type="button" class="deck__tab" data-tab="knobs" aria-pressed="true">Knobs</button>
+        <button type="button" class="deck__tab" data-tab="mixer" aria-pressed="false">Mixer</button>
+        <button type="button" class="deck__tab" data-tab="pads" aria-pressed="false">Pads</button>
+        <button type="button" class="deck__tab" data-tab="master" aria-pressed="false">Master</button>
+      </div>
+
+      <div class="panel panel--knobs" data-panel="knobs">
+        <header class="panel__head">
+          <h2 class="panel__title">Song knobs <span class="panel__deck"></span></h2>
+          <button type="button" class="textbtn" id="reset">Reset</button>
+        </header>
+        <div class="knobs" id="knobs"></div>
+        <p class="panel__empty" id="knobs-empty" hidden>This beat has no sliders in its code. The mixer and master still work.</p>
+        <p class="panel__empty" id="knobs-idle" hidden>No beat on this deck yet.</p>
+      </div>
+
+      <div class="panel panel--mixer" data-panel="mixer">
+        <header class="panel__head">
+          <h2 class="panel__title">Channels <span class="panel__deck"></span></h2>
+          <span class="panel__note">M mute · S solo · name focuses</span>
+        </header>
+        <div class="strips" id="strips"></div>
+        <p class="panel__empty" id="strips-empty" hidden>This beat is a single pattern, so there are no separate channels.</p>
+      </div>
+
+      <div class="panel panel--pads" data-panel="pads">
+        <header class="panel__head">
+          <h2 class="panel__title">Pads</h2>
+          <span class="panel__note">hold</span>
+        </header>
+        <div class="pads" id="pads"></div>
+      </div>
+
+      <div class="panel panel--master" data-panel="master">
+        <header class="panel__head">
+          <h2 class="panel__title">Master</h2>
+          <div class="meter" id="meter" aria-hidden="true"><span></span></div>
+        </header>
+        <div class="master">
+          <div class="master__knobs" id="master"></div>
+          <div class="mixrow">
+            <span class="mixrow__end">A</span>
+            <div class="mixrow__fader" id="crossfader"></div>
+            <span class="mixrow__end">B</span>
+            <button type="button" class="chipbtn" id="sync" aria-pressed="true" title="Keep both decks at one tempo and start them on the bar">Sync</button>
+            <button type="button" class="chipbtn chipbtn--go" id="mix" title="Start the other deck in time and fade across over 8 bars (M)">Mix</button>
+          </div>
+          <canvas class="spectrum" id="spectrum" aria-hidden="true"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="intro" id="intro" aria-labelledby="intro-title">
+      <div class="intro__pitch">
+        <h2 class="intro__title" id="intro-title">This is music made by code.</h2>
+        <p class="intro__lede" id="intro-lede">
+          Every sound you hear comes from the code above, running live in your browser. Press play and watch it work. Sign in, free,
+          to take the controls.
+        </p>
+      </div>
+      <ul class="intro__points" id="intro-points">
+        <li><strong>Mix it.</strong> Two decks in time with each other, a crossfader, and a knob for every number in the song.</li>
+        <li><strong>Change it.</strong> Edit the code while it plays. The music carries on with your change.</li>
+        <li><strong>Keep it.</strong> Your versions are saved to your account, and you can share one by link.</li>
+      </ul>
+      <div class="intro__action">
+        <button type="button" class="pillbtn pillbtn--go" id="intro-sign-in">Sign in with Google</button>
+        <p class="intro__fine" id="intro-fine">
+          We store your name, email address and the songs you save. <a href="privacy" target="_blank" rel="noopener">Privacy</a> ·
+          <a href="about" target="_blank" rel="noopener">About</a>
+        </p>
+      </div>
+    </section>
+
+    <footer class="sitefoot">
+      <p class="sitefoot__legal">
+        © Built By Signal LLC · <a href="about" target="_blank" rel="noopener">About</a> ·
+        <a href="privacy" target="_blank" rel="noopener">Privacy</a>
+      </p>
+      <a class="signal" href="https://builtbysignal.com" target="_blank" rel="noopener" aria-label="Built by SIGNAL (opens in a new window)">
+        <svg class="signal__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="5" fill="#181A1F" /><rect x="14" y="7" width="4" height="18" fill="#DD5E2E" /></svg>
+        <span>Built by <strong>SIGNAL</strong></span>
+      </a>
+    </footer>
+
+    <dialog class="drawer" id="crate" aria-labelledby="crate-title">
+      <header class="drawer__head">
+        <div>
+          <h2 class="drawer__title" id="crate-title">Beats</h2>
+          <p class="drawer__count" id="crate-count"></p>
+        </div>
+        <button type="button" class="iconbtn" id="crate-close" aria-label="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+      </header>
+      <div class="drawer__scroll">
+        <section class="drawer__section" id="mine-section" aria-labelledby="mine-title">
+          <header class="drawer__bar">
+            <h3 class="drawer__heading" id="mine-title">My songs</h3>
+            <div class="drawer__tools">
+              <button type="button" class="textbtn" id="song-new">New</button>
+              <button type="button" class="textbtn" id="song-import">Import</button>
+              <button type="button" class="textbtn" id="song-export">Export</button>
+              <input type="file" id="song-file" accept=".json,.js,.strudel,.str,.txt,application/json,text/plain" multiple hidden />
+            </div>
+          </header>
+          <ol class="drawer__list" id="mine-list"></ol>
+          <p class="drawer__note" id="mine-note"></p>
+        </section>
+        <section class="drawer__section" aria-labelledby="beats-title">
+          <header class="drawer__bar">
+            <h3 class="drawer__heading" id="beats-title">Beats</h3>
+          </header>
+          <ol class="drawer__list" id="crate-list"></ol>
+        </section>
+      </div>
+      <p class="drawer__foot">Click a song to load it on the deck in focus, or pick a deck with A / B.</p>
+    </dialog>
+
+    <dialog class="sheet sheet--narrow" id="account-dialog" aria-labelledby="account-title">
+      <header class="sheet__head">
+        <h2 class="sheet__title" id="account-title">Account</h2>
+        <button type="button" class="iconbtn" id="account-close" aria-label="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+      </header>
+      <div class="sheet__body">
+        <div id="account-out">
+          <p>
+            An account opens the whole site: the decks, every knob, editing the code, and your own songs, kept in your account and
+            shareable by link. It is free.
+          </p>
+          <div class="sheet__row">
+            <button type="button" class="pillbtn pillbtn--go" id="sign-in">Sign in with Google</button>
+          </div>
+          <p class="sheet__fine">
+            We store your name, email address and the songs you save. See the <a href="privacy" target="_blank" rel="noopener">privacy notice</a>.
+          </p>
+        </div>
+        <div id="account-in" hidden>
+          <p class="account__who"><span class="account__name" id="account-name"></span><span class="account__email" id="account-email"></span></p>
+          <p id="account-count"></p>
+          <div class="sheet__row">
+            <button type="button" class="pillbtn" id="open-admin" hidden>Admin</button>
+            <button type="button" class="pillbtn" id="sign-out">Sign out</button>
+          </div>
+          <p class="sheet__fine">Signing out removes your account's songs from this browser. They stay in your account.</p>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="sheet sheet--narrow" id="unsaved-dialog" aria-labelledby="unsaved-title">
+      <header class="sheet__head">
+        <h2 class="sheet__title" id="unsaved-title">Unsaved changes</h2>
+      </header>
+      <div class="sheet__body">
+        <p id="unsaved-text"></p>
+        <div class="sheet__row">
+          <button type="button" class="pillbtn pillbtn--go" id="unsaved-save">Save</button>
+          <button type="button" class="pillbtn" id="unsaved-new">Save as new</button>
+          <button type="button" class="pillbtn" id="unsaved-discard">Discard</button>
+          <button type="button" class="pillbtn" id="unsaved-cancel">Cancel</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="sheet" id="admin" aria-labelledby="admin-title">
+      <header class="sheet__head">
+        <h2 class="sheet__title" id="admin-title">Admin</h2>
+        <button type="button" class="iconbtn" id="admin-close" aria-label="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+      </header>
+      <div class="sheet__body">
+        <div class="admin__tabs" role="group" aria-label="Admin sections">
+          <button type="button" class="chipbtn" data-admin-tab="beats" aria-pressed="true">Beats</button>
+          <button type="button" class="chipbtn" data-admin-tab="shared" aria-pressed="false">Shared songs</button>
+        </div>
+        <p class="admin__status" id="admin-status" role="status" aria-live="polite"></p>
+
+        <section data-admin-panel="beats">
+          <p class="sheet__fine">
+            The site's beats, in this order. Anyone can play the <strong>featured</strong> beat, signed in or not. A beat switched to
+            <strong>Members</strong> can be played by everyone who is signed in. Every other beat is yours alone.
+          </p>
+          <ol class="admin__list" id="admin-beats"></ol>
+          <div class="sheet__row">
+            <button type="button" class="pillbtn pillbtn--go" id="admin-seed" hidden>Publish the site's own beats</button>
+          </div>
+          <h3>Add a beat</h3>
+          <div class="sheet__row">
+            <select id="admin-song" aria-label="One of my songs"></select>
+            <button type="button" class="pillbtn" id="admin-publish">Add this song</button>
+          </div>
+          <div class="sheet__row">
+            <button type="button" class="pillbtn" id="admin-import">Import a file</button>
+            <input type="file" id="admin-file" accept=".json,application/json" hidden />
+          </div>
+          <p class="sheet__fine">A file is a strudel.cc export. Patterns already here are skipped. A new beat is yours alone until you open it to members.</p>
+        </section>
+
+        <section data-admin-panel="shared" hidden>
+          <p class="sheet__fine">
+            Every song someone has switched sharing on for. Switching one off closes its link, and its owner cannot share it again.
+          </p>
+          <ol class="admin__list" id="admin-shared"></ol>
+        </section>
+      </div>
+    </dialog>
+
+    <dialog class="sheet" id="about" aria-labelledby="about-title">
+      <header class="sheet__head">
+        <h2 class="sheet__title" id="about-title">Hacking the Beats <span class="sheet__version" id="about-version"></span></h2>
+        <button type="button" class="iconbtn" id="about-close" aria-label="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+      </header>
+      <div class="sheet__body">
+        <p>
+          Every sound here is made by the code on screen, running live in your browser. Each knob is a <code>slider()</code> from the
+          song, each channel is one of its labelled patterns, and two decks let you bring a second beat in over the first. The code is
+          yours to change: click in it and type.
+        </p>
+
+        <section class="sheet__song" id="about-song"></section>
+
+        <h3>Keys</h3>
+        <dl class="keys">
+          <div><dt><kbd>Space</kbd></dt><dd>Play or stop the deck in focus</dd></div>
+          <div><dt><kbd>X</kbd></dt><dd>Switch focus between deck A and deck B</dd></div>
+          <div><dt><kbd>M</kbd></dt><dd>Mix: start the other deck in time and fade across</dd></div>
+          <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous or next beat</dd></div>
+          <div><dt><kbd>1</kbd>–<kbd>9</kbd> <kbd>0</kbd> <kbd>-</kbd> <kbd>=</kbd></dt><dd>Mute channels 1 to 12</dd></div>
+          <div><dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></dt><dd>Hold a pad: echo, drop, wash, half, stutter, no drums. With <kbd>Shift</kbd> it stays on.</dd></div>
+          <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Jump back or forward four bars</dd></div>
+          <div><dt><kbd>F</kbd> <kbd>G</kbd></dt><dd>Follow the music with the code; gallery (full-screen) view</dd></div>
+          <div><dt><kbd>R</kbd> <kbd>B</kbd></dt><dd>Record the mix to a WAV file; open the beats list</dd></div>
+          <div><dt>On a knob</dt><dd>Arrows adjust, <kbd>Shift</kbd> for fine, <kbd>Enter</kbd> or double-click resets</dd></div>
+          <div><dt>In the code</dt><dd>Click a track label to mute it, click a highlighted number to find its knob, drag an inline slider</dd></div>
+          <div><dt>Editing</dt><dd>Click in the code (or press <strong>Edit</strong>) to change it. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> runs your changes without stopping the music, <kbd>Ctrl</kbd>+<kbd>S</kbd> saves, <kbd>Esc</kbd> leaves the code. Changed lines are marked until you save.</dd></div>
+        </dl>
+
+        <h3>MIDI controller</h3>
+        <p id="midi-status">Not connected.</p>
+        <div class="sheet__row">
+          <button type="button" class="pillbtn" id="midi-connect">Connect</button>
+          <button type="button" class="pillbtn" id="midi-learn" aria-pressed="false">Learn</button>
+          <button type="button" class="pillbtn" id="midi-clear">Forget bindings</button>
+        </div>
+        <p class="sheet__fine">With Learn on, click any knob, fader, pad or button on the deck, then move a control on your hardware.</p>
+
+        <h3>Credits and source</h3>
+        <p>
+          Built on <a href="https://strudel.cc" target="_blank" rel="noopener">Strudel</a>, © Strudel contributors, under the
+          <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">GNU AGPL v3</a>. This site is free
+          software under the same licence, with no warranty:
+          <a id="source-link" href="source/" download>download the source of this version</a>, or read it on
+          <a href="https://github.com/BUILTBYSIGNAL/hackthebeats_com" target="_blank" rel="noopener">GitHub</a>.
+        </p>
+        <p>
+          Hacking the Beats is owned and operated by Built By Signal LLC
+          (<a href="https://builtbysignal.com" target="_blank" rel="noopener">builtbysignal.com</a>).
+        </p>
+        <p>
+          Songs are credited in their own code, and sounds come from public sample packs that belong to their authors.
+          <a href="about" target="_blank" rel="noopener">About this site, credits and contact</a> ·
+          <a href="privacy" target="_blank" rel="noopener">Privacy</a>
+        </p>
+      </div>
+    </dialog>
+
+    <!-- this site's own settings (js/config.js); empty unless config.site.json exists -->
+    <script src="site-config.js"></script>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

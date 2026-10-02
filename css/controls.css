@@ -1,0 +1,277 @@
+/* Knob, fader, crossfader and pad. */
+
+.knob {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: 80px;
+  flex: none;
+}
+.knob--sm {
+  width: 62px;
+  gap: 6px;
+}
+.knob__dial {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.knob--sm .knob__dial {
+  width: 46px;
+  height: 46px;
+}
+.knob__dial.is-grabbed {
+  cursor: grabbing;
+}
+.knob__dial svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.knob__track,
+.knob__arc {
+  fill: none;
+  stroke-width: 3;
+}
+.knob__track {
+  stroke: var(--hb-line);
+  stroke-linecap: round;
+}
+.knob__arc {
+  stroke: var(--hb-ink);
+  stroke-dasharray: 0 100;
+  transition: stroke 0.15s;
+}
+.knob__hand {
+  transform-origin: 32px 32px;
+}
+.knob__cap {
+  fill: var(--hb-raise);
+  stroke: var(--hb-line);
+  stroke-width: 1;
+  transition: fill 0.15s;
+}
+.knob__needle {
+  stroke: var(--hb-ink);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+/* a switch is a knob that clicks between named positions */
+.knob--switch .knob__cap {
+  stroke: var(--hb-ink-4);
+  stroke-dasharray: 2 3;
+}
+.knob--switch .knob__value {
+  color: var(--hb-ink);
+}
+.knob__dial:hover .knob__cap {
+  fill: var(--hb-line);
+}
+.knob__dial.is-grabbed .knob__arc,
+.knob__dial:focus-visible .knob__arc {
+  stroke: var(--hb-accent);
+}
+.knob__dial:focus-visible {
+  outline-offset: 3px;
+  border-radius: 50%;
+}
+
+.knob__text {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  text-align: center;
+}
+.knob__label,
+.knob__sub,
+.knob__value {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.knob__label {
+  font: 500 10.5px/1.1 var(--hb-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hb-ink);
+}
+.knob--sm .knob__label {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+}
+.knob__sub {
+  font: 400 10px/1.1 var(--hb-mono);
+  color: var(--hb-ink-4);
+}
+.knob__value {
+  font: 400 11px/1.1 var(--hb-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--hb-ink-2);
+}
+.knob--sm .knob__value {
+  font-size: 10.5px;
+}
+
+.fader {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: 30px;
+  height: 88px;
+  border-radius: 4px;
+  cursor: ns-resize;
+  touch-action: none;
+  transition: opacity 0.2s;
+}
+.fader__rail {
+  position: relative;
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--hb-line);
+}
+/* unity gain mark (100% of 125%) */
+.fader__rail::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  bottom: calc(0.8 * (100% - 10px) + 4.5px);
+  width: 15px;
+  height: 1px;
+  background: var(--hb-ink-5);
+}
+.fader__fill {
+  position: absolute;
+  inset: auto 0 0;
+  height: calc(var(--p, 0) * (100% - 10px) + 5px);
+  border-radius: 2px;
+  background: var(--hb-ink-3);
+}
+.fader__cap {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--p, 0) * (100% - 10px));
+  width: 22px;
+  height: 10px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: var(--hb-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.fader__cap::after {
+  content: '';
+  position: absolute;
+  inset: 4.5px 3px auto;
+  height: 1px;
+  background: var(--hb-bg-deep);
+}
+.fader.is-grabbed .fader__cap,
+.fader:focus-visible .fader__cap {
+  background: var(--hb-accent);
+}
+
+/* crossfader: the same idea, lying down */
+.xfader {
+  position: relative;
+  display: grid;
+  align-items: center;
+  width: 100%;
+  height: 26px;
+  border-radius: 4px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.xfader__rail {
+  position: relative;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--hb-line);
+}
+.xfader__rail::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  width: 1px;
+  height: 15px;
+  background: var(--hb-ink-5);
+}
+.xfader__cap {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--p, 0) * (100% - 12px));
+  width: 12px;
+  height: 22px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--hb-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.xfader__cap::after {
+  content: '';
+  position: absolute;
+  inset: 3px auto 3px 5.5px;
+  width: 1px;
+  background: var(--hb-bg-deep);
+}
+.xfader.is-grabbed .xfader__cap,
+.xfader:focus-visible .xfader__cap {
+  background: var(--hb-accent);
+}
+
+/* a pad is on for as long as it is held */
+.pad {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hb-line);
+  border-radius: 6px;
+  background: var(--hb-panel);
+  color: var(--hb-ink-2);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 0.06s, color 0.06s, border-color 0.06s, transform 0.06s;
+}
+.pad:hover {
+  border-color: var(--hb-ink-4);
+  color: var(--hb-ink);
+}
+.pad[aria-pressed='true'] {
+  background: var(--hb-accent);
+  border-color: var(--hb-accent);
+  color: var(--hb-accent-ink);
+  transform: translateY(1px);
+}
+.pad__label {
+  font: 500 10.5px/1.15 var(--hb-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  padding-top: 6px;
+}
+.pad__key {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  font-size: 9px;
+  color: var(--hb-ink-4);
+}
+.pad[aria-pressed='true'] .pad__key {
+  color: var(--hb-accent-ink);
+}
+@media (hover: none) {
+  .pad__key {
+    display: none;
+  }
+}

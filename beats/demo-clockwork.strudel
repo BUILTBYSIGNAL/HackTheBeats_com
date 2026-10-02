@@ -1,0 +1,40 @@
+/*
+  @title Clockwork
+  @by SIGNAL
+  Three rhythms that only line up now and then, written for this repository.
+  Every part is the same idea, "spread this many hits over that many steps", with different numbers.
+  "drive" sharpens the bass; "space" is how far away the bells are.
+  Public domain (CC0): take it apart.
+*/
+setcps(138/60/4)
+
+const drive = slider(1400, 300, 6000)
+const space = slider(0.3, 0, 0.9)
+
+KICK: s("bd(3,8), ~ sd")
+  .bank("RolandTR808")
+  .gain(0.8)
+  ._punchcard()
+
+HATS: s("hh(5,8), oh(1,8,6)")
+  .bank("RolandTR808")
+  .gain(0.45)
+  .mask("<1 1 1 0>/2")
+  ._punchcard()
+
+BASS: note("e2(5,16), e3(2,16,3)")
+  .s("square")
+  .lpf(drive)
+  .decay(0.12)
+  .sustain(0)
+  .gain(0.4)
+  ._scope()
+
+BELLS: n("0(3,8) 4(3,8,2) <7 9>(5,8)")
+  .scale("E4:phrygian")
+  .s("triangle")
+  .room(space)
+  .delay(0.25)
+  .gain(0.22)
+  .mask("<0 1 1 1>/4")
+  ._punchcard()

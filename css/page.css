@@ -1,0 +1,116 @@
+/* The plain reading pages: about, privacy, not found. */
+body {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding: 48px 20px 80px;
+  color: var(--hb-ink-2);
+  font-size: 15px;
+  line-height: 1.65;
+}
+h1 {
+  font: 200 44px/1.05 var(--hb-sans);
+  letter-spacing: -0.03em;
+  color: var(--hb-ink);
+  margin-bottom: 8px;
+}
+h2 {
+  font: 500 11px/1 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-ink-3);
+  margin: 34px 0 10px;
+}
+p,
+ul {
+  margin: 0 0 12px;
+}
+ul {
+  padding-left: 20px;
+}
+li {
+  margin-bottom: 4px;
+}
+.lede {
+  font-size: 17px;
+  color: var(--hb-ink);
+}
+.updated {
+  color: var(--hb-ink-4);
+  font: 400 12px/1 var(--hb-mono);
+  margin-bottom: 28px;
+}
+.draft {
+  border: 1px solid var(--hb-accent);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: var(--hb-ink);
+}
+.home {
+  display: inline-block;
+  margin-bottom: 28px;
+  font: 500 11px/1 var(--hb-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hb-ink-3);
+  text-decoration: none;
+}
+.home:hover {
+  color: var(--hb-ink);
+}
+.beats {
+  list-style: none;
+  padding: 0;
+  columns: 2 220px;
+}
+.beats span {
+  color: var(--hb-ink-4);
+}
+.pagefoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hb-line-soft);
+  color: var(--hb-ink-4);
+  font-size: 13px;
+}
+.pagefoot p {
+  margin: 0;
+}
+.signal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--hb-ink-3);
+  text-decoration: none;
+  font: 400 11px/1 var(--hb-mono);
+  letter-spacing: 0.04em;
+}
+.signal:hover {
+  color: var(--hb-ink);
+}
+.signal__mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--hb-line);
+}
+.signal strong {
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--hb-ink-2);
+}
+.linklike {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--hb-ink);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--hb-ink-4);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

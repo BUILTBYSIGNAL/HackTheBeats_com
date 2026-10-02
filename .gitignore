@@ -1,0 +1,41 @@
+node_modules/
+.DS_Store
+
+# Downloaded sample audio (npm run samples). Large, third-party, and reproducible,
+# so it is kept out of version control; the full backup archive includes it.
+vendor/samples/
+
+# written by the Firebase emulators and CLI
+*-debug.log
+.firebase/
+
+# the public site, built by `npm run build`
+dist/
+
+# This site's own settings and Firebase project. Copy the .example files to start yours.
+config.site.json
+.firebaserc
+
+# Songs dropped into beats/ stay on this machine. Only the demos are part of the project
+# (tools/check-public.mjs holds the same list).
+beats/*
+!beats/demo-first-light.strudel
+!beats/demo-low-tide.strudel
+!beats/demo-clockwork.strudel
+
+# credentials never belong here
+.env
+.env.*
+*.pem
+*.key
+*service-account*.json
+*-adminsdk-*.json
+
+# notes, drafts and anything else that is not ready to ship stay on this machine
+private/
+
+# local tool settings
+.claude/
+
+# words that must never be published (tools/check-public.mjs); the list itself stays here
+.private-terms

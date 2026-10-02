@@ -1,0 +1,141 @@
+rules_version = '2';
+
+// Who may read and write what.
+//
+//   users/{uid}/songs/{songId}   a person's own songs
+//     - Only the owner can list, create, change or delete their songs.
+//     - A song can be read by anyone holding its link, but only while its owner has
+//       switched sharing on (shared == true). Nobody else can list a person's songs,
+//       so a private song's id cannot be discovered.
+//     - An admin can see every song and switch a shared one off (shared: false,
+//       blocked: true). The owner cannot share a blocked song again.
+//   shares/{uuid}                what a share link points at
+//     - A link is a UUID. Anyone holding it can read whose song it names, nothing more;
+//       nobody can list them. Only the owner creates one, for themselves.
+//   beats/{id}                   the site's beats
+//     - Anyone can read the featured beat. Signed-in people can also read a beat the
+//       admin has opened to members (members == true). Every other beat is the admin's
+//       own. Only an admin can write.
+//   catalog/public               titles and descriptions of the beats, without their code
+//     - Anyone can read it. Only an admin can write it.
+//   Admins
+//     - An admin is an account with a marker document, admins/{uid}, created in the
+//       Firebase console (it can be empty). Nobody can write that collection from the
+//       site, so nothing in a browser can grant the role.
+//     - roles/admin is a question, not a document: the site asks for it to learn whether
+//       the person signed in is an admin, and only an admin gets an answer.
+//   Everything else is closed.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    // An admin is an account with a marker document in admins/. The marker costs a read
+    // of its own, so isAdmin() comes last in every condition that uses it.
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // What a song document may contain, and how big it may be.
+    function validSong(song) {
+      return song.keys().hasOnly(['code', 'title', 'createdAt', 'updatedAt', 'shared', 'mixer', 'ownerName', 'blocked', 'shareId'])
+        && song.keys().hasAll(['code', 'title', 'createdAt', 'updatedAt', 'shared'])
+        && song.code is string && song.code.size() <= 200000
+        && song.title is string && song.title.size() <= 200
+        && song.createdAt is number
+        && song.updatedAt is number
+        && song.shared is bool
+        && (!('mixer' in song) || (song.mixer is list && song.mixer.size() <= 64))
+        && (!('ownerName' in song) || (song.ownerName is string && song.ownerName.size() <= 200))
+        && (!('blocked' in song) || song.blocked is bool)
+        && (!('shareId' in song) || (song.shareId is string && song.shareId.size() <= 64));
+    }
+    function blocked(song) {
+      return song.get('blocked', false);
+    }
+
+    match /users/{uid}/songs/{songId} {
+      allow get: if signedInAs(uid) || resource.data.shared == true || isAdmin();
+      allow list: if signedInAs(uid);
+      allow create: if signedInAs(uid) && validSong(request.resource.data) && !blocked(request.resource.data);
+      // the owner cannot lift a block, or share a song while it is blocked
+      allow update: if (signedInAs(uid)
+          && validSong(request.resource.data)
+          && blocked(request.resource.data) == blocked(resource.data)
+          && !(blocked(request.resource.data) && request.resource.data.shared))
+        // an admin can do exactly one thing to someone's song: switch its sharing off
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shared', 'blocked'])
+          && request.resource.data.shared == false
+          && request.resource.data.blocked == true
+          && isAdmin());
+      allow delete: if signedInAs(uid);
+    }
+
+    // What a share link points at. The link is a UUID, so it cannot be guessed, and these
+    // cannot be listed. Reading one gives away only whose song it is and which; the song
+    // itself is still only readable while its owner has sharing on.
+    match /shares/{shareId} {
+      allow get: if true;
+      allow create, update: if signedIn()
+        && shareId.matches('^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+        && request.resource.data.keys().hasOnly(['owner', 'song', 'createdAt'])
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.song is string && request.resource.data.song.size() <= 64
+        && (resource == null || resource.data.owner == request.auth.uid);
+      allow delete: if (signedIn() && resource.data.owner == request.auth.uid) || isAdmin();
+    }
+
+    // every person's songs at once: the admin's list of what is shared
+    match /{path=**}/songs/{songId} {
+      allow list: if isAdmin();
+    }
+
+    function validBeat(beat) {
+      return beat.keys().hasOnly(['code', 'title', 'by', 'slug', 'order', 'featured', 'members', 'hidden', 'createdAt', 'updatedAt'])
+        && beat.keys().hasAll(['code', 'title', 'slug', 'order', 'featured', 'hidden', 'createdAt', 'updatedAt'])
+        && beat.code is string && beat.code.size() <= 200000
+        && beat.title is string && beat.title.size() <= 200
+        && beat.slug is string && beat.slug.matches('^[a-z0-9-]{1,120}$')
+        && beat.order is number
+        && beat.featured is bool
+        && beat.hidden is bool
+        && beat.createdAt is number
+        && beat.updatedAt is number
+        && (!('by' in beat) || (beat.by is string && beat.by.size() <= 200))
+        && (!('members' in beat) || beat.members is bool);
+    }
+
+    match /beats/{beatId} {
+      allow get, list: if resource.data.featured == true
+        || (signedIn() && resource.data.get('members', false) == true)
+        || isAdmin();
+      allow create, update: if validBeat(request.resource.data) && isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /catalog/{name} {
+      allow get: if true;
+      allow create, update: if name == 'public'
+        && request.resource.data.keys().hasOnly(['beats', 'updatedAt'])
+        && request.resource.data.beats is list && request.resource.data.beats.size() <= 500
+        && isAdmin();
+    }
+
+    match /admins/{uid} {
+      allow get: if signedInAs(uid);
+    }
+
+    match /roles/admin {
+      allow get: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,586 @@
+// Accounts, end to end, against the local Firebase emulators (no real project is touched):
+// signing in, songs following the account, sharing by link, and the security rules.
+//
+//   npm run test:accounts
+//
+// Needs the Firebase CLI (`npm i -g firebase-tools`) and Java for the Firestore emulator.
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { chromium } from 'playwright';
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const PORT = 5197;
+const SITE = `http://localhost:${PORT}/`;
+const AUTH = 'http://127.0.0.1:9199';
+const FIRESTORE = ['127.0.0.1', 8188];
+const CONFIG = {
+  firebase: { apiKey: 'demo-key', authDomain: 'demo-htb.firebaseapp.com', projectId: 'demo-htb', appId: 'demo-app' },
+  emulators: { auth: AUTH, firestore: FIRESTORE },
+  analytics: null,
+};
+// The same server under its other name is a different origin to a browser, which is all
+// the shared-song player needs to be.
+const PLAYER = `http://127.0.0.1:${PORT}`;
+const SPLIT = { ...CONFIG, appOrigin: `http://localhost:${PORT}`, shareOrigin: PLAYER };
+
+// Homebrew's Java is not always on the PATH.
+const env = { ...process.env };
+if (spawnSync('java', ['-version'], { env }).status !== 0) {
+  const brewJava = ['/opt/homebrew/opt/openjdk/bin', '/usr/local/opt/openjdk/bin'].find((dir) => existsSync(dir));
+  if (!brewJava) {
+    console.error('Java was not found. The Firestore emulator needs it (for example: brew install openjdk).');
+    process.exit(1);
+  }
+  env.PATH = `${brewJava}:${env.PATH}`;
+}
+
+const children = [];
+const start = (command, args, options = {}) => {
+  const child = spawn(command, args, { cwd: root, env, stdio: 'ignore', detached: true, ...options });
+  children.push(child);
+  return child;
+};
+const stopAll = () => {
+  for (const child of children) {
+    try {
+      process.kill(-child.pid, 'SIGINT');
+    } catch {
+      /* already gone */
+    }
+  }
+};
+process.on('exit', stopAll);
+
+async function waitFor(url, label, seconds = 60) {
+  for (let i = 0; i < seconds * 4; i++) {
+    try {
+      await fetch(url);
+      return;
+    } catch {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+  throw new Error(`${label} did not start`);
+}
+
+start(process.execPath, [resolve(root, 'tools/serve.mjs')], { env: { ...env, PORT: String(PORT) } });
+start('firebase', ['emulators:start', '--only', 'auth,firestore', '--project', 'demo-htb']);
+await waitFor(SITE, 'the site');
+await waitFor(AUTH, 'the auth emulator');
+await waitFor(`http://${FIRESTORE[0]}:${FIRESTORE[1]}/`, 'the Firestore emulator');
+
+const results = [];
+const check = (name, passed, detail = '') => {
+  results.push([name, Boolean(passed), detail === undefined ? '' : String(detail)]);
+};
+
+const browser = await chromium.launch({ args: ['--disable-audio-output'] });
+const errors = [];
+const arrive = async (page) => {
+  await page.waitForFunction(() => window.hackingTheBeats?.players.A.song && window.hackingTheBeats.cloud.ready, null, { timeout: 45000 });
+  await page.evaluate(() => window.hackingTheBeats.cloud.ready);
+};
+async function visitor(url = SITE, config = CONFIG) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
+  await context.addInitScript((value) => (window.HTB_CONFIG = value), config);
+  const page = await context.newPage();
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(url);
+  await arrive(page);
+  return page;
+}
+const settle = (page, ms = 400) => page.waitForTimeout(ms);
+
+try {
+  /* ---------- without an account: the small player ---------- */
+  const one = await visitor();
+  check('the account button appears when accounts are configured', await one.evaluate(() => !document.getElementById('account').hidden));
+  const shown = (page, id) => page.evaluate((el) => getComputedStyle(document.getElementById(el)).display !== 'none', id);
+  const wall = await one.evaluate(() => {
+    const h = window.hackingTheBeats;
+    return { access: h.app.access, featured: h.players.A.song.featured, ready: h.players.A.ready, inert: getComputedStyle(document.querySelector('#pane-a .cm-content')).pointerEvents };
+  });
+  check('signed out, the site is a small player with an introduction', wall.access === 'preview' && (await shown(one, 'intro')) && !(await shown(one, 'deck')) && wall.inert === 'none', JSON.stringify(wall));
+  await one.click('#curtain-play');
+  await one.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 30000 });
+  check('the featured beat plays without an account', wall.featured && wall.ready);
+
+  const lockedBeat = await one.evaluate(() => {
+    const h = window.hackingTheBeats;
+    const song = h.app.songs.find((entry) => !entry.featured && !entry.broken);
+    document.querySelector(`.beat[data-id="${CSS.escape(song.id)}"] .beat__main`).click();
+    return { id: song.id, slug: song.slug, title: song.title };
+  });
+  await settle(one);
+  const locked = await one.evaluate(() => {
+    const h = window.hackingTheBeats;
+    h.players.B.load && document.dispatchEvent(new KeyboardEvent('keydown', { key: 'm' }));
+    return { panel: !document.getElementById('locked').hidden, title: document.getElementById('locked-title').textContent, path: location.pathname, stopped: !h.players.A.started, tab: document.title, onDeck: h.players.A.song.featured, deckB: h.players.B.song };
+  });
+  check('any other beat is described and asks for sign-in', locked.panel && locked.title === lockedBeat.title && locked.path === `/beats/${lockedBeat.slug}` && locked.stopped && locked.onDeck && !locked.deckB && locked.tab.startsWith(lockedBeat.title), JSON.stringify(locked));
+
+  /* ---------- person one ---------- */
+  // a song made before signing in joins the account on sign-in
+  const first = await one.evaluate(() => {
+    const h = window.hackingTheBeats;
+    return h.songs.createBlank().id;
+  });
+  await one.evaluate(() => window.hackingTheBeats.cloud.signInForTest({ sub: 'one', email: 'one@example.com', name: 'One Tester' }));
+  await one.waitForFunction(() => window.hackingTheBeats.cloud.user && window.hackingTheBeats.songs.list().length === 1);
+  await one.waitForFunction((id) => window.hackingTheBeats.players.A.song?.id === id && window.hackingTheBeats.players.A.ready, lockedBeat.id, { timeout: 30000 });
+  const unlocked = await one.evaluate(() => ({ access: window.hackingTheBeats.app.access, panel: !document.getElementById('locked').hidden, standard: !window.hackingTheBeats.cloud.user.admin && document.getElementById('open-admin').hidden }));
+  check('signing in opens the whole site, and the beat that was asked for, without a reload', unlocked.access === 'full' && !unlocked.panel && (await shown(one, 'deck')) && !(await shown(one, 'intro')), JSON.stringify(unlocked));
+  check('a new account is a standard user', unlocked.standard);
+  await one.evaluate(() => window.hackingTheBeats.songs.flush());
+  const afterSignIn = await one.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    return { remote: (await h.cloud.listSongs()).map((s) => s.id), initial: document.getElementById('account-initial').textContent, synced: h.songs.list()[0].synced };
+  });
+  check('signing in shows who is signed in', afterSignIn.initial === 'O', afterSignIn.initial);
+  check('a song made while signed out is added to the account', afterSignIn.remote.length === 1 && afterSignIn.remote[0] === first && afterSignIn.synced);
+
+  // editing the song on a deck saves it to the account
+  await one.evaluate(async (id) => {
+    const h = window.hackingTheBeats;
+    const A = h.players.A;
+    document.querySelector(`.beat[data-id="${id}"] .beat__deck[data-deck="A"]`).click();
+    while (!(A.song?.id === id && A.ready)) await new Promise((r) => setTimeout(r, 50));
+    const view = A.mirror.editor;
+    view.dispatch({ changes: { from: view.state.doc.length, insert: '\nEXTRA: s("hh*2").gain(0.2)\n' } });
+    await A.update();
+    document.getElementById('save').click();
+  }, first);
+  await settle(one, 1200);
+  await one.evaluate(() => window.hackingTheBeats.songs.flush());
+  const edited = await one.evaluate(async () => (await window.hackingTheBeats.cloud.listSongs())[0].code.includes('EXTRA:'));
+  check('edits to my own song are saved to the account when I press Save', edited);
+
+  // sharing
+  const links = await one.evaluate(async (id) => {
+    const h = window.hackingTheBeats;
+    h.songs.setShared(id, true);
+    const secret = h.songs.createBlank();
+    await h.songs.flush();
+    const url = new URL(location.origin);
+    url.hash = `song=${h.cloud.user.uid}~${secret.id}`;
+    return { shared: h.songs.shareLink(id), secret: url.href, uid: h.cloud.user.uid, secretId: secret.id, count: (await h.cloud.listSongs()).length };
+  }, first);
+  const UUID = /#song=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  check('a shared song gets a link that is a UUID and names nobody', UUID.test(links.shared || '') && !links.shared.includes(links.uid) && !links.shared.includes(first), links.shared);
+
+  /* ---------- person two, in another browser ---------- */
+  // here the main site also plays shared songs (no separate player address), so it asks
+  // for an account first
+  const two = await visitor(links.shared);
+  await settle(two, 1200);
+  const asked = await two.evaluate(() => ({ dialog: document.getElementById('account-dialog').open, gated: window.hackingTheBeats.players.A.gated, waiting: Boolean(window.hackingTheBeats.app.pendingShared) }));
+  check('a shared song on the main site waits for sign-in', asked.dialog && !asked.gated && asked.waiting, JSON.stringify(asked));
+  await two.evaluate(() => window.hackingTheBeats.cloud.signInForTest({ sub: 'two', email: 'two@example.com', name: 'Two Tester' }));
+  await two.waitForFunction(() => window.hackingTheBeats.players.A.gated, null, { timeout: 15000 });
+  const gate = await two.evaluate(() => {
+    const A = window.hackingTheBeats.players.A;
+    return { shown: !document.getElementById('gate').hidden, by: document.getElementById('gate-by').textContent, ready: A.ready, code: A.code.includes('EXTRA:'), source: A.song.source, dialog: document.getElementById('account-dialog').open };
+  });
+  check("then someone else's shared song is shown but not run", gate.shown && !gate.ready && gate.code && gate.source === 'shared' && !gate.dialog, gate.by);
+  await two.click('#gate-run');
+  await two.waitForFunction(() => window.hackingTheBeats.players.A.ready, null, { timeout: 30000 });
+  await two.click('#curtain-play');
+  await two.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 30000 });
+  check('it runs once the listener says so', true);
+
+  // the security rules, tried directly as person two
+  const rules = await two.evaluate(async ({ uid, secretId, sharedId, shareId }) => {
+    const fb = await import('/vendor/firebase.bundle.js');
+    const db = fb.getFirestore();
+    const me = fb.getAuth().currentUser.uid;
+    const song = (overrides = {}) => ({ code: 's("bd")', title: 'x', createdAt: 1, updatedAt: 1, shared: false, mixer: [], ownerName: 'Two', ...overrides });
+    const attempt = async (action) => {
+      try {
+        await action();
+        return 'allowed';
+      } catch (error) {
+        return error.code || String(error);
+      }
+    };
+    return {
+      readShared: await attempt(() => fb.getDoc(fb.doc(db, 'users', uid, 'songs', sharedId))),
+      readPrivate: await attempt(() => fb.getDoc(fb.doc(db, 'users', uid, 'songs', secretId))),
+      listOthers: await attempt(() => fb.getDocs(fb.collection(db, 'users', uid, 'songs'))),
+      writeOthers: await attempt(() => fb.setDoc(fb.doc(db, 'users', uid, 'songs', 'planted'), song())),
+      overwriteShared: await attempt(() => fb.setDoc(fb.doc(db, 'users', uid, 'songs', sharedId), song())),
+      deleteOthers: await attempt(() => fb.deleteDoc(fb.doc(db, 'users', uid, 'songs', sharedId))),
+      takeDownOthers: await attempt(() => fb.updateDoc(fb.doc(db, 'users', uid, 'songs', sharedId), { shared: false, blocked: true })),
+      writeOwn: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'mine'), song())),
+      writeOwnBlocked: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'born-blocked'), song({ blocked: true }))),
+      writeOwnHuge: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'huge'), song({ code: 'x'.repeat(200001) }))),
+      writeOwnExtraField: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'songs', 'extra'), { ...song(), admin: true })),
+      writeElsewhere: await attempt(() => fb.setDoc(fb.doc(db, 'anything', 'else'), { a: 1 })),
+      makeSelfAdmin: await attempt(() => fb.setDoc(fb.doc(db, 'admins', me), {})),
+      listEveryonesShared: await attempt(() => fb.getDocs(fb.query(fb.collectionGroup(db, 'songs'), fb.where('shared', '==', true)))),
+      writeBeat: await attempt(() => fb.setDoc(fb.doc(db, 'beats', 'mine'), { code: 'x', title: 'x', slug: 'x', order: 1, featured: true, hidden: false, createdAt: 1, updatedAt: 1 })),
+      writeCatalog: await attempt(() => fb.setDoc(fb.doc(db, 'catalog', 'public'), { beats: [], updatedAt: 1 })),
+      listShares: await attempt(() => fb.getDocs(fb.collection(db, 'shares'))),
+      shareForSomeoneElse: await attempt(() => fb.setDoc(fb.doc(db, 'shares', '00000000-0000-4000-8000-000000000001'), { owner: uid, song: secretId, createdAt: 1 })),
+      shareWithAName: await attempt(() => fb.setDoc(fb.doc(db, 'shares', 'my-song'), { owner: me, song: 'mine', createdAt: 1 })),
+      hijackShare: await attempt(() => fb.setDoc(fb.doc(db, 'shares', shareId), { owner: me, song: 'mine', createdAt: 1 })),
+      deleteOthersShare: await attempt(() => fb.deleteDoc(fb.doc(db, 'shares', shareId))),
+    };
+  }, { uid: links.uid, secretId: links.secretId, sharedId: first, shareId: links.shared.split('#song=')[1] });
+  const denied = (value) => value === 'permission-denied';
+  check('rules: anyone with the link can read a shared song', rules.readShared === 'allowed', rules.readShared);
+  check("rules: nobody else can read a private song", denied(rules.readPrivate), rules.readPrivate);
+  check("rules: nobody else can list a person's songs", denied(rules.listOthers) && denied(rules.listEveryonesShared), `${rules.listOthers} / ${rules.listEveryonesShared}`);
+  check("rules: nobody else can write into a person's account", denied(rules.writeOthers) && denied(rules.overwriteShared) && denied(rules.deleteOthers) && denied(rules.takeDownOthers), `${rules.writeOthers} / ${rules.overwriteShared} / ${rules.deleteOthers} / ${rules.takeDownOthers}`);
+  check('rules: a person can save their own song', rules.writeOwn === 'allowed', rules.writeOwn);
+  check('rules: oversized or malformed songs are refused', denied(rules.writeOwnHuge) && denied(rules.writeOwnExtraField) && denied(rules.writeOwnBlocked), `${rules.writeOwnHuge} / ${rules.writeOwnExtraField} / ${rules.writeOwnBlocked}`);
+  check('rules: a standard user cannot make themselves admin, or publish beats', denied(rules.makeSelfAdmin) && denied(rules.writeBeat) && denied(rules.writeCatalog), `${rules.makeSelfAdmin} / ${rules.writeBeat} / ${rules.writeCatalog}`);
+  check('rules: share links cannot be listed, forged, taken over or removed by someone else', denied(rules.listShares) && denied(rules.shareForSomeoneElse) && denied(rules.shareWithAName) && denied(rules.hijackShare) && denied(rules.deleteOthersShare), `${rules.listShares} / ${rules.shareForSomeoneElse} / ${rules.shareWithAName} / ${rules.hijackShare} / ${rules.deleteOthersShare}`);
+  check('rules: the rest of the database is closed', denied(rules.writeElsewhere), rules.writeElsewhere);
+
+  // keeping a copy of the shared song
+  await two.click('#save-copy');
+  await settle(two);
+  await two.evaluate(() => window.hackingTheBeats.songs.flush());
+  const copy = await two.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    return { own: h.players.A.own, mine: h.songs.list().length, remote: (await h.cloud.listSongs()).some((s) => s.code.includes('EXTRA:')) };
+  });
+  check('"Save a copy" puts a shared song in my own account', copy.own && copy.remote, JSON.stringify(copy));
+
+  // a private song's link opens nothing, even for someone signed in
+  await two.goto(links.secret);
+  await two.waitForFunction(() => /no longer available/.test(document.getElementById('status').textContent), null, { timeout: 15000 }).catch(() => {});
+  const blocked = await two.evaluate(() => ({ gated: window.hackingTheBeats.players.A.gated, status: document.getElementById('status').textContent }));
+  check('a private song cannot be opened by its link', !blocked.gated && /no longer available/.test(blocked.status), blocked.status);
+
+  // switching sharing off closes the link
+  await one.evaluate(async (id) => {
+    window.hackingTheBeats.songs.setShared(id, false);
+    await window.hackingTheBeats.songs.flush();
+  }, first);
+  const closed = await two.evaluate(async ({ uid, id, shareId }) => ({ song: await window.hackingTheBeats.cloud.getShared(uid, id), link: await window.hackingTheBeats.cloud.getShare(shareId) }), { uid: links.uid, id: first, shareId: links.shared.split('#song=')[1] });
+  check('switching sharing off closes the link for good', closed.song === null && closed.link === null);
+
+  // signing out and in again
+  await one.evaluate(async () => {
+    await window.hackingTheBeats.songs.flush();
+    await window.hackingTheBeats.cloud.signOut();
+  });
+  await one.waitForFunction(() => !window.hackingTheBeats.cloud.user && window.hackingTheBeats.app.access === 'preview');
+  await one.waitForFunction(() => window.hackingTheBeats.players.A.song?.featured, null, { timeout: 15000 });
+  await settle(one);
+  const out = await one.evaluate(() => ({ mine: window.hackingTheBeats.songs.list().length, stored: JSON.parse(localStorage.getItem('hacking-the-beats:songs') || '[]').length, path: location.pathname }));
+  check("signing out removes the account's songs from the browser", out.mine === 0 && out.stored === 0, JSON.stringify(out));
+  check('signing out goes back to the small player and the featured beat', (await shown(one, 'intro')) && !(await shown(one, 'deck')) && out.path === '/');
+  await one.evaluate(() => window.hackingTheBeats.cloud.signInForTest({ sub: 'one', email: 'one@example.com', name: 'One Tester' }));
+  await one.waitForFunction((count) => window.hackingTheBeats.songs.list().length === count, links.count, { timeout: 15000 });
+  check('signing in again brings them back', true, `${links.count} songs`);
+
+  // deleting
+  const remaining = await one.evaluate(async (id) => {
+    const h = window.hackingTheBeats;
+    h.songs.remove(id);
+    await new Promise((r) => setTimeout(r, 800));
+    return (await h.cloud.listSongs()).map((s) => s.id);
+  }, links.secretId);
+  check('deleting a song removes it from the account', !remaining.includes(links.secretId) && remaining.includes(first));
+
+  // the real sign-in button, through the emulator's stand-in for Google's account chooser
+  const three = await visitor();
+  const [popup] = await Promise.all([three.waitForEvent('popup'), three.click('#intro-sign-in')]);
+  // the emulator's page can take a click before its script is listening: press until the form opens
+  await popup.waitForLoadState('load');
+  for (let i = 0; i < 10 && !(await popup.isVisible('#email-input')); i++) {
+    await popup.click('#add-account-button');
+    await popup.waitForTimeout(500);
+  }
+  await popup.fill('#email-input', 'three@example.com');
+  await popup.fill('#display-name-input', 'Three Tester');
+  await popup.click('#sign-in');
+  await three.waitForFunction(() => window.hackingTheBeats.cloud.user, null, { timeout: 20000 });
+  await three.waitForFunction(() => window.hackingTheBeats.app.access === 'full');
+  const signedIn = await three.evaluate(() => ({ user: Boolean(window.hackingTheBeats.cloud.user?.email), button: document.getElementById('account').classList.contains('is-signed-in') }));
+  check('the "Sign in with Google" button signs in through the pop-up', signedIn.user && signedIn.button && (await shown(three, 'deck')), JSON.stringify(signedIn));
+  await three.click('#account');
+  await three.click('#sign-out');
+  await three.waitForFunction(() => !window.hackingTheBeats.cloud.user, null, { timeout: 10000 });
+  check('"Sign out" signs out', true);
+
+  /* ---------- with a separate address for shared songs ---------- */
+
+  const owner = await visitor(SITE, SPLIT);
+  await owner.evaluate(() => window.hackingTheBeats.cloud.signInForTest({ sub: 'one', email: 'one@example.com', name: 'One Tester' }));
+  await owner.waitForFunction((id) => window.hackingTheBeats.songs.get(id), first, { timeout: 15000 });
+  const playerLink = await owner.evaluate(async (id) => {
+    const h = window.hackingTheBeats;
+    h.songs.setShared(id, true);
+    await h.songs.flush();
+    return h.songs.shareLink(id);
+  }, first);
+  check("sharing again makes a new link, on the player's address", playerLink?.startsWith(`${PLAYER}/#song=`) && UUID.test(playerLink) && playerLink.split('#song=')[1] !== links.shared.split('#song=')[1], playerLink);
+
+  // someone with no account follows the link
+  const stranger = await visitor(playerLink, SPLIT);
+  await stranger.waitForFunction(() => window.hackingTheBeats.players.A.song?.source === 'shared' && window.hackingTheBeats.players.A.ready, null, { timeout: 30000 });
+  await stranger.click('#curtain-play');
+  await stranger.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 30000 });
+  check('a shared song plays for someone who is not signed in', (await shown(stranger, 'intro')) && !(await shown(stranger, 'deck')));
+  await stranger.click('#intro-sign-in');
+  await stranger.waitForURL((url) => url.origin === new URL(SITE).origin, { timeout: 15000 });
+  await arrive(stranger);
+  await stranger.waitForFunction(() => window.hackingTheBeats.app.pendingShared, null, { timeout: 15000 });
+  check('"Edit a copy" takes them to the main site, which asks them to sign in', await stranger.evaluate(() => document.getElementById('account-dialog').open && !window.hackingTheBeats.players.A.gated));
+
+  // a signed-in listener with a song of their own follows a link on the main address
+  const listener = await visitor(SITE, SPLIT);
+  await listener.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    await h.cloud.signInForTest({ sub: 'two', email: 'two@example.com', name: 'Two Tester' });
+    h.songs.createBlank();
+    await h.songs.flush();
+  });
+  const session = await listener.evaluate(async () => ((await indexedDB.databases?.()) || []).some((db) => db.name === 'firebaseLocalStorageDb'));
+  check('(the main address does hold my session and my songs)', session && (await listener.evaluate(() => window.hackingTheBeats.songs.list().length >= 1)));
+  await listener.goto(`${SITE}#song=${links.uid}~${first}`);
+  await listener.waitForURL((url) => url.origin === PLAYER, { timeout: 15000 });
+  await arrive(listener);
+  await listener.waitForFunction(() => window.hackingTheBeats.players.A.song?.source === 'shared' && window.hackingTheBeats.players.A.ready, null, { timeout: 30000 });
+  const guest = await listener.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const databases = (await indexedDB.databases?.()) || [];
+    return {
+      guest: h.site.guest,
+      access: h.app.access,
+      gated: h.players.A.gated,
+      code: h.players.A.code.includes('EXTRA:'),
+      user: h.cloud.user,
+      keep: document.getElementById('intro-sign-in').textContent,
+      mine: h.songs.list().length,
+      stored: localStorage.getItem('hacking-the-beats:songs'),
+      // where Firebase keeps a signed-in session
+      authStore: databases.some((db) => db.name === 'firebaseLocalStorageDb'),
+      hash: location.hash,
+    };
+  });
+  check('a shared song opens on the player, ready to play', guest.guest && guest.access === 'preview' && !guest.gated && guest.code && guest.hash.startsWith('#song='), JSON.stringify({ guest: guest.guest, gated: guest.gated }));
+  check('the player has no account and none of my songs', guest.user === null && !(await shown(listener, 'account')) && guest.mine === 0 && guest.stored === null && !guest.authStore, JSON.stringify(guest));
+  check('the player does not offer editing, only a copy to take home', !(await shown(listener, 'edit')) && guest.keep === 'Edit a copy', guest.keep);
+
+  // taking a copy home: back on the main address, signed in, and asked before it runs
+  await listener.click('#intro-sign-in');
+  await listener.waitForURL((url) => url.origin === new URL(SITE).origin, { timeout: 15000 });
+  await arrive(listener);
+  await listener.waitForFunction(() => window.hackingTheBeats.players.A.gated, null, { timeout: 15000 });
+  const home = await listener.evaluate(() => ({ user: window.hackingTheBeats.cloud.user?.email, gate: !document.getElementById('gate').hidden, ready: window.hackingTheBeats.players.A.ready }));
+  check('signed in, "Edit a copy" opens the song on the main site, behind the question', home.user === 'two@example.com' && home.gate && !home.ready, JSON.stringify(home));
+  await listener.click('#gate-run');
+  await listener.waitForFunction(() => window.hackingTheBeats.players.A.ready, null, { timeout: 30000 });
+  await listener.click('#curtain-play');
+  await listener.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 30000 });
+  await listener.click('#save-copy');
+  await listener.waitForFunction(() => window.hackingTheBeats.players.A.own, null, { timeout: 10000 });
+  check('and from there it can be kept', true);
+
+  // the player's address is only for shared songs
+  await listener.goto(`${PLAYER}/`);
+  await listener.waitForURL((url) => url.origin === new URL(SITE).origin, { timeout: 15000 });
+  check("the player's address with no song goes to the main site", true);
+
+  /* ---------- the admin, and beats in the database ---------- */
+
+  // An admin is an account with a marker document in admins/, which nobody can write from
+  // the site. The Firebase console makes one; here the emulator's owner access does.
+  const rest = (path, options = {}) => fetch(`http://${FIRESTORE[0]}:${FIRESTORE[1]}/v1/projects/demo-htb/databases/(default)/documents/${path}`, { ...options, headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' } });
+  const chief = await visitor();
+  await chief.evaluate(() => window.hackingTheBeats.cloud.signInForTest({ sub: 'chief', email: 'chief@example.com', email_verified: true, name: 'The Chief' }));
+  await chief.waitForFunction(() => window.hackingTheBeats.cloud.user && window.hackingTheBeats.app.access === 'full');
+  const plain = await chief.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const fb = await import('/vendor/firebase.bundle.js');
+    // nobody can make themselves an admin
+    const selfMade = await fb.setDoc(fb.doc(fb.getFirestore(), 'admins', h.cloud.user.uid), {}).then(() => true, () => false);
+    return { uid: h.cloud.user.uid, admin: h.cloud.user.admin, selfMade };
+  });
+  await rest(`admins/${plain.uid}`, { method: 'PATCH', body: JSON.stringify({ fields: {} }) });
+  await chief.reload();
+  await arrive(chief);
+  const marked = await chief.waitForFunction(() => window.hackingTheBeats.cloud.user?.admin, null, { timeout: 15000 }).then(() => true, () => false);
+  check('an account is the admin once it has a marker, and cannot give itself one', plain.admin === false && plain.selfMade === false && marked, JSON.stringify(plain));
+
+  // the first publication: the beats the site came with, in one press
+  await chief.click('#account');
+  await chief.click('#open-admin');
+  await chief.waitForFunction(() => !document.getElementById('admin-seed').hidden, null, { timeout: 15000 });
+  const before = await chief.evaluate(() => ({ count: window.hackingTheBeats.app.songs.length, featured: window.hackingTheBeats.app.songs.find((song) => song.featured).title }));
+  await chief.click('#admin-seed');
+  await chief.waitForFunction(() => document.getElementById('admin-status').textContent.includes("Published the site's"), null, { timeout: 20000 });
+  // the site reads the beats back from the database
+  await chief.waitForFunction(() => window.hackingTheBeats.app.libraryMode === 'database', null, { timeout: 15000 });
+  const seeded = await chief.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const catalog = await h.cloud.getCatalog();
+    return { count: h.admin.beats.length, mine: h.app.songs.filter((song) => song.audience === 'admin').length, public: catalog.beats.map((entry) => entry.title), ids: h.admin.beats.map((entry) => entry.id), mode: h.app.libraryMode, button: document.getElementById('admin-seed').hidden };
+  });
+  check("the admin puts the site's own beats into an empty database in one press", seeded.count === before.count && seeded.mode === 'database' && seeded.button, `${seeded.count} beats`);
+  check('only the featured beat is told to anyone else; the rest are the admin\'s own', seeded.public.join() === before.featured && seeded.mine === before.count - 1, seeded.public.join());
+  // put the database back as it was for what follows
+  for (const id of seeded.ids) await rest(`beats/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  await rest('catalog/public', { method: 'DELETE' });
+
+  const boss = await visitor();
+  await boss.evaluate(() => window.hackingTheBeats.cloud.signInForTest({ sub: 'boss', email: 'boss@example.com', name: 'The Boss' }));
+  await boss.waitForFunction(() => window.hackingTheBeats.cloud.user);
+  const bossUid = await boss.evaluate(() => window.hackingTheBeats.cloud.user.uid);
+  // a second admin, made the way the Firebase console makes one: a marker document
+  const made = await rest(`admins/${bossUid}`, { method: 'PATCH', body: JSON.stringify({ fields: {} }) });
+  await boss.reload();
+  await arrive(boss);
+  await boss.waitForFunction(() => window.hackingTheBeats.cloud.user?.admin, null, { timeout: 15000 });
+  await boss.click('#account');
+  check('an admin is told so, and offered the admin sheet', made.ok && (await boss.evaluate(() => !document.getElementById('open-admin').hidden && /admin/i.test(document.getElementById('account-count').textContent))));
+  await boss.click('#open-admin');
+
+  const beat = (title, note) => `/*\n  @title ${title}\n  ${note}\n*/\nsetcps(120/60/4)\nconst cut = slider(900, 200, 4000)\nLOW: note("c2*4").s("square").lpf(cut).gain(0.4)\nHIGH: note("c4 e4 g4 e4").s("triangle").gain(0.3)\n`;
+  const seed = { t1: { code: beat('Alpha', 'The first one.'), created_at: 1 }, t2: { code: beat('Beta', 'The second one.'), created_at: 2 }, t3: { code: beat('Gamma', 'The third one.'), created_at: 3 } };
+  const status = (text) => boss.waitForFunction((want) => document.getElementById('admin-status').textContent.includes(want), text, { timeout: 15000 });
+  const row = (id) => boss.locator(`#admin-beats .admin__row[data-id="${id}"]`);
+  await boss.setInputFiles('#admin-file', { name: 'seed.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(seed)) });
+  await status('Added 3 beats');
+  await row('t2').getByRole('button', { name: 'Featured' }).click();
+  await status('"Beta" is now the featured beat');
+  await row('t1').getByRole('button', { name: 'Members' }).click();
+  await status('"Alpha" is open to members');
+  await row('t2').getByRole('button', { name: '↑' }).click();
+  await status('Moved "Beta"');
+  const managed = await boss.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const catalog = await h.cloud.getCatalog();
+    return { order: h.admin.beats.map((entry) => entry.id), catalog: catalog.beats.map((entry) => `${entry.id}${entry.featured ? '*' : ''}`), noCode: !JSON.stringify(catalog).includes('setcps'), mode: h.app.libraryMode };
+  });
+  check('the admin adds beats, features one, opens one to members and reorders them', managed.order.join() === 't2,t1,t3' && managed.catalog.join() === 't2*,t1' && managed.noCode, JSON.stringify(managed));
+
+  // what a visitor with no account is given now
+  const passerby = await visitor();
+  const given = await passerby.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const fb = await import('/vendor/firebase.bundle.js');
+    const db = fb.getFirestore();
+    const attempt = async (action) => {
+      try {
+        const result = await action();
+        return result?.exists && !result.exists() ? 'missing' : 'allowed';
+      } catch (error) {
+        return error.code || String(error);
+      }
+    };
+    return {
+      mode: h.app.libraryMode,
+      songs: h.app.songs.map((song) => `${song.title}:${song.code ? 'code' : 'no code'}`),
+      onDeck: h.players.A.song.title,
+      featured: await attempt(() => fb.getDoc(fb.doc(db, 'beats', 't2'))),
+      other: await attempt(() => fb.getDoc(fb.doc(db, 'beats', 't1'))),
+      hidden: await attempt(() => fb.getDoc(fb.doc(db, 'beats', 't3'))),
+      list: await attempt(() => fb.getDocs(fb.collection(db, 'beats'))),
+      catalog: await attempt(() => fb.getDoc(fb.doc(db, 'catalog', 'public'))),
+    };
+  });
+  check('signed out, only the featured beat arrives with its code', given.mode === 'database' && given.songs.join() === 'Beta:code,Alpha:no code' && given.onDeck === 'Beta', JSON.stringify(given.songs));
+  check('rules: signed out, the database gives the catalog and the featured beat, nothing else', given.catalog === 'allowed' && given.featured === 'allowed' && denied(given.other) && denied(given.hidden) && denied(given.list), JSON.stringify(given));
+  // the starter: a new member's own copy of the featured beat
+  await passerby.evaluate(() => document.querySelector('.beat[data-id="t1"] .beat__main').click());
+  await settle(passerby);
+  await passerby.evaluate(() => window.hackingTheBeats.cloud.signInForTest({ sub: 'std', email: 'std@example.com', name: 'Standard User' }));
+  await passerby.waitForFunction(() => window.hackingTheBeats.players.A.song?.id === 't1' && window.hackingTheBeats.players.A.ready, null, { timeout: 30000 });
+  const member = await passerby.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const fb = await import('/vendor/firebase.bundle.js');
+    const db = fb.getFirestore();
+    const attempt = async (action) => {
+      try {
+        await action();
+        return 'allowed';
+      } catch (error) {
+        return error.code || String(error);
+      }
+    };
+    const featured = h.app.songs.find((song) => song.featured);
+    return {
+      songs: h.app.songs.map((song) => `${song.title}:${song.code ? 'code' : 'no code'}`),
+      admin: h.cloud.user.admin,
+      mine: h.songs.list().map((song) => song.title),
+      starterIsACopy: h.songs.list()[0]?.code.replace('@title User demo', `@title ${featured.title}`) === featured.code,
+      membersOnly: await attempt(() => fb.getDocs(fb.query(fb.collection(db, 'beats'), fb.where('members', '==', true)))),
+      hidden: await attempt(() => fb.getDoc(fb.doc(db, 'beats', 't3'))),
+      listAll: await attempt(() => fb.getDocs(fb.collection(db, 'beats'))),
+      write: await attempt(() => fb.updateDoc(fb.doc(db, 'beats', 't1'), { hidden: true })),
+    };
+  });
+  check('signed in, a member gets the featured beat and those opened to members', member.songs.join() === 'Beta:code,Alpha:code' && member.admin === false, JSON.stringify(member.songs));
+  check('a new member is given "User demo": their own copy of the featured beat', member.mine.join() === 'User demo' && member.starterIsACopy, member.mine.join());
+  check("rules: a member cannot read the admin's own beats or change any beat", member.membersOnly === 'allowed' && denied(member.hidden) && denied(member.listAll) && denied(member.write), JSON.stringify(member));
+
+  // the admin adds one of their own songs: it is theirs alone until opened to members
+  const added = await boss.evaluate(() => window.hackingTheBeats.songs.createBlank().id);
+  await boss.click('[data-admin-tab="beats"]');
+  await boss.waitForFunction((id) => [...document.getElementById('admin-song').options].some((option) => option.value === id), added);
+  await boss.selectOption('#admin-song', added);
+  await boss.click('#admin-publish');
+  await status('Added "New song"');
+  await passerby.reload();
+  await arrive(passerby);
+  const kept = await passerby.evaluate(() => window.hackingTheBeats.app.songs.map((song) => song.title).join());
+  const bossSees = await boss.evaluate(() => window.hackingTheBeats.app.songs.map((song) => `${song.title}:${song.audience}`).join());
+  await boss.locator('#admin-beats .admin__row', { hasText: 'New song' }).getByRole('button', { name: 'Members' }).click();
+  await status('"New song" is open to members');
+  await passerby.reload();
+  await arrive(passerby);
+  const opened = await passerby.evaluate(() => window.hackingTheBeats.app.songs.map((song) => song.title).join());
+  check("a beat the admin adds is theirs alone until they open it to members", kept === 'Beta,Alpha' && opened === 'Beta,Alpha,New song' && bossSees === 'Beta:everyone,Alpha:members,Gamma:admin,New song:admin', `${kept} → ${opened} · ${bossSees}`);
+
+  // the admin takes a shared song down
+  await boss.click('[data-admin-tab="shared"]');
+  await boss.waitForFunction((id) => document.querySelector(`#admin-shared .admin__row[data-id="${id}"]`), first, { timeout: 15000 });
+  const takeDown = boss.locator(`#admin-shared .admin__row[data-id="${first}"]`).getByRole('button');
+  await takeDown.click();
+  await takeDown.click();
+  await status('Sharing is off');
+  const gone = await passerby.evaluate(({ uid, id }) => window.hackingTheBeats.cloud.getShared(uid, id), { uid: links.uid, id: first });
+  const again = await owner.evaluate(async (id) => {
+    const h = window.hackingTheBeats;
+    const fb = await import('/vendor/firebase.bundle.js');
+    // the owner's browser still thinks the song is shared; the next save finds out
+    h.songs.update(id, { code: `${h.songs.get(id).code}\n// one more change` });
+    await h.songs.flush();
+    const local = h.songs.get(id);
+    h.songs.setShared(id, true);
+    await h.songs.flush();
+    const remote = await h.cloud.getOwn(id);
+    let forced;
+    try {
+      await fb.updateDoc(fb.doc(fb.getFirestore(), 'users', h.cloud.user.uid, 'songs', id), { shared: true, blocked: false });
+      forced = 'allowed';
+    } catch (error) {
+      forced = error.code;
+    }
+    return { local: { shared: local.shared, blocked: local.blocked }, remote: { shared: remote.shared, blocked: remote.blocked, saved: remote.code.includes('one more change') }, forced };
+  }, first);
+  check('the admin can switch a shared song off, which closes its link', gone === null);
+  check('its owner keeps the song and can still save it, but cannot share it again', again.local.blocked && !again.local.shared && again.remote.blocked && !again.remote.shared && again.remote.saved && denied(again.forced), JSON.stringify(again));
+
+  check('no errors on any page', errors.length === 0, errors.slice(0, 3).join(' | '));
+} catch (error) {
+  check('the test ran to the end', false, error.message.split('\n').slice(0, 4).join(' / '));
+} finally {
+  await browser.close();
+  stopAll();
+}
+
+let failures = 0;
+for (const [name, passed, detail] of results) {
+  console.log(`${passed ? '✓' : '✗'} ${name}${detail ? `  (${detail})` : ''}`);
+  if (!passed) failures++;
+}
+console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
+process.exit(failures ? 1 : 0);
