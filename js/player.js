@@ -130,6 +130,7 @@ export class Player {
       onSlider: (k) => this.emit('pick-slider', k),
       onSwitch: (j) => this.emit('pick-switch', j),
       onDocChange: () => this.onDocChange(),
+      onRun: () => this.update(),
       // a click in the code: whoever owns the deck decides whether that starts editing
       onWantEdit: () => this.wantEdit?.(),
     });

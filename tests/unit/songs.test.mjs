@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { titleOf, withTitle, uniqueTitle, mergeSongs, toExport, fromImport, templateSong, newId, newUuid, isUuid } from '../../js/songs-core.js';
+import { parse } from 'acorn';
+import { titleOf, withTitle, uniqueTitle, mergeSongs, toExport, fromImport, templateSong, STARTERS, newId, newUuid, isUuid } from '../../js/songs-core.js';
 
 test('reads a title from the code', () => {
   assert.equal(titleOf('/*\n  @title Amber\n*/\ns("bd")'), 'Amber');
@@ -25,6 +26,19 @@ test('finds a free title', () => {
 
 test('the starter song carries its title', () => {
   assert.equal(titleOf(templateSong('New song')), 'New song');
+});
+
+test('every starter is a song that parses, with its title and a tempo', () => {
+  assert.deepEqual(STARTERS.map((starter) => starter.kind), ['loop', 'full']);
+  for (const { kind, label, blurb } of STARTERS) {
+    const code = templateSong('Fresh start', kind);
+    assert.ok(label && blurb, kind);
+    assert.equal(titleOf(code), 'Fresh start', kind);
+    assert.match(code, /setcps\(/, kind);
+    assert.doesNotThrow(() => parse(code, { ecmaVersion: 2022 }), kind);
+  }
+  // the full song is still what New made before there was a choice
+  assert.equal(templateSong('Fresh start'), templateSong('Fresh start', 'full'));
 });
 
 test('ids are long and varied', () => {

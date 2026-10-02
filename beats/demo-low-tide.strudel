@@ -4,6 +4,9 @@
   A slow one written for this repository. Nothing but the built-in synths.
   mood: 0 minor, 1 major
   "swell" opens the pad; "echo" sets how much of the melody comes back.
+  @try Bell an octave up: `~ 7 ~ 9 ~ 11 9 ~` -> `~ 14 ~ 16 ~ 18 16 ~`
+  @try Glass bell: `s("triangle")` -> `s("sine")` in BELL
+  @try Drums from the start: `.mask("<0 0 1 1 1 1 1 1>/2")` -> `.mask("1")` in PULSE
   Public domain (CC0): take it apart.
 */
 setcps(84/60/4)

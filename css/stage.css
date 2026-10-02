@@ -407,9 +407,227 @@ body:not(.is-preview) .pane:not(.is-editing) .editor .cm-line {
 .is-editing .stagebar {
   opacity: 1;
 }
-body:not(.has-played) .stagebar,
-.is-gallery .stagebar {
+/* Before anything has played, Edit is already on offer, over the curtain: the code can be
+   changed before it is heard. The view buttons wait for the music. */
+body:not(.has-played) .stagebar {
+  z-index: 5;
+}
+body:not(.has-played):not(.is-editing) .stagebar > :not(#edit) {
   display: none;
+}
+.is-editing .curtain {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.is-gallery .stagebar,
+.is-locked .stagebar {
+  display: none;
+}
+
+/* ---------- changes to try: the song's own @try lines, one tap each ---------- */
+
+.tries {
+  position: absolute;
+  z-index: 3;
+  top: 10px;
+  left: var(--hb-gutter);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: min(560px, calc(100% - 480px));
+  padding: 2px 2px 2px 9px;
+  background: color-mix(in srgb, var(--hb-bg-deep) 88%, transparent);
+  border: 1px solid var(--hb-line-soft);
+  border-radius: 6px;
+}
+.tries[hidden] {
+  display: none;
+}
+.tries__label {
+  flex: none;
+  padding-right: 4px;
+  font: 500 10px/1 var(--hb-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hb-accent);
+}
+.tries__chips {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tries__chip {
+  flex: none;
+  padding: 6px 9px;
+  border-radius: 4px;
+  font: 400 11.5px/1 var(--hb-sans);
+  color: var(--hb-ink-2);
+  white-space: nowrap;
+}
+.tries__chip:hover {
+  color: var(--hb-ink);
+  background: var(--hb-raise);
+}
+.tries__chip[aria-pressed='true'] {
+  color: var(--hb-accent-ink);
+  background: var(--hb-accent);
+}
+.tries__chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+@media (pointer: coarse) {
+  .tries__chip {
+    min-height: 36px;
+  }
+}
+/* two decks side by side: clear of the deck labels */
+.panes[data-view='split'] ~ .tries {
+  top: 40px;
+}
+/* the first lines of code start below them */
+.has-played.has-tries:not(.is-gallery) .editor .cm-scroller {
+  padding-top: 52px;
+}
+.has-played.has-tries:not(.is-gallery) .panes[data-view='split'] .editor .cm-scroller {
+  padding-top: 82px;
+}
+body:not(.has-played) .tries,
+.is-gallery .tries,
+.is-locked .tries,
+.is-gated .tries,
+.is-guest .tries {
+  display: none;
+}
+
+/* ---------- first steps ---------- */
+
+.coach {
+  position: absolute;
+  z-index: 5;
+  right: var(--hb-gutter);
+  bottom: 12px;
+  display: grid;
+  gap: 10px;
+  width: 300px;
+  max-height: calc(100% - 64px);
+  overflow-y: auto;
+  padding: 14px 16px 12px;
+  background: var(--hb-bg-deep);
+  border: 1px solid var(--hb-line);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.2s;
+}
+.coach[hidden] {
+  display: none;
+}
+.is-editing .coach:not(:hover):not(:focus-within) {
+  opacity: 0.55;
+}
+.coach__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.coach__title {
+  font: 500 10.5px/1 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-ink-2);
+}
+.coach__count {
+  color: var(--hb-accent);
+  font: 400 11px/1 var(--hb-mono);
+}
+.coach__close {
+  width: 28px;
+  height: 28px;
+  margin: -6px -8px -6px auto;
+}
+.coach__steps {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  list-style: none;
+}
+.coach__step {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  padding: 5px 0;
+  color: var(--hb-ink-3);
+  font-size: 13px;
+}
+/* a punchcard square per step, filled once it is done */
+.coach__mark {
+  width: 10px;
+  height: 8px;
+  margin-top: 5px;
+  border: 1px solid var(--hb-ink-4);
+}
+.coach__step.is-done .coach__mark {
+  background: var(--hb-ink-3);
+  border-color: var(--hb-ink-3);
+}
+.coach__step.is-done .coach__name {
+  color: var(--hb-ink-4);
+  text-decoration: line-through;
+  text-decoration-color: var(--hb-ink-4);
+}
+.coach__step[aria-current='step'] {
+  color: var(--hb-ink);
+}
+.coach__step[aria-current='step'] .coach__mark {
+  border-color: var(--hb-accent);
+  background: color-mix(in srgb, var(--hb-accent) 30%, transparent);
+}
+.coach__name {
+  font-weight: 500;
+}
+.coach__hint {
+  margin: 3px 0 8px;
+  color: var(--hb-ink-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.coach__end {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  color: var(--hb-ink-2);
+  font-size: 13px;
+}
+.coach__end[hidden] {
+  display: none;
+}
+.coach__never {
+  justify-self: start;
+  margin: 0 0 0 -8px;
+}
+body:not(.has-played) .coach,
+.is-gallery .coach,
+.is-locked .coach,
+.is-gated .coach,
+.has-notice .coach,
+.is-guest .coach {
+  display: none;
+}
+
+/* "Show me": where to look */
+.is-pointed {
+  outline: 2px solid var(--hb-accent) !important;
+  outline-offset: 4px;
+  border-radius: 4px;
+  animation: hb-point 0.8s var(--hb-ease) 3;
+}
+@keyframes hb-point {
+  50% {
+    outline-offset: 8px;
+  }
 }
 
 /* ---------- gallery ---------- */
@@ -629,6 +847,25 @@ body:not(.has-played) .stagebar,
   font: 400 12.5px/1.5 var(--hb-mono);
   overflow-wrap: anywhere;
 }
+.notice__detail[hidden],
+.notice__hint[hidden],
+.notice__raw[hidden] {
+  display: none;
+}
+/* what went wrong, in plain words; the browser's own message is one click away */
+.notice__hint {
+  margin-top: 4px;
+  color: var(--hb-ink-2);
+  font-size: 13.5px;
+}
+.notice__raw {
+  margin-top: 6px;
+}
+.notice__raw summary {
+  color: var(--hb-ink-4);
+  font: 400 11px/1.4 var(--hb-mono);
+  cursor: pointer;
+}
 
 .status {
   position: absolute;
@@ -681,6 +918,22 @@ body:not(.has-played) .stagebar,
   }
   .status {
     bottom: 50px;
+  }
+  /* the view buttons are at the foot here: the suggestions take the top, full width */
+  .tries {
+    right: var(--hb-gutter);
+    max-width: none;
+  }
+  /* first steps sit above the view buttons, and the messages move up out of their way */
+  .coach {
+    left: var(--hb-gutter);
+    width: auto;
+    bottom: 52px;
+    max-height: 60%;
+  }
+  .coach-open .status {
+    top: 56px;
+    bottom: auto;
   }
   /* two decks side by side do not fit a phone: split shows the one in focus */
   .panes[data-view='split'] {

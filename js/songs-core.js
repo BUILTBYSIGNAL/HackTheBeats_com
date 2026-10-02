@@ -47,12 +47,42 @@ export function uniqueTitle(wanted, taken) {
   for (let n = 2; ; n++) if (!names.has(`${stem} ${n}`)) return `${stem} ${n}`;
 }
 
-// A starting point for a new song: a complete pattern on a plain 4/4 grid, using only
-// sounds that are always loaded.
-export function templateSong(title) {
+// The starting points a new song can be made from, smallest first.
+export const STARTERS = [
+  { kind: 'loop', label: 'Drum loop', blurb: 'One track of drums and one knob. Room to add your own.' },
+  { kind: 'full', label: 'Full song', blurb: 'Drums, bass and a lead, with three knobs.' },
+];
+
+// A starting point for a new song, on a plain 4/4 grid, using only sounds that are always
+// loaded. Each one carries a couple of suggested changes to try (@try lines).
+export function templateSong(title, kind = 'full') {
+  if (kind === 'loop') {
+    return `/*
+  @title ${title}
+  A drum loop to build on, 120 bpm.
+  @try Busier hats: \`hh*8\` -> \`hh*16\`
+  @try Skip a kick: \`bd*4\` -> \`bd(3,8)\`
+*/
+
+setcps(120/60/4)
+
+const space = slider(0.2, 0, 1)
+
+DRUMS: stack(
+  s("bd*4").gain(0.9),
+  s("~ sd ~ sd").gain(0.6),
+  s("hh*8").gain(0.3),
+)
+.bank("RolandTR808")
+.room(space)
+._punchcard({ height: 90, width: 640 })
+`;
+  }
   return `/*
   @title ${title}
   A minor, 132 bpm.
+  @try Half-time lead: \`.fast(2)\` -> \`.fast(1)\`
+  @try Open hats on 2 and 4: \`~ ~ oh ~\` -> \`~ oh ~ oh\`
 */
 
 setcps(132/60/4)

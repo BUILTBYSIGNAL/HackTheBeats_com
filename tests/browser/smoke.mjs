@@ -109,6 +109,37 @@ async function scenario() {
 
   check('the version is shown', document.getElementById('version').textContent === `v${h.VERSION}`, h.VERSION);
 
+  const apple = /mac|iphone|ipad/i.test(navigator.platform);
+  const runTitle = document.getElementById('update').title;
+  check('key hints name the keys this keyboard has', apple ? runTitle.includes('⌘') && !runTitle.includes('Ctrl') : runTitle.includes('Ctrl+Enter'), runTitle);
+
+  // with Latch on, a tap leaves a pad on until the next tap; switching Latch off lets go
+  const pad = h.deck.pads.get('w');
+  document.getElementById('pads-latch').click();
+  pad.el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+  pad.el.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true, cancelable: true }));
+  const stayed = pad.isOn();
+  document.getElementById('pads-latch').click();
+  check('Latch keeps a tapped pad on, and switching it off lets go', stayed && !pad.isOn() && !h.deck.latch);
+
+  // first steps open by themselves once the music starts
+  check('first steps open once the music plays', !document.getElementById('coach').hidden && document.querySelector('.coach__step[data-step="play"]')?.classList.contains('is-done'));
+
+  // a suggestion: one tap changes the code and the music, another puts it back exactly
+  const chips = () => [...document.querySelectorAll('#tries .tries__chip')];
+  if (chips().length) {
+    const original = A.code;
+    chips()[0].click();
+    const applied = await until(() => chips()[0]?.getAttribute('aria-pressed') === 'true', 8000);
+    await until(() => A.mirror.editor.dom.querySelectorAll('.cm-line.hb-changed').length > 0, 3000);
+    const tried = { applied, changed: A.code !== original, marked: A.mirror.editor.dom.querySelectorAll('.cm-line.hb-changed').length, dirty: A.dirty, playing: A.started };
+    chips()[0].click();
+    const undone = await until(() => chips()[0]?.getAttribute('aria-pressed') === 'false', 8000);
+    check('a suggestion changes the code and the music, and a second tap puts it back', tried.applied && tried.changed && tried.marked > 0 && !tried.dirty && tried.playing && undone && A.code === original && !A.edited, JSON.stringify(tried));
+  } else {
+    check('the opening beat offers suggestions to try', false, A.song.title);
+  }
+
   // locked by default: typing must not change the code
   const code = A.mirror.code;
   A.mirror.editor.contentDOM.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: 'x', bubbles: true, cancelable: true }));
@@ -184,6 +215,9 @@ async function scenario() {
   await sleep(300);
   const mine = h.songs.list();
   check('"Save as my song" keeps the changes as a new song of mine', A.own && !A.edited && mine.length === 1 && mine[0].code.includes('EDITED:') && !beat.code.includes('EDITED:') && !shownNow('unsaved'), mine[0]?.title);
+  await sleep(400);
+  const ticked = Object.keys(JSON.parse(localStorage.getItem('hacking-the-beats:v1')).onboarding?.done || {});
+  check('each first step ticks itself off when it is done, and is remembered', ['play', 'knob', 'mute', 'tweak', 'save'].every((step) => ticked.includes(step) && document.querySelector(`.coach__step[data-step="${step}"]`)?.classList.contains('is-done')), ticked.join(' '));
 
   // my own song: Save overwrites it, Save as new makes another
   view.dispatch({ changes: { from: view.state.doc.length, insert: '// a second thought\n' }, userEvent: 'input.type' });
@@ -203,6 +237,8 @@ async function scenario() {
   view.dispatch({ changes: { from: 0, insert: 'const oops = (\n' }, userEvent: 'input.type' });
   const ran = await A.update();
   check('a mistake leaves the last version playing', !ran && A.started && Boolean(A.problem));
+  const notice = { hint: document.getElementById('notice-hint').textContent, raw: document.getElementById('notice-raw-text').textContent, shown: !document.getElementById('notice-hint').hidden && !document.getElementById('notice-raw').hidden };
+  check('the mistake is explained in plain words, with the line it is on', notice.shown && /line \d+/.test(notice.hint) && notice.raw.length > 0, notice.hint);
   view.dispatch({ changes: { from: 0, to: 'const oops = (\n'.length, insert: '' } });
   await A.update();
   if (A.stage.editing) document.getElementById('edit').click();
@@ -237,6 +273,16 @@ async function scenario() {
   } else {
     check('recording produces a WAV', false, 'recorder did not start');
   }
+
+  // New offers a choice of starting points
+  const before = h.songs.list().length;
+  h.crate.open('A');
+  document.getElementById('song-new').click();
+  const offered = [...document.querySelectorAll('#starters .starter')].map((button) => button.dataset.starter);
+  document.querySelector('.starter[data-starter="loop"]').click();
+  const started = await until(() => A.own && A.ready && h.songs.list().length === before + 1, 15000);
+  check('New offers starting points, and the drum loop is a song of my own to edit', started && offered.join() === 'loop,full' && A.mixer.tracks.length === 1 && A.stage.editing && !h.crate.dialog.open, offered.join());
+  if (A.stage.editing) document.getElementById('edit').click();
 
   document.getElementById('gallery').click();
   await sleep(200);
@@ -379,6 +425,46 @@ async function addresses(browser) {
   return results;
 }
 
+// A phone: a touch screen, a narrow window, no keyboard shortcuts to lean on.
+async function phone(browser) {
+  const results = [];
+  const check = (name, passed, detail = '') => results.push([name, Boolean(passed), String(detail)]);
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
+  await context.addInitScript(() => (window.HTB_CONFIG = { firebase: null, analytics: null }));
+  const page = await context.newPage();
+  await page.goto(URL);
+  await page.waitForFunction(() => window.hackingTheBeats?.players.A.ready, null, { timeout: 45000 });
+  const shown = (id) => page.evaluate((el) => getComputedStyle(document.getElementById(el)).display !== 'none', id);
+  check('on a phone, the song list has a button of its own', await shown('open-list'));
+  await page.tap('#open-list');
+  check('and it opens the list', await page.evaluate(() => window.hackingTheBeats.crate.dialog.open));
+  await page.evaluate(() => window.hackingTheBeats.crate.dialog.close());
+  await page.tap('#curtain-play');
+  await page.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 45000 });
+  await page.waitForTimeout(500);
+  const tapped = await page.evaluate(() => {
+    const A = window.hackingTheBeats.players.A;
+    const line = [...document.querySelectorAll('#pane-a .cm-line')].find((el) => !el.querySelector('.hb-label, .hb-num'));
+    line.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+    return { editing: A.stage.editing, status: document.getElementById('status').textContent };
+  });
+  check('a tap on the code is not taken for editing; Edit is', !tapped.editing && /press Edit/.test(tapped.status), tapped.status);
+  await page.tap('#edit');
+  check('pressing Edit opens the code for typing', await page.evaluate(() => window.hackingTheBeats.players.A.stage.editing));
+  await page.tap('#edit');
+  const clear = await page.evaluate(() => {
+    const box = (el) => el.getBoundingClientRect();
+    const coach = document.getElementById('coach');
+    if (coach.hidden) return { open: false };
+    const a = box(coach);
+    const b = box(document.querySelector('.stagebar'));
+    return { open: true, overlap: a.bottom > b.top && a.top < b.bottom && a.right > b.left && a.left < b.right };
+  });
+  check('first steps sit clear of the view buttons', clear.open && !clear.overlap, JSON.stringify(clear));
+  await context.close();
+  return results;
+}
+
 let failures = 0;
 await waitForServer();
 for (const name of engines) {
@@ -409,13 +495,24 @@ for (const name of engines) {
 
     await page.goto(URL);
     await page.waitForFunction(() => window.hackingTheBeats?.players.A.ready || window.hackingTheBeats?.players.A.failure, null, { timeout: 45000 });
+    // before anything plays: the code can already be changed, and the view buttons wait
+    const firstScreen = await page.evaluate(() => {
+      const shown = (id) => getComputedStyle(document.getElementById(id)).display !== 'none';
+      return { edit: shown('edit'), follow: shown('follow'), deck: shown('deck'), steps: shown('coach'), tries: shown('tries') };
+    });
+    const preResults = [
+      ['Edit is offered before the first play; the view buttons wait for the music', firstScreen.edit && !firstScreen.follow, JSON.stringify(firstScreen)],
+      ['first steps and suggestions wait for the music', !firstScreen.steps && !firstScreen.tries],
+    ];
     await page.click('#curtain-play');
     await page.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 45000 });
     await page.waitForTimeout(1500);
 
-    const results = await page.evaluate(scenario);
+    const results = [...preResults, ...(await page.evaluate(scenario))];
     results.push(['no errors in the console', errors.length === 0, errors.slice(0, 3).join(' | ')]);
     results.push(...(await addresses(browser)));
+    // Firefox has no mobile mode in Playwright
+    if (name !== 'firefox') results.push(...(await phone(browser)));
     results.push(...(await counting(browser)));
     for (const [step, passed, detail] of results) {
       console.log(`  ${passed ? '✓' : '✗'} ${step}${detail ? `  (${detail})` : ''}`);

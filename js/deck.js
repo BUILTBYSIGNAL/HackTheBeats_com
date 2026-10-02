@@ -15,6 +15,8 @@ export const deck = {
   strips: [],
   masterKnobs: {},
   pads: new Map(),
+  // pads stay on until pressed again
+  latch: false,
   crossfader: null,
 
   // app: { players, setTempo(multiplier), tempoTarget(), setSync(on), mix(), saveMaster() }
@@ -25,6 +27,7 @@ export const deck = {
     this.buildPads();
 
     els.tabs.forEach((tab) => tab.addEventListener('click', () => this.showTab(tab.dataset.tab)));
+    els.latch.addEventListener('click', () => this.setLatch(!this.latch));
     els.reset.addEventListener('click', () => this.player?.resetSong());
 
     for (const player of app.players) {
@@ -247,10 +250,18 @@ export const deck = {
       { name: 'drums', label: 'No drums', key: 'D', hint: 'Pull the drums out', onChange: each('killDrums') },
     ];
     for (const { name, label, key, hint, onChange } of pads) {
-      const pad = createPad({ id: `pad:${name}`, label, hint: `${hint} · hold, or Shift-click to latch`, keyHint: key, onChange });
+      const pad = createPad({ id: `pad:${name}`, label, hint: `${hint} · hold, or Shift-click to latch`, keyHint: key, onChange, latchMode: () => this.latch });
       this.els.pads.append(pad.el);
       this.pads.set(key.toLowerCase(), pad);
     }
+  },
+
+  // With latch off again, any pad left on is let go.
+  setLatch(on) {
+    this.latch = on;
+    this.els.latch.setAttribute('aria-pressed', String(on));
+    this.els.latchNote.textContent = on ? 'tap on, tap off' : 'hold';
+    if (!on) for (const pad of this.pads.values()) if (pad.isOn()) pad.release();
   },
 
   /* ---------- master ---------- */
