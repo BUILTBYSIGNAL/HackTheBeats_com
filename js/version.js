@@ -1,2 +1,2 @@
 // Written by tools/set-version.mjs from package.json. Do not edit by hand.
-export const VERSION = '0.9.1';
+export const VERSION = '0.9.2';

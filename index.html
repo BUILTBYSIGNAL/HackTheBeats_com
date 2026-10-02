@@ -61,10 +61,10 @@
       </div>
 
       <div class="transport" role="group" aria-label="Change the beat on the deck in focus">
-        <button type="button" class="iconbtn" id="prev" aria-label="Previous beat">
+        <button type="button" class="iconbtn" id="prev" aria-label="Previous beat" data-tip="Previous beat (←)">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3v10M12.5 3.5 6.5 8l6 4.5z" /></svg>
         </button>
-        <button type="button" class="iconbtn" id="next" aria-label="Next beat">
+        <button type="button" class="iconbtn" id="next" aria-label="Next beat" data-tip="Next beat (→)">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12 3v10M3.5 3.5 9.5 8l-6 4.5z" /></svg>
         </button>
       </div>
@@ -87,17 +87,17 @@
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.5M2.5 8h.5M2.5 12h.5" /></svg>
           <span class="iconbtn__label">Songs</span>
         </button>
-        <button type="button" class="iconbtn iconbtn--rec" id="record" aria-pressed="false" aria-label="Record the mix to a file">
+        <button type="button" class="iconbtn iconbtn--rec" id="record" aria-pressed="false" aria-label="Record the mix to a file" data-tip="Record the mix to a file (R)">
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle class="rec-dot" cx="8" cy="8" r="4" /></svg>
           <span class="rec-time" id="record-time"></span>
         </button>
-        <button type="button" class="iconbtn" id="share" aria-label="Share this song">
+        <button type="button" class="iconbtn" id="share" aria-label="Share this song" data-tip="Share this song">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.8 9.2a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.7.7M9.2 6.8a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7l.7-.7" /></svg>
         </button>
-        <button type="button" class="iconbtn" id="open-about" aria-label="About and keyboard shortcuts">
+        <button type="button" class="iconbtn" id="open-about" aria-label="About and keyboard shortcuts" data-tip="About and keyboard shortcuts (?)">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 6a2 2 0 1 1 3 1.7c-.7.4-1 .8-1 1.6M8 11.8v.2" /></svg>
         </button>
-        <button type="button" class="iconbtn iconbtn--account" id="account" aria-label="Sign in" hidden>
+        <button type="button" class="iconbtn iconbtn--account" id="account" aria-label="Sign in" data-tip="Sign in" hidden>
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="6" r="2.6" /><path d="M3 13.2c.8-2.1 2.7-3.2 5-3.2s4.2 1.1 5 3.2" /></svg>
           <span class="account__initial" id="account-initial"></span>
         </button>

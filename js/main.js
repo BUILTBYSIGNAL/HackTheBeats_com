@@ -764,6 +764,7 @@ function renderAccount() {
   els.account.hidden = !cloud.accounts;
   els.account.classList.toggle('is-signed-in', Boolean(user));
   els.account.setAttribute('aria-label', user ? `Account: ${user.name}` : 'Sign in');
+  els.account.dataset.tip = user ? `Account: ${user.name}` : 'Sign in';
   $('account-initial').textContent = user ? (user.name || user.email || '?').trim().charAt(0).toUpperCase() : '';
   $('account-out').hidden = Boolean(user);
   $('account-in').hidden = !user;
@@ -1019,6 +1020,7 @@ function finishRecording({ save = true } = {}) {
   clearInterval(recordTimer);
   const blob = recorder.stop();
   els.record.setAttribute('aria-pressed', 'false');
+  els.record.dataset.tip = 'Record the mix to a file (R)';
   els.recordTime.textContent = '';
   if (!blob) return setStatus('Nothing was recorded');
   if (!save) return blob;
@@ -1044,6 +1046,7 @@ async function toggleRecord() {
     return setStatus('Recording could not start');
   }
   els.record.setAttribute('aria-pressed', 'true');
+  els.record.dataset.tip = 'Stop and save the recording (R)';
   analytics.event('record', { action: 'start' });
   const tick = () => {
     const s = Math.floor(recorder.seconds);

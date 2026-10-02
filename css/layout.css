@@ -217,6 +217,45 @@ body[data-transport='loading'] .curtain__play .spinner {
   stroke-linejoin: round;
 }
 
+/* Words for the top bar's icon buttons, on hover and on keyboard focus (a touch screen has
+   no hover; the buttons' names are read out to a screen reader either way). */
+@media (hover: hover) {
+  .topbar [data-tip] {
+    position: relative;
+  }
+  .topbar [data-tip]:hover::before,
+  .topbar [data-tip]:focus-visible::before {
+    content: attr(data-tip);
+    position: absolute;
+    z-index: 10;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 8px;
+    border: 1px solid var(--hb-line);
+    border-radius: 5px;
+    background: var(--hb-bg-deep);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+    color: var(--hb-ink);
+    font: 400 11.5px/1.2 var(--hb-sans);
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  /* at the right-hand end they open leftwards, so they stay on the screen */
+  .actions [data-tip]:hover::before,
+  .actions [data-tip]:focus-visible::before {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+  /* signed out, the account button already says "Sign in" */
+  .is-preview:not(.is-guest) .iconbtn--account:not(.is-signed-in)::before {
+    display: none;
+  }
+}
+
 /* the song list, on a phone (elsewhere the brand button opens it) */
 .iconbtn--list {
   display: none;

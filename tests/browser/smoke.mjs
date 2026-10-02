@@ -567,6 +567,14 @@ for (const name of engines) {
       ['Edit is offered before the first play; the view buttons wait for the music', firstScreen.edit && !firstScreen.follow, JSON.stringify(firstScreen)],
       ['first steps and suggestions wait for the music', !firstScreen.steps && !firstScreen.tries],
     ];
+    // the top bar's icon buttons say what they are when the pointer rests on them
+    const tips = [];
+    for (const id of ['record', 'share', 'open-about']) {
+      await page.hover(`#${id}`);
+      tips.push(await page.evaluate((el) => getComputedStyle(document.getElementById(el), '::before').content, id));
+    }
+    await page.mouse.move(700, 450);
+    preResults.push(['the top bar\'s icon buttons say what they are on hover', tips.join() === '"Record the mix to a file (R)","Share this song","About and keyboard shortcuts (?)"', tips.join(' | ')]);
     await page.click('#curtain-play');
     await page.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 45000 });
     await page.waitForTimeout(1500);
