@@ -9,7 +9,8 @@ import { dirname, resolve } from 'node:path';
 import { chromium } from 'playwright';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const PORT = 5198;
+// SONGS_PORT lets two copies of the project run this at once
+const PORT = Number(process.env.SONGS_PORT) || 5198;
 const URL_ = `http://localhost:${PORT}/`;
 const offline = process.argv.includes('--offline');
 // --built tests the site as it is published (run `npm run build` first)

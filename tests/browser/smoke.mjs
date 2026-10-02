@@ -13,7 +13,8 @@ import { dirname, resolve } from 'node:path';
 import * as playwright from 'playwright';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const PORT = 5199;
+// SMOKE_PORT lets two copies of the project run this at once
+const PORT = Number(process.env.SMOKE_PORT) || 5199;
 const URL = `http://localhost:${PORT}/`;
 // --built tests the site as it is published (run `npm run build` first)
 const built = process.argv.includes('--built');
