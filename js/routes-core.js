@@ -49,15 +49,25 @@ export function remixLine(from) {
   return `Remix of "${from.title}"${who ? ` by ${who}` : ''}`;
 }
 
-// A link to someone's shared song, from an address: #song=<uuid> (or, for songs shared
-// before links were UUIDs, #song=<owner>~<id>). #copy= is the same song, sent over from
-// the player to be changed or kept.
-//   → { kind: 'song' | 'copy', raw, share } or { kind, raw, owner, id }, or null
-export function songLinkIn({ hash = '' } = {}) {
+// A shared song's own address on the player, /s/<uuid>: a real path, so a link preview
+// (which runs no scripts) can be given the song's title and picture by the server.
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+export const sharePath = (shareId) => `/s/${shareId}`;
+export const shareIdFromPath = (pathname) => new RegExp(`^/s/(${UUID})/?$`).exec(pathname || '')?.[1] ?? null;
+
+// A link to someone's shared song, from an address: /s/<uuid>, or #song=<uuid> (or, for
+// songs shared before links were UUIDs, #song=<owner>~<id>). #copy= is the same song, sent
+// over from the player to be changed or kept.
+//   → { kind: 'song' | 'copy', raw, share, form } or { kind, raw, owner, id, form }, or null
+//   form: 'path' or 'hash'
+export function songLinkIn({ pathname = '', hash = '' } = {}) {
   const found = /[#&](song|copy)=([^&]+)/.exec(hash);
-  if (!found) return null;
+  if (!found) {
+    const share = shareIdFromPath(pathname);
+    return share ? { kind: 'song', raw: share, share, form: 'path' } : null;
+  }
   const [owner, id] = found[2].split('~').map(decodeURIComponent);
-  return id ? { kind: found[1], raw: found[2], owner, id } : { kind: found[1], raw: found[2], share: owner };
+  return id ? { kind: found[1], raw: found[2], owner, id, form: 'hash' } : { kind: found[1], raw: found[2], share: owner, form: 'hash' };
 }
 
 const clip = (text, max) => {
@@ -66,11 +76,16 @@ const clip = (text, max) => {
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), max - 30)).replace(/[\s,;:.]+$/, '')}…`;
 };
 
+// What a song's header says about it, in a sentence or two. Lines that explain a switch
+// ("voice: 0 none, 1 choir") are for the deck, not for a summary.
+export function noteSummary(notes, max = 130) {
+  const said = (notes || []).filter((line) => !/^\w+:\s*\d/.test(line)).join(' ').replace(/\s+/g, ' ').trim();
+  return clip(said, max);
+}
+
 // One or two sentences about a song, from what its own code says about itself.
 export function songDescription(song) {
-  // lines that explain a switch ("voice: 0 none, 1 choir") are for the deck, not for a summary
-  const notes = (song.notes || []).filter((line) => !/^\w+:\s*\d/.test(line));
-  const said = notes.join(' ').replace(/\s+/g, ' ').trim();
+  const said = noteSummary(song.notes, Infinity);
   const tempo = song.bpm && !/bpm/i.test(said) ? `${Math.round(song.bpm)} bpm ` : '';
   const tracks = song.trackCount > 1 ? ` in ${song.trackCount} tracks` : '';
   const lead = `${credit(song)}: a ${tempo}live-coded beat${tracks}.`;

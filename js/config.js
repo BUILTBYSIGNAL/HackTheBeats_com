@@ -22,6 +22,11 @@ export const config = {
   appOrigin: '',
   shareOrigin: '',
 
+  // Share links as the player's own addresses (/s/<uuid>), which the link-preview function
+  // (functions/) answers with the song's title and picture. Needs that function deployed,
+  // and so Firebase's Blaze plan. Off, share links are #song=<uuid>.
+  linkPreviews: false,
+
   // Shown in the privacy notice and the About panel. Needed before accounts go public.
   contact: '',
 

@@ -63,8 +63,8 @@ const SECRETS = [
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+/g;
 const EMAIL_OK = /@(example\.(com|org|net)|users\.noreply\.github\.com|anthropic\.com)$/i;
 // third-party code and the licence text are not ours to rewrite
-const NOT_OURS = (path) => path.startsWith('vendor/') || path === 'package-lock.json' || path === 'LICENSE';
-const BINARY = /\.(png|jpe?g|gif|ico|woff2?|wav|mp3|ogg|flac|gz|zip|pdf)$/i;
+const NOT_OURS = (path) => path.startsWith('vendor/') || /(^|\/)package-lock\.json$/.test(path) || path === 'LICENSE' || /^functions\/fonts\/.*-OFL\.txt$/.test(path);
+const BINARY = /\.(png|jpe?g|gif|ico|woff2?|ttf|otf|wav|mp3|ogg|flac|gz|zip|pdf)$/i;
 
 // A worktree has no list of its own (git ignores the file), so the one in the main
 // checkout stands for every worktree of it.

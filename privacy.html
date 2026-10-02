@@ -46,6 +46,13 @@
       people who run the site can see the songs that are currently shared, and can switch sharing off for a song, for example
       after a complaint.
     </p>
+    <p>
+      A shared song's link is its own address on the player, so our server sees which link was opened. It reads the song to
+      answer with the song's title, your name next to it and a picture made from it, so that the link shows the song when it is
+      pasted into a chat or a post; apps that preview links fetch exactly that. For a few minutes after you switch sharing off,
+      a cached preview can still show the title, and apps that previewed the link may keep their own copies for longer. The
+      song's code and your account are never part of a preview.
+    </p>
 
     <h2>Analytics</h2>
     <p>
@@ -59,9 +66,10 @@
 
     <h2>Where it is kept</h2>
     <p>
-      The site is served by Google Firebase Hosting, and accounts and songs are stored with Google Firebase (Authentication and
-      Cloud Firestore). Sound samples are fetched from the public sample packs a song names, such as GitHub; those hosts see your
-      IP address when a sample is downloaded, as any website you visit does.
+      The site is served by Google Firebase Hosting, link previews are made by a Google Cloud function, and accounts and songs
+      are stored with Google Firebase (Authentication and Cloud Firestore). Google keeps standard request logs (the address
+      asked for, and the IP address it came from) for a limited time. Sound samples are fetched from the public sample packs a
+      song names, such as GitHub; those hosts see your IP address when a sample is downloaded, as any website you visit does.
     </p>
 
     <h2>Your choices</h2>

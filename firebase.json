@@ -55,6 +55,10 @@
       "trailingSlash": false,
       "rewrites": [
         {
+          "source": "/s/**",
+          "destination": "/index.html"
+        },
+        {
           "source": "/beats/**",
           "destination": "/index.html"
         }
@@ -119,6 +123,13 @@
       "trailingSlash": false,
       "rewrites": [
         {
+          "source": "/s/**",
+          "function": {
+            "functionId": "sharePage",
+            "region": "us-central1"
+          }
+        },
+        {
           "source": "/beats/**",
           "destination": "/index.html"
         }
@@ -129,6 +140,21 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "src",
+        "*.local",
+        "firebase-debug.log",
+        "*.tmp.mjs"
+      ]
+    }
+  ],
   "emulators": {
     "auth": {
       "port": 9199
@@ -138,6 +164,9 @@
     },
     "hosting": {
       "port": 5190
+    },
+    "functions": {
+      "port": 5101
     },
     "ui": {
       "enabled": false

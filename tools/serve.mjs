@@ -88,6 +88,9 @@ function answer(req, res) {
   // address (/beats/<slug>) is the player, which reads the address to pick the song.
   const candidates = [pathname.endsWith('/') ? pathname + 'index.html' : pathname, `${pathname}.html`];
   if (/^\/beats\/[a-z0-9-]+$/.test(pathname)) candidates.push('/index.html');
+  // a shared song's own address: the player, which reads the song from the address (the
+  // hosted player is given its title and picture by the link-preview function first)
+  if (/^\/s\/[0-9a-f-]{36}\/?$/.test(pathname)) candidates.push('/index.html');
   let file;
   let stat;
   for (const candidate of candidates) {

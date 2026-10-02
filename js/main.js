@@ -10,7 +10,7 @@ import { songs, linkToSong } from './songs.js';
 import { withTitle, STARTERS, fromOf, isLive } from './songs-core.js';
 import { cloud } from './cloud.js';
 import { config, site } from './config.js';
-import { SITE_NAME, HOME_TITLE, HOME_DESCRIPTION, beatPath, slugFromPath, songTitle, songDescription, creditLine, remixLine, songLinkIn } from './routes-core.js';
+import { SITE_NAME, HOME_TITLE, HOME_DESCRIPTION, beatPath, slugFromPath, songTitle, songDescription, creditLine, remixLine, songLinkIn, sharePath } from './routes-core.js';
 import { VERSION } from './version.js';
 import { persist } from './persist.js';
 import { recorder, saveBlob } from './recorder.js';
@@ -1140,9 +1140,13 @@ function reroute() {
   }
   if (!site.split) return false;
   const link = songLinkIn(location);
+  // a song's own address on the player, where there is one, is what a link preview reads
+  const songAddress = (found) => (found.share && config.linkPreviews ? sharePath(found.share) : `/#song=${found.raw}`);
   let to = null;
   if (site.guest && !link) to = `${config.appOrigin}/${location.hash}`;
-  else if (!site.guest && link?.kind === 'song') to = `${config.shareOrigin}/#song=${link.raw}`;
+  else if (!site.guest && link?.kind === 'song') to = `${config.shareOrigin}${songAddress(link)}`;
+  // on the player, an old #song= link becomes the song's own address, so copying it on works
+  else if (site.guest && link?.form === 'hash' && link.kind === 'song' && link.share && config.linkPreviews) history.replaceState(null, '', sharePath(link.share));
   if (to) location.replace(to);
   return Boolean(to);
 }

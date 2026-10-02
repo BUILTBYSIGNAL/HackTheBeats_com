@@ -1,9 +1,11 @@
 // Accounts, end to end, against the local Firebase emulators (no real project is touched):
-// signing in, songs following the account, sharing by link, and the security rules.
+// signing in, songs following the account, sharing by link, the security rules, and the
+// link-preview function.
 //
 //   npm run test:accounts
 //
-// Needs the Firebase CLI (`npm i -g firebase-tools`) and Java for the Firestore emulator.
+// Needs the Firebase CLI (`npm i -g firebase-tools`), Java for the Firestore emulator, and
+// the link-preview function's packages (`npm --prefix functions ci`, once).
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +25,9 @@ const CONFIG = {
 // The same server under its other name is a different origin to a browser, which is all
 // the shared-song player needs to be.
 const PLAYER = `http://127.0.0.1:${PORT}`;
-const SPLIT = { ...CONFIG, appOrigin: `http://localhost:${PORT}`, shareOrigin: PLAYER };
+const SPLIT = { ...CONFIG, appOrigin: `http://localhost:${PORT}`, shareOrigin: PLAYER, linkPreviews: true };
+// the link-preview function, as the functions emulator serves it
+const FUNCTION = 'http://127.0.0.1:5101/demo-htb/us-central1/sharePage';
 
 // Homebrew's Java is not always on the PATH.
 const env = { ...process.env };
@@ -66,10 +70,16 @@ async function waitFor(url, label, seconds = 60) {
 }
 
 start(process.execPath, [resolve(root, 'tools/serve.mjs')], { env: { ...env, PORT: String(PORT) } });
-start('firebase', ['emulators:start', '--only', 'auth,firestore', '--project', 'demo-htb']);
+if (!existsSync(resolve(root, 'functions/node_modules'))) {
+  console.error('The link-preview function has no packages yet: run `npm --prefix functions ci` once.');
+  process.exit(1);
+}
+if (spawnSync(process.execPath, [resolve(root, 'tools/build-functions.mjs')], { cwd: root, stdio: 'inherit' }).status !== 0) process.exit(1);
+start('firebase', ['emulators:start', '--only', 'auth,firestore,functions', '--project', 'demo-htb']);
 await waitFor(SITE, 'the site');
 await waitFor(AUTH, 'the auth emulator');
 await waitFor(`http://${FIRESTORE[0]}:${FIRESTORE[1]}/`, 'the Firestore emulator');
+await waitFor('http://127.0.0.1:5101/', 'the functions emulator');
 
 const results = [];
 const check = (name, passed, detail = '') => {
@@ -420,7 +430,66 @@ try {
     await h.songs.flush();
     return h.songs.shareLink(id);
   }, first);
-  check("sharing again makes a new link, on the player's address", playerLink?.startsWith(`${PLAYER}/#song=`) && UUID.test(playerLink) && playerLink.split('#song=')[1] !== links.shared.split('#song=')[1], playerLink);
+  const SONG_ADDRESS = /\/s\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+  check("sharing again makes a new link: the song's own address on the player", playerLink?.startsWith(`${PLAYER}/s/`) && SONG_ADDRESS.test(playerLink) && !playerLink.includes(links.shared.split('#song=')[1]), playerLink);
+
+  /* ---------- the link-preview function ---------- */
+  // a song with a title that has to be escaped, shared by person one
+  const preview = await owner.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const song = h.songs.create({ code: '/*\n  @title Glass & <Tide> "one"\n  @by Test Person\n  A note about it.\n*/\nsetcps(120/60/4)\nDRUMS: s("bd*4")\nHATS: s("hh*8")\n' });
+    h.songs.setShared(song.id, true);
+    await h.songs.flush();
+    return { id: song.id, shareId: h.songs.get(song.id).shareId, uid: h.cloud.user.uid };
+  });
+  // the emulator can take a moment to load the function the first time
+  const ask = async (path, options = {}) => {
+    for (let i = 0; i < 20; i++) {
+      try {
+        const response = await fetch(`${FUNCTION}${path}`, { redirect: 'manual', ...options });
+        if (response.status !== 500 || i === 19) return response;
+      } catch {
+        /* not up yet */
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  };
+  const page = await ask(`/s/${preview.shareId}`);
+  const html = await page.text();
+  check(
+    "a shared song's address is answered with its own title, description and picture",
+    page.status === 200 &&
+      html.includes('<title>Glass &amp; &lt;Tide&gt; &quot;one&quot; by Test Person — Hacking the Beats</title>') &&
+      html.includes('<meta name="twitter:card" content="summary_large_image" />') &&
+      new RegExp(`og:image" content="[^"]+/s/${preview.shareId}/card\\.png\\?v=`).test(html) &&
+      /s-maxage/.test(page.headers.get('cache-control')) &&
+      page.headers.get('x-robots-tag') === 'noindex',
+    `${page.status} ${page.headers.get('cache-control')}`,
+  );
+  check('the page gives away neither the code nor whose account it is in', !html.includes('setcps(120') && !html.includes(preview.uid) && !html.includes(preview.id) && !html.includes('<Tide>'));
+  const card = await ask(`/s/${preview.shareId}/card.png`);
+  const png = Buffer.from(await card.arrayBuffer());
+  check(
+    'and its picture is a 1200×630 PNG',
+    card.status === 200 && card.headers.get('content-type') === 'image/png' && png.subarray(1, 4).toString() === 'PNG' && png.readUInt32BE(16) === 1200 && png.readUInt32BE(20) === 630,
+    `${card.status} ${png.length} bytes`,
+  );
+  const head = await ask(`/s/${preview.shareId}`, { method: 'HEAD' });
+  check('a HEAD request is answered without a body', head.status === 200 && (await head.text()) === '');
+  const junk = await ask('/s/hello');
+  check('an address that is not a link is answered with nothing about any song', junk.status === 404);
+  await owner.evaluate(async (id) => {
+    window.hackingTheBeats.songs.setShared(id, false);
+    await window.hackingTheBeats.songs.flush();
+  }, preview.id);
+  const closedPage = await ask(`/s/${preview.shareId}`);
+  const closedHtml = await closedPage.text();
+  const closedCard = await ask(`/s/${preview.shareId}/card.png`);
+  check(
+    'once sharing is off, the address says nothing about the song, and the picture is the general one',
+    closedPage.status === 404 && !closedHtml.includes('Glass') && !closedHtml.includes('Test Person') && closedCard.status === 302 && /\/og\/home\.png$/.test(closedCard.headers.get('location') || ''),
+    `${closedPage.status} / ${closedCard.status}`,
+  );
 
   // a link that names nothing: the player says so, and offers no copy to take home
   const nowhere = await bare(`${PLAYER}/#song=00000000-0000-4000-8000-0000000000ff`, SPLIT);

@@ -229,7 +229,8 @@ A song is private unless you share it. **Share** (or **Share…** in the song's 
   and share**), because the link always plays the latest saved version;
 - what the person who gets the link will find, and **Record audio**.
 
-The link is `…/#song=<uuid>`: a random identifier made when sharing is switched on, which says nothing about the
+The link is the song's own address on the player, `…/s/<uuid>` (or `…/#song=<uuid>` on a site without
+[link previews](#link-previews)): a random identifier made when sharing is switched on, which says nothing about the
 song or its owner. Switching sharing off closes the link, and switching it on again makes a new one, so the old
 link stays closed, even if its record is left behind (the player checks that a link is the song's current one). A
 link that leads nowhere says so on the page.
@@ -296,6 +297,7 @@ only an admin is allowed to ask.
 | `/beats/<slug>` | The player opened on one beat. The slug comes from the title: `/beats/low-tide`. |
 | `/about` | What the site is, the list of beats, credits, source and contact. |
 | `/privacy` | The privacy notice. |
+| `/s/<uuid>` | On the shared-song player: a shared song's own address. With link previews on, it is answered with the song's title, description and picture before any script runs (see below). |
 
 The address follows deck A: choosing a beat moves to its address, and back and forward move between the beats you
 opened. On the built site every address is a real page with its own title, description, canonical address and
@@ -319,6 +321,7 @@ cp config.site.example.json config.site.json
 | `appOrigin` | The site's address. Used for canonical addresses and the sitemap. |
 | `shareOrigin` | A second address serving the same files, where shared songs are played. |
 | `contact` | An email address shown on the About and Privacy pages. |
+| `linkPreviews` | `true` makes share links `/s/<uuid>` addresses, answered by the link-preview function so they unfurl as the song. Needs the function deployed, and so Firebase's Blaze plan. Off (the default), share links are `#song=<uuid>` and every one unfurls with the site's general card. |
 | `analytics` | A Google Analytics measurement id. On unless a visitor opts out: a first visit shows a notice with an Opt out button, the Privacy page can change the answer, and a browser sending Global Privacy Control counts as opted out. Never loaded on the shared-song player. Check what the law where your visitors live asks for; some places require asking first. |
 
 The dev server and the build hand these to the page as `site-config.js`. A Firebase web config identifies a
@@ -372,6 +375,35 @@ publishes **no song files**: only the featured beat's page carries code.
 To have Google's sign-in screen name your domain, set `authDomain` to the site's own domain and add
 `https://<your domain>/__/auth/handler` as an authorized redirect URI on the project's OAuth web client.
 
+### Link previews
+
+A chat app that unfurls a link runs no scripts, and the part of an address after `#` never reaches a server, so a
+`#song=` link can only ever show the site's general card. With `linkPreviews` on, a share link is the player's own
+address for the song, `/s/<uuid>`, and a small Cloud Function answers it (`functions/`, logic in
+`js/share-page-core.js`):
+
+```text
+  play.example.org/s/<uuid>             the player's page, with the song's title, description, credit and a
+                                        1200×630 picture (og: and twitter: tags, noindex), then the player as usual
+  play.example.org/s/<uuid>/card.png    the picture: the song's title and punchcard, drawn from SVG (js/card-core.js)
+                                        with the fonts in functions/fonts (Inter and JetBrains Mono, OFL)
+```
+
+- **It says nothing a link does not already show.** The page carries the title, the credit and the sharer's name,
+  never the code, the owner's account or the song's id; the player still reads the song itself, live.
+- **A closed link says nothing at all.** Sharing switched off, a link replaced by a newer one (even if its record
+  lingers), a blocked song or a link that never was are all answered the same way, with the general card. The
+  function reads past the database's rules, so it checks what they would.
+- **Caching.** A live page is kept for five minutes and its picture for fifteen by the hosting's cache, so a link
+  whose sharing is switched off can still show its title that long; chat apps keep their own copies for longer.
+- **Cost.** Each uncached answer is one function call and two database reads; `maxInstances` is 10. Normal use is
+  far inside the free allowances, but a Blaze plan has no ceiling of its own: set a budget alert in Google Cloud.
+
+To set it up: switch the project to the Blaze plan, run `npm --prefix functions ci` once, set `linkPreviews: true`,
+and `npm run deploy` (which deploys the function along with the site whenever `linkPreviews` is on). The first
+function deploy may ask how long to keep old build images; a day or two is plenty. An organization policy that
+forbids public access to Cloud Run services stops the deploy until it allows `allUsers` to invoke this one.
+
 The build lists anything that should be dealt with first. `deploy` refuses to publish while accounts are on
 without a contact address, if the version shown on the site does not match `package.json`, or if it would publish
 song files a database was supposed to hold.
@@ -400,7 +432,8 @@ the accounts test suite exercises against the Firestore emulator.
   name, say), the player goes to `appOrigin` before it does anything, because the two-address setup is not in
   force there. A copy on your own machine or network is left alone.
 - **Private songs cannot be discovered.** Nobody can list another person's songs, and share links are random
-  UUIDs that name nothing.
+  UUIDs that name nothing. The link-preview function answers only a live link, and only with what the player
+  would show anyway.
 - **No secrets in the repository.** Site settings, the Firebase project file, credentials and personal songs are
   ignored by git, and `tools/check-public.mjs` fails the push if a key, a token, an email address, a home-folder
   path, a song outside the demos, or a word from your own private list (`.private-terms`) turns up in a tracked
@@ -426,8 +459,8 @@ npm run test:accounts              # sign-in, saving, sharing, roles and the sec
                                    # on local emulators
 ```
 
-`test:accounts` needs the Firebase CLI and Java (for the Firestore emulator). Homebrew's `openjdk` is not on the
-`PATH` by itself: run it as `PATH="/opt/homebrew/opt/openjdk/bin:$PATH" npm run test:accounts`. Chromium runs on a silent virtual
+`test:accounts` needs the Firebase CLI, Java (for the Firestore emulator; Homebrew's `openjdk` is found even when it
+is not on the `PATH`) and the link-preview function's packages (`npm --prefix functions ci`, once). Chromium runs on a silent virtual
 audio output; Firefox and WebKit play through the speakers, turned right down after the levels are measured.
 
 ## Samples and offline use
@@ -466,6 +499,7 @@ and the offline cache name in `sw.js` together.
   about.html, privacy.html, 404.html, sw.js
   site-config.js ........ empty here; a site's settings arrive through it (config.site.json)
   firestore.rules ....... who may read and write what
+  functions/ ............ the link-preview function (bundled into functions/dist/ by tools/build-functions.mjs)
   beats/ ................ three demo songs; yours go here too, and stay on your machine
   css/ .................. tokens, layout, stage, deck, controls; page.css for reading pages
   js/
@@ -485,6 +519,7 @@ and the offline cache name in `sw.js` together.
     cloud.js ............ Google sign-in and Firestore
     admin.js ............ the Admin sheet      beats-core.js beats and their catalog
     routes-core.js ...... page addresses, titles and descriptions
+    share-page-core.js .. what a shared song's /s/ address answers     card-core.js its picture
     analytics.js ........ Google Analytics, with its opt-out
     share-sheet.js ...... the share sheet           tries.js a song's @try suggestions, one tap each
     onboarding.js ....... First steps

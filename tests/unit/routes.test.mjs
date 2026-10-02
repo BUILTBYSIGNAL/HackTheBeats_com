@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parse } from 'acorn';
 import { createAnalyzer } from '../../js/analyze-core.js';
 import { collect, createLibrary } from '../../js/library-core.js';
-import { slugify, assignSlugs, beatPath, slugFromPath, songTitle, songDescription, creditLine, remixLine, songLinkIn } from '../../js/routes-core.js';
+import { slugify, assignSlugs, beatPath, slugFromPath, songTitle, songDescription, creditLine, remixLine, songLinkIn, sharePath, shareIdFromPath } from '../../js/routes-core.js';
 
 const library = createLibrary(createAnalyzer(parse));
 
@@ -75,9 +75,18 @@ test('a remix names its original', () => {
 
 test('a shared song is found in its link', () => {
   const uuid = '0b9c7a1e-4f3d-4c2b-9a8e-1d2c3b4a5f6e';
-  assert.deepEqual(songLinkIn({ hash: `#song=${uuid}` }), { kind: 'song', raw: uuid, share: uuid });
-  assert.deepEqual(songLinkIn({ hash: `#copy=${uuid}` }), { kind: 'copy', raw: uuid, share: uuid });
-  assert.deepEqual(songLinkIn({ hash: '#song=owner1~song1' }), { kind: 'song', raw: 'owner1~song1', owner: 'owner1', id: 'song1' });
+  assert.deepEqual(songLinkIn({ hash: `#song=${uuid}` }), { kind: 'song', raw: uuid, share: uuid, form: 'hash' });
+  assert.deepEqual(songLinkIn({ hash: `#copy=${uuid}` }), { kind: 'copy', raw: uuid, share: uuid, form: 'hash' });
+  assert.deepEqual(songLinkIn({ hash: '#song=owner1~song1' }), { kind: 'song', raw: 'owner1~song1', owner: 'owner1', id: 'song1', form: 'hash' });
+  assert.deepEqual(songLinkIn({ pathname: sharePath(uuid) }), { kind: 'song', raw: uuid, share: uuid, form: 'path' });
   assert.equal(songLinkIn({ hash: '#mix=abc' }), null);
   assert.equal(songLinkIn({}), null);
+});
+
+test("a shared song's own address is /s/<uuid>, and nothing else is taken for one", () => {
+  const uuid = '0b9c7a1e-4f3d-4c2b-9a8e-1d2c3b4a5f6e';
+  assert.equal(sharePath(uuid), `/s/${uuid}`);
+  assert.equal(shareIdFromPath(`/s/${uuid}`), uuid);
+  assert.equal(shareIdFromPath(`/s/${uuid}/`), uuid);
+  for (const path of ['/s/', '/s/hello', `/s/${uuid.toUpperCase()}`, `/s/${uuid}/card.png`, `/x/${uuid}`, '/']) assert.equal(shareIdFromPath(path), null, path);
 });

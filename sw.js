@@ -3,7 +3,7 @@
 //   this site's own files   network first, falling back to the last copy seen
 //   sample audio            cache first (those files do not change)
 //   sample pack listings    served from cache at once, refreshed in the background
-const VERSION = 'v0.8.0';
+const VERSION = 'v0.9.0';
 const SHELL = `hb-shell-${VERSION}`;
 // sample audio outlives a release: it is kept under a name that does not change
 const SOUNDS = 'hb-sounds-1';
@@ -56,8 +56,9 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  // Firebase's own pages (the sign-in handler) are left to the network
-  if (url.origin === self.location.origin && url.pathname.startsWith('/__/')) return;
+  // Firebase's own pages (the sign-in handler) are left to the network, and so are shared
+  // songs' own addresses (/s/…): the link-preview function answers those, one per song
+  if (url.origin === self.location.origin && (url.pathname.startsWith('/__/') || url.pathname.startsWith('/s/'))) return;
   if (url.origin === self.location.origin) {
     event.respondWith(networkFirst(request));
   } else if (SOUND_HOSTS.has(url.hostname)) {

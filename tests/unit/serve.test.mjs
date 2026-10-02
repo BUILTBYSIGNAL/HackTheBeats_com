@@ -46,6 +46,11 @@ test('serves the site to this machine, by either of its names', async () => {
   assert.equal(await ask('/', { headers: { Host: `localhost:${port}` } }), 200);
 });
 
+test("a shared song's own address is the player, as on the hosted site", async () => {
+  assert.equal(await ask('/s/0b9c7a1e-4f3d-4c2b-9a8e-1d2c3b4a5f6e'), 200);
+  assert.equal(await ask('/s/not-a-link'), 404);
+});
+
 test('never hands out a dotfile, the site settings or an emulator log', async () => {
   // (.gitignore and the example settings are in every copy, so a refusal here is a real one)
   assert.equal(await ask('/config.site.example.json'), 200);

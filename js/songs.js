@@ -4,6 +4,7 @@ import { describeSong } from './library.js';
 import { cloud } from './cloud.js';
 import { config, site } from './config.js';
 import { newId, newUuid, titleOf, withTitle, uniqueTitle, templateSong, mergeSongs, toExport, fromImport, fromOf, cleanFrom } from './songs-core.js';
+import { sharePath } from './routes-core.js';
 
 const KEY = 'hacking-the-beats:songs';
 const UPLOAD_DELAY = 1500;
@@ -85,9 +86,11 @@ read();
 // A link is a UUID made when sharing is switched on (and a new one each time), so it
 // cannot be guessed and says nothing about whose song it is. Songs shared before links
 // were UUIDs are still reached by their owner and id.
-const shareBase = () => `${site.split ? config.shareOrigin : location.origin}/#song=`;
-export const linkToShare = (shareId) => `${shareBase()}${shareId}`;
-export const linkToShared = (owner, id) => `${shareBase()}${owner}~${id}`;
+// With link previews on, a link is the player's own address for the song (/s/<uuid>), which
+// unfurls with the song's title and picture.
+const shareOrigin = () => (site.split ? config.shareOrigin : location.origin);
+export const linkToShare = (shareId) => (config.linkPreviews ? `${shareOrigin()}${sharePath(shareId)}` : `${shareOrigin()}/#song=${shareId}`);
+export const linkToShared = (owner, id) => `${shareOrigin()}/#song=${owner}~${id}`;
 export const linkToSong = (song) => (song.shareId ? linkToShare(song.shareId) : linkToShared(song.owner, song.id));
 
 export const songs = {
