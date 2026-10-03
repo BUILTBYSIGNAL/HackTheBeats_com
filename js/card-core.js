@@ -97,7 +97,7 @@ export function cardSVG({ kicker = 'A shared song', title = 'Untitled', detail =
   <rect width="${WIDTH}" height="${HEIGHT}" fill="#191919"/>
   <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#bg)"/>
   <g transform="translate(64 56) scale(1.5)"><rect x="1" y="2" width="5" height="4" fill="${INK}"/><rect x="14" y="2" width="5" height="4" fill="${INK}" opacity=".45"/><rect x="7.5" y="8" width="5" height="4" fill="${ACCENT}"/><rect x="1" y="14" width="5" height="4" fill="${INK}" opacity=".45"/><rect x="14" y="14" width="5" height="4" fill="${INK}"/></g>
-  <text x="108" y="78" font-family="${MONO}" font-weight="500" font-size="20" letter-spacing="4.4" fill="#b9b6ae">HACKING THE BEATS</text>
+  <text x="108" y="78" font-family="${MONO}" font-weight="500" font-size="20" letter-spacing="4.4" fill="#b9b6ae">HACK THE BEATS</text>
   ${parts.join('\n  ')}
   ${glyph}
   <text x="64" y="600" font-family="${MONO}" font-size="18" letter-spacing="1.4" fill="#7d7a73">${esc(host)}</text>

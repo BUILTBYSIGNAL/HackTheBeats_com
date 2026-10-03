@@ -1,6 +1,6 @@
 {
   "name": "hacking-the-beats",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "A live-coded music art piece built on Strudel: read-only animated code, inline visuals and a DJ deck.",
   "private": true,
   "type": "module",
