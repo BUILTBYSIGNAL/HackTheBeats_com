@@ -3,14 +3,16 @@
 // stay in the browser. The SDK is only loaded when accounts are configured.
 //
 // Layout in Firestore (see firestore.rules for who may read and write what):
-//   users/{uid}/songs/{songId}   { code, title, createdAt, updatedAt, shared, mixer, ownerName, blocked?, shareId?, from? }
+//   users/{uid}/songs/{songId}   { code, title, createdAt, updatedAt, shared, mixer, ownerName, blocked?, shareId?, from?, featurable? }
 //       private to its owner unless `shared`; an admin can switch sharing off (`blocked`)
 //   shares/{uuid}                what a share link points at: { owner, song }
+//   community/{uuid}             a shared song the site features (community-core.js), no code
 //   beats/{id}                   the site's beats (beats-core.js)
 //   catalog/public               the beats' titles and descriptions, without their code
 //   roles/admin                  not a document but a question: only an admin may ask for it
 import { config, site } from './config.js';
 import { cleanFrom } from './songs-core.js';
+import { SHELF_MAX, shelfEntry } from './community-core.js';
 
 let fb = null;
 let auth = null;
@@ -33,6 +35,7 @@ const fromDoc = (id, data) => ({
   blocked: data.blocked === true,
   shareId: typeof data.shareId === 'string' ? data.shareId : null,
   from: cleanFrom(data.from),
+  featurable: data.featurable === true,
 });
 
 // The database said no (or there is nothing there), as opposed to not answering at all.
@@ -151,6 +154,8 @@ export const cloud = {
       ...(song.blocked ? { blocked: true } : {}),
       ...(song.shareId ? { shareId: song.shareId } : {}),
       ...(cleanFrom(song.from) ? { from: cleanFrom(song.from) } : {}),
+      // offered to the community shelf (only while shared)
+      ...(song.featurable ? { featurable: true } : {}),
     });
   },
 
@@ -247,9 +252,28 @@ export const cloud = {
     return snapshot.docs.map((entry) => ({ ...fromDoc(entry.id, entry.data()), title: entry.data().title || 'Untitled', owner: entry.ref.parent.parent.id }));
   },
 
-  // Switch a shared song's sharing off. Its owner cannot switch it back on.
+  // Switch a shared song's sharing off. Its owner cannot switch it back on. It leaves the
+  // community shelf too (before its link's record, as everywhere).
   async takeDown(owner, id, shareId = null) {
     await fb.updateDoc(this.songDoc(owner, id), { shared: false, blocked: true });
+    if (shareId) await this.unfeature(shareId).catch(() => {});
     if (shareId) await this.deleteShare(shareId).catch(() => {});
+  },
+
+  /* ---------- the community shelf ---------- */
+
+  // Admin: put a shared song on the shelf. `entry` is community-core.js communityEntry().
+  async feature(shareId, entry) {
+    await fb.setDoc(fb.doc(db, 'community', shareId), entry);
+  },
+  // Take a song off the shelf: the admin, or its owner while its link's record exists.
+  async unfeature(shareId) {
+    await fb.deleteDoc(fb.doc(db, 'community', shareId));
+  },
+  // The songs on the shelf, most recently featured first. Anyone can read them.
+  async listCommunity({ max = SHELF_MAX } = {}) {
+    await this.init();
+    const snapshot = await fb.getDocs(fb.query(fb.collection(db, 'community'), fb.orderBy('featuredAt', 'desc'), fb.limit(Math.min(max, SHELF_MAX))));
+    return snapshot.docs.map((entry) => shelfEntry(entry.id, entry.data())).filter(Boolean);
   },
 };

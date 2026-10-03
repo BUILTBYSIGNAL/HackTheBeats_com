@@ -6,7 +6,7 @@ import { deck } from './deck.js';
 import { crate } from './crate.js';
 import { visuals } from './visuals.js';
 import { loadLibrary, describeSong } from './library.js';
-import { songs, linkToSong } from './songs.js';
+import { songs, linkToSong, linkToShare } from './songs.js';
 import { withTitle, STARTERS, fromOf, isLive } from './songs-core.js';
 import { cloud } from './cloud.js';
 import { config, site } from './config.js';
@@ -91,6 +91,8 @@ const app = {
   // songs live in songs.js
   songs: [],
   libraryMode: 'files',
+  // the community shelf: shared songs the site's editors picked (community-core.js)
+  community: [],
   // 'full', or 'preview' for a visitor who is not signed in: one beat to listen to
   access: 'full',
   // a beat that is listed but needs an account, shown in place of the stage
@@ -634,7 +636,7 @@ function refreshSongLabels(player) {
 let thumbTimer;
 function renderCrate() {
   const mine = app.access === 'preview' ? [] : songs.list();
-  crate.render({ mine, beats: app.songs }, (song) => thumbs.get(song));
+  crate.render({ mine, beats: app.songs, community: site.guest ? [] : app.community }, (song) => thumbs.get(song));
   crate.setLoaded({ A: A.song?.id, B: B.song?.id });
   $('crate-count').textContent = [mine.length ? `${mine.length} of your own` : null, `${app.songs.length} ${app.songs.length === 1 ? 'beat' : 'beats'}`].filter(Boolean).join(' · ');
   // new songs get their punchcards drawn in the background
@@ -659,6 +661,7 @@ function renderGate() {
   // while the question is open, the opening curtain stays out of the way
   document.body.classList.toggle('is-gated', player.gated);
   if (!show) return;
+  $('gate-kicker').textContent = player.song.community ? 'From the community' : 'Shared song';
   $('gate-title').textContent = player.song.title;
   $('gate-by').textContent = [player.song.ownerName ? `shared by ${player.song.ownerName}` : null, remixLine(player.song.from) || null].filter(Boolean).join(' · ');
   $('gate-run').textContent = keepingCopy(player) ? 'Run and keep a copy' : 'Run this song';
@@ -693,8 +696,10 @@ function armGate() {
 }
 
 // `link` is what songLinkIn() read from the address: a share's UUID, or (for songs shared
-// before links were UUIDs) the owner and the song.
-async function openSharedSong(link) {
+// before links were UUIDs) the owner and the song. It opens on deck A unless `deck` says
+// otherwise; `community` marks a song opened from the community shelf.
+async function openSharedSong(link, { deck = 'A', community = false } = {}) {
+  const player = byId[deck];
   if (!cloud.available) return setStatus('That link points at a shared song, which needs the hosted site.');
   // on the main site a shared song is for editing a copy, which needs an account
   if (app.access === 'preview' && !site.guest) {
@@ -708,23 +713,39 @@ async function openSharedSong(link) {
     record = share && (await cloud.getShared(share.owner, share.song));
   } catch (error) {
     console.warn('[shared] could not reach the song', error);
+    // (a song from the shelf leaves the stage as it was)
+    if (community) return setStatus('That song could not be reached just now. Try again in a moment.');
     return showGone('unreachable', link);
   }
   // a link switched off (or replaced by a newer one) stays closed
-  if (!share || !record || !isLive(record, link.share)) return showGone('closed');
+  if (!share || !record || !isLive(record, link.share)) return community ? setStatus('That song is no longer shared.') : showGone('closed');
   const { owner: uid, song: id } = share;
   // one's own song, opened from its own link, is just the song
-  if (cloud.user?.uid === uid && songs.get(id)) return loadSong(id, 'A', { autoplay: false });
+  if (cloud.user?.uid === uid && songs.get(id)) return loadSong(id, deck, { autoplay: false });
   // the deck may hold changes that need dealing with first
-  if (!site.guest && !(await settleEdits(A))) return;
-  const song = { ...describeSong(record, 'shared'), owner: uid, ownerName: record.ownerName, shareId: link.share || record.shareId || null, from: record.from };
+  if (!site.guest && !(await settleEdits(player))) return;
+  const song = { ...describeSong(record, 'shared'), owner: uid, ownerName: record.ownerName, shareId: link.share || record.shareId || null, from: record.from, ...(community ? { community: true } : {}) };
   app.gatePeek = false;
   showGone(null);
-  setFocus('A');
+  setFocus(deck);
   // On the player's own address there is nothing for a song to reach, so it just loads.
-  A.load(song, { trust: site.guest });
-  navigate(song, { replace: true });
+  player.load(song, { trust: site.guest });
+  if (deck === 'A') navigate(song, { replace: true });
   if (site.guest) renderGuestIntro(song);
+}
+
+// A song from the community shelf. Signed out, it plays on the shared-song player; signed
+// in, it opens on the chosen deck behind the "run this?" question, because its owner can
+// change the code after it was featured.
+async function openCommunity(shareId, deckId = app.focusId) {
+  if (app.access !== 'full') {
+    analytics.event('community_open', { via: 'player' });
+    location.href = linkToShare(shareId);
+    return;
+  }
+  if (!(await settleEdits(byId[deckId]))) return;
+  analytics.event('community_open', { via: 'deck' });
+  await openSharedSong({ share: shareId }, { deck: deckId, community: true });
 }
 
 // A link that leads nowhere: say so in place of the stage, and offer a way on. `why` is
@@ -785,8 +806,23 @@ async function reloadLibrary() {
   app.songs = library.songs;
   app.libraryMode = library.mode;
   renderCrate();
+  refreshCommunity();
   // the admin's visit keeps what everyone else is told about the beats up to date
   if (cloud.user?.admin && library.mode === 'database') admin.syncCatalog().catch((error) => console.warn('[admin] could not refresh the catalog', error));
+  // and takes songs that are no longer offered off the community shelf
+  if (cloud.user?.admin) admin.syncCommunity().then((removed) => removed && refreshCommunity()).catch((error) => console.warn('[admin] could not tidy the shelf', error));
+}
+
+// The community shelf, for the song list (main site only).
+async function refreshCommunity() {
+  if (!cloud.available || site.guest) return;
+  try {
+    app.community = await cloud.listCommunity();
+  } catch (error) {
+    console.warn('[community] could not read the shelf', error);
+    app.community = [];
+  }
+  renderCrate();
 }
 
 // Someone with an account and no songs yet is given one to play with: their own copy of
@@ -911,7 +947,7 @@ function shareInput(target) {
   };
   if (song.source === 'mine') {
     const host = new URL(site.split ? config.shareOrigin : location.origin).host;
-    return { ...base, kind: 'own', accounts: cloud.accounts, shared: song.shared, blocked: song.blocked, synced: song.synced, link: songs.shareLink(song.id), host, sharer: cloud.user?.displayName || '' };
+    return { ...base, kind: 'own', accounts: cloud.accounts, shared: song.shared, blocked: song.blocked, synced: song.synced, link: songs.shareLink(song.id), host, sharer: cloud.user?.displayName || '', featurable: song.featurable, oldLink: song.shared && !song.shareId };
   }
   if (song.source === 'beats' && player) return { ...base, kind: 'beat', accounts: cloud.accounts && app.access === 'full', audience: song.audience ?? (song.featured ? 'everyone' : 'members'), link: mixLink(player, song) };
   if (song.source === 'shared') return { ...base, kind: 'theirs', ownerName: song.ownerName, link: linkToSong(song) };
@@ -931,6 +967,13 @@ async function setSharing(id, on) {
   analytics.event('share_link', { on });
   if (on) await songs.flush();
   else setStatus('That song is private again. Its old link no longer works.');
+}
+
+// Offer a shared song to the community shelf, or withdraw it.
+async function setFeaturing(id, on) {
+  if (!songs.setFeaturable(id, on)) return;
+  analytics.event('community_offer', { on });
+  await songs.flush();
 }
 
 // The share sheet's offers: keep the changes first, then share.
@@ -1213,7 +1256,7 @@ async function boot() {
     },
   );
   crate.init(
-    { dialog: $('crate'), mine: $('mine-list'), beats: $('crate-list'), close: $('crate-close'), heading: $('crate-title'), note: $('mine-note') },
+    { dialog: $('crate'), mine: $('mine-list'), beats: $('crate-list'), close: $('crate-close'), heading: $('crate-title'), note: $('mine-note'), community: $('community-list'), communitySection: $('community-section') },
     {
       onSelect: (id, deckId) => loadSong(id, app.access === 'preview' ? 'A' : deckId),
       isLocked,
@@ -1228,6 +1271,7 @@ async function boot() {
       onDelete: (id) => songs.remove(id),
       onShare: (id) => openShareSheet({ songId: id }),
       canShare: () => Boolean(cloud.user),
+      onCommunity: (shareId, deckId) => openCommunity(shareId, deckId),
     },
   );
   tries.init(
@@ -1282,6 +1326,9 @@ async function boot() {
       native: $('share-native'),
       linkNote: $('share-link-note'),
       recipient: $('share-recipient'),
+      featureRow: $('share-feature-row'),
+      feature: $('share-feature'),
+      featureNote: $('share-feature-note'),
       note: $('share-note'),
       live: $('share-live'),
       record: $('share-record'),
@@ -1290,6 +1337,7 @@ async function boot() {
     {
       input: shareInput,
       setShared: setSharing,
+      setFeaturable: setFeaturing,
       act: shareAction,
       shared: (method, kind) => {
         analytics.event('share', { method, content_type: kind });

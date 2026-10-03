@@ -233,7 +233,9 @@ A song is private unless you share it. **Share** (or **Share…** in the song's 
 - a switch for sharing by link, the link with **Copy**, and **Share…** where the device has a share menu of its own;
 - if the deck has changes that are not saved, a warning, with **Save and share** (a built-in beat: **Save as my song
   and share**), because the link always plays the latest saved version;
-- what the person who gets the link will find, and **Record audio**.
+- what the person who gets the link will find, and **Record audio**;
+- while it is shared, **Let the site feature this**: an offer to the site's editors, who may put it on the
+  [community shelf](#from-the-community). Untick it to withdraw it.
 
 The link is the song's own address on the player, `…/s/<uuid>` (or `…/#song=<uuid>` on a site without
 [link previews](#link-previews)): a random identifier made when sharing is switched on, which says nothing about the
@@ -266,6 +268,22 @@ reads **Run and keep a copy**: one click runs it and makes it theirs, crediting 
 because any page could send someone to a `#copy=` address. With no second address configured (on localhost, say),
 a shared song opens in place behind the same question.
 
+### From the community
+
+The song list has a shelf between My songs and Beats: songs people share that the site's editors picked, newest
+first, at most 48. It is only on the main site, and hidden while it is empty.
+
+- **Only what the link already shows.** The owner offers a shared song, and the admin features it. Its entry,
+  `community/<uuid>` (the link's UUID), holds the title, the credit, the sharer's name, the tempo, the number of
+  tracks, up to 300 characters of the header notes and the remix credit: never the code, the owner's account or
+  the song's id (`js/community-core.js`).
+- **Opening one.** Signed out, it plays on the shared-song player. Signed in, it opens on the deck chosen, behind
+  the same "run this?" question as any shared song (headed *From the community*), because its owner can change
+  the code after it was featured.
+- **Withdrawing.** Unticking the offer, switching sharing off or deleting the song takes it off the shelf at once.
+  The admin's own visits also take off any entry whose song is no longer shared and offered. Unticking leaves the
+  link itself working for whoever has it; only switching sharing off closes it.
+
 ## Accounts and roles
 
 Accounts are optional, and off in a fresh copy. With them on (see [Deploy your own](#deploy-your-own)):
@@ -294,6 +312,8 @@ only an admin is allowed to ask.
   the site build read.
 - *Shared songs*: every song anyone is currently sharing, with **Open** and **Switch sharing off**. A song that
   was switched off stays with its owner, who can still edit it but cannot share it again.
+- *From the community*: on *Shared songs*, a song its owner offered has **Feature** (or **Unfeature**), and the
+  rest say *not offered*. The shelf holds 48 at most. Switching a song's sharing off also takes it off the shelf.
 
 ## Pages and addresses
 
@@ -425,6 +445,8 @@ the accounts test suite exercises against the Firestore emulator.
   shares/{uuid}            a link holder learns which song it names · nobody can list them
   beats/{id}               featured: anyone · members: signed in · the rest: admin only
   catalog/public           titles and descriptions, no code: anyone reads, admin writes
+  community/{uuid}         the community shelf, no code: anyone reads (48 at a time) · the admin writes, only
+                           for a song its owner offered · the admin or that owner removes
   admins/{uid}             written only from the Firebase console
   everything else          closed
 ```
@@ -528,6 +550,7 @@ and the offline cache name in `sw.js` together.
     share-page-core.js .. what a shared song's /s/ address answers     card-core.js its picture
     analytics.js ........ Google Analytics, with its opt-out
     share-sheet.js ...... the share sheet           tries.js a song's @try suggestions, one tap each
+    community-core.js ... the community shelf: which songs may be on it, and what their entries say
     onboarding.js ....... First steps
     outline.js .......... the song map beside the code      outline-core.js finds its sections
     keys-core.js ........ key names as the visitor's keyboard has them (⌘ on a Mac)

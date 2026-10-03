@@ -86,3 +86,22 @@ test('a song no longer in My songs is kept before it is shared', () => {
   assert.equal(view.warning.primary.action, 'save-new');
   assert.equal(view.link, null);
 });
+
+test('my own song, while shared, can be offered to the community shelf', () => {
+  const view = sheetState({ ...own, shared: true, link: 'x' });
+  assert.deepEqual({ on: view.feature.on, disabled: view.feature.disabled }, { on: false, disabled: false });
+  assert.match(view.feature.note, /title, your name and its header notes appear under From the community\. Untick to withdraw it\./);
+  assert.equal(sheetState({ ...own, shared: true, link: 'x', featurable: true }).feature.on, true);
+  assert.equal(sheetState({ ...own, shared: true, busy: true, featurable: true }).feature.disabled, true);
+  // not while it is private, switched off by the site, or anywhere without accounts
+  assert.equal(sheetState({ ...own, shared: false, featurable: true }).feature, null);
+  assert.equal(sheetState({ ...own, shared: false, blocked: true, featurable: true }).feature, null);
+  assert.equal(sheetState({ ...own, accounts: false, shared: true }).feature, null);
+  // a link from before links were UUIDs has no entry the shelf could name: the sharing switch stays
+  const old = sheetState({ ...own, shared: true, link: 'x', oldLink: true });
+  assert.equal(old.feature, null);
+  assert.equal(old.toggle.on, true);
+  assert.equal(old.link.text, 'x');
+  assert.equal(sheetState({ kind: 'beat', title: 'Amber', accounts: true, link: 'x', audience: 'everyone' }).feature, null);
+  assert.equal(sheetState({ kind: 'theirs', link: 'y', ownerName: 'Ana' }).feature, null);
+});

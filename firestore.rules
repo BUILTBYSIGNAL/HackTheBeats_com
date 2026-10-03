@@ -11,6 +11,7 @@ rules_version = '2';
 //       blocked: true). The owner cannot share a blocked song again.
 //     - A copy can say where it came from (from: title, credit, link or page of the
 //       original), never whose account it was in.
+//     - The owner can offer a shared song to the community shelf (featurable: true).
 //   shares/{uuid}                what a share link points at
 //     - A link is a UUID. Anyone holding it can read whose song it names, nothing more;
 //       nobody can list them. Only the owner creates one, for themselves.
@@ -20,6 +21,14 @@ rules_version = '2';
 //       own. Only an admin can write.
 //   catalog/public               titles and descriptions of the beats, without their code
 //     - Anyone can read it. Only an admin can write it.
+//   community/{shareId}          the community shelf: shared songs the site features
+//     - Anyone can read an entry, and list at most 48 at once.
+//     - Only an admin can write one, and only for a song its owner has offered: shared by
+//       that link, featurable, not blocked. An entry holds what the link already shows
+//       (title, credit, sharer, tempo, track count, header notes, remix credit), never
+//       the code, an account or the song's id.
+//     - The admin, or the owner named by the link's record, can remove one. So an entry
+//       is removed before its link's record, everywhere.
 //   Admins
 //     - An admin is an account with a marker document, admins/{uid}, created in the
 //       Firebase console (it can be empty). Nobody can write that collection from the
@@ -57,7 +66,7 @@ service cloud.firestore {
 
     // What a song document may contain, and how big it may be.
     function validSong(song) {
-      return song.keys().hasOnly(['code', 'title', 'createdAt', 'updatedAt', 'shared', 'mixer', 'ownerName', 'blocked', 'shareId', 'from'])
+      return song.keys().hasOnly(['code', 'title', 'createdAt', 'updatedAt', 'shared', 'mixer', 'ownerName', 'blocked', 'shareId', 'from', 'featurable'])
         && song.keys().hasAll(['code', 'title', 'createdAt', 'updatedAt', 'shared'])
         && song.code is string && song.code.size() <= 200000
         && song.title is string && song.title.size() <= 200
@@ -68,7 +77,8 @@ service cloud.firestore {
         && (!('ownerName' in song) || (song.ownerName is string && song.ownerName.size() <= 200))
         && (!('blocked' in song) || song.blocked is bool)
         && (!('shareId' in song) || (song.shareId is string && song.shareId.size() <= 64))
-        && (!('from' in song) || validFrom(song.from));
+        && (!('from' in song) || validFrom(song.from))
+        && (!('featurable' in song) || song.featurable is bool);
     }
     function blocked(song) {
       return song.get('blocked', false);
@@ -139,6 +149,45 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['beats', 'updatedAt'])
         && request.resource.data.beats is list && request.resource.data.beats.size() <= 500
         && isAdmin();
+    }
+
+    // A shelf entry: what the song's link already shows, nothing more.
+    function validFeature(entry) {
+      return entry.keys().hasOnly(['title', 'by', 'ownerName', 'bpm', 'trackCount', 'blurb', 'from', 'featuredAt'])
+        && entry.keys().hasAll(['title', 'featuredAt'])
+        && entry.title is string && entry.title.size() <= 200
+        && (!('by' in entry) || (entry.by is string && entry.by.size() <= 200))
+        && (!('ownerName' in entry) || (entry.ownerName is string && entry.ownerName.size() <= 200))
+        && (!('bpm' in entry) || (entry.bpm is number && entry.bpm > 0 && entry.bpm < 10000))
+        && (!('trackCount' in entry) || (entry.trackCount is int && entry.trackCount > 0 && entry.trackCount <= 1000))
+        && (!('blurb' in entry) || (entry.blurb is string && entry.blurb.size() <= 300))
+        && (!('from' in entry) || validCredit(entry.from))
+        && entry.featuredAt is number;
+    }
+    function validCredit(from) {
+      return from is map
+        && from.keys().hasOnly(['title', 'by', 'ownerName'])
+        && from.keys().hasAll(['title'])
+        && from.title is string && from.title.size() <= 200
+        && (!('by' in from) || (from.by is string && from.by.size() <= 200))
+        && (!('ownerName' in from) || (from.ownerName is string && from.ownerName.size() <= 200));
+    }
+    // The song a link names is shared by that link and offered by its owner. Two reads.
+    function offered(shareId) {
+      let share = get(/databases/$(database)/documents/shares/$(shareId)).data;
+      let song = get(/databases/$(database)/documents/users/$(share.owner)/songs/$(share.song)).data;
+      return song.shared == true
+        && song.get('featurable', false) == true
+        && !blocked(song)
+        && song.get('shareId', shareId) == shareId;
+    }
+
+    match /community/{shareId} {
+      allow get: if true;
+      allow list: if request.query.limit <= 48;
+      allow create, update: if validFeature(request.resource.data) && isAdmin() && offered(shareId);
+      allow delete: if (signedIn() && get(/databases/$(database)/documents/shares/$(shareId)).data.owner == request.auth.uid)
+        || isAdmin();
     }
 
     match /admins/{uid} {
