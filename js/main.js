@@ -1080,7 +1080,7 @@ function finishRecording({ save = true } = {}) {
   if (!save) return blob;
   const title = (audible().song?.title || 'mix').replace(/[^\w\- ]+/g, '').trim() || 'mix';
   const stamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
-  const name = `hacking-the-beats ${title} ${stamp}.wav`;
+  const name = `hack-the-beats ${title} ${stamp}.wav`;
   saveBlob(blob, name);
   analytics.event('record', { action: 'save', minutes: Math.round(recorder.seconds / 60) });
   setStatus(`Saved ${name} (${(blob.size / 1048576).toFixed(1)} MB)`, { hold: 9000 });
@@ -1469,7 +1469,7 @@ async function boot() {
   });
   $('song-export').addEventListener('click', () => {
     if (!songs.list().length) return setStatus('There is nothing in My songs to export yet.');
-    saveBlob(new Blob([songs.exportText()], { type: 'application/json' }), `hacking-the-beats-songs-${new Date().toISOString().slice(0, 10)}.json`);
+    saveBlob(new Blob([songs.exportText()], { type: 'application/json' }), `hack-the-beats-songs-${new Date().toISOString().slice(0, 10)}.json`);
   });
 
   for (const player of players) {
@@ -1724,7 +1724,7 @@ async function boot() {
 
   $('version').textContent = `v${VERSION}`;
   $('about-version').textContent = `v${VERSION}`;
-  $('source-link').href = `source/hacking-the-beats-${VERSION}.tar.gz`;
+  $('source-link').href = `source/hack-the-beats-${VERSION}.tar.gz`;
 
   // arrangement ribbon: open it for track names, click a bar to jump there
   els.ribbonToggle.addEventListener('click', () => {

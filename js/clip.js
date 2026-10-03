@@ -531,7 +531,7 @@ export const clip = {
     const name = clipFilename({ title: song?.title, type: result.type });
     // made now, not when Share is pressed: a phone only shares from inside the tap
     const file = new File([result.blob], name, { type: result.type.split(';')[0] });
-    this.result = { ...result, name, title: song?.title || 'Hacking the Beats', file, url: URL.createObjectURL(result.blob), shareable: this.canShareFile(file) };
+    this.result = { ...result, name, title: song?.title || 'Hack The Beats', file, url: URL.createObjectURL(result.blob), shareable: this.canShareFile(file) };
     this.showDone();
     if (!this.els.dialog.open) this.els.dialog.showModal();
   },

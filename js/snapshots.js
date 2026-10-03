@@ -383,7 +383,7 @@ export const snapshots = {
     const record = records.get(id);
     if (!record?.wav) return;
     const name = `${record.name} ${barsLabel(record.bars)}`.replace(/[^\w\- ]+/g, '').trim() || 'snapshot';
-    saveBlob(record.wav, `hacking-the-beats ${name}.wav`);
+    saveBlob(record.wav, `hack-the-beats ${name}.wav`);
   },
 
   /* ---------- playing ---------- */

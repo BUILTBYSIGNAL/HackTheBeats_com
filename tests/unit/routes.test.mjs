@@ -25,8 +25,8 @@ test('an address leads back to its song, and nothing else looks like one', () =>
 });
 
 test('a page title carries the credit', () => {
-  assert.equal(songTitle({ title: 'Clockwork', by: 'Someone' }), 'Clockwork by Someone — Hacking the Beats');
-  assert.equal(songTitle({ title: 'Amber', by: null }), 'Amber — Hacking the Beats');
+  assert.equal(songTitle({ title: 'Clockwork', by: 'Someone' }), 'Clockwork by Someone — Hack The Beats');
+  assert.equal(songTitle({ title: 'Amber', by: null }), 'Amber — Hack The Beats');
 });
 
 test('a description is built from what the song says about itself', () => {

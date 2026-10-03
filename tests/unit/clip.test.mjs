@@ -90,9 +90,9 @@ test('the square shape stacks header, code, scope and footer inside its margins'
 
 test('a clip is named after the song, and says what it is', () => {
   const date = new Date('2026-03-04T05:06:07Z');
-  assert.equal(clipFilename({ title: 'Paper Kites', type: 'video/mp4', date }), 'hacking-the-beats Paper Kites clip 2026-03-04-05-06.mp4');
-  assert.equal(clipFilename({ title: 'What?! / Why', type: 'video/webm', date }), 'hacking-the-beats What Why clip 2026-03-04-05-06.webm');
-  assert.equal(clipFilename({ title: '', type: 'video/webm', date }), 'hacking-the-beats clip clip 2026-03-04-05-06.webm');
+  assert.equal(clipFilename({ title: 'Paper Kites', type: 'video/mp4', date }), 'hack-the-beats Paper Kites clip 2026-03-04-05-06.mp4');
+  assert.equal(clipFilename({ title: 'What?! / Why', type: 'video/webm', date }), 'hack-the-beats What Why clip 2026-03-04-05-06.webm');
+  assert.equal(clipFilename({ title: '', type: 'video/webm', date }), 'hack-the-beats clip clip 2026-03-04-05-06.webm');
   assert.equal(describeClip({ type: 'video/mp4;codecs=avc1', width: 1080, height: 1920, size: 4.24 * 1048576, seconds: 16.2 }), 'MP4 · 1080 × 1920 · 4.2 MB · 16 s');
   assert.equal(describeClip({ type: 'video/webm', width: 720, height: 720, size: 30000, seconds: 0.4 }), 'WebM · 720 × 720 · 29 KB · 1 s');
 });

@@ -120,7 +120,7 @@ the check refuses it, and the dev server will not serve it.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ HACKING THE BEATS   [■] A First Light 122   [▶] B Load a beat      122 BPM   5.3 BAR   │
+│ HACK THE BEATS      [■] A First Light 122   [▶] B Load a beat      122 BPM   5.3 BAR   │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │  13  DRUMS: s("bd*4, [~ cp]*2, [~ hh]*4")         EDIT  SAVE A COPY  FOLLOW  SPLIT     │
 │  14    .bank("RolandTR909")                                                GALLERY     │
@@ -374,7 +374,7 @@ npm run deploy     # builds, checks, then publishes dist/ and the database rules
 ```
 
 `dist/` holds the site's own files, a page for every address, `sitemap.xml`, `robots.txt`, the share pictures, and
-`source/hacking-the-beats-<version>.tar.gz`: the project's source, which the About page links to, because the AGPL
+`source/hack-the-beats-<version>.tar.gz`: the project's source, which the About page links to, because the AGPL
 asks a public site to offer its source to the people using it. Sample audio is never published; the hosted site
 streams samples from their packs.
 
@@ -586,7 +586,7 @@ and the offline cache name in `sw.js` together.
   ♪  This project ....... © Built By Signal LLC · AGPL-3.0-or-later · see LICENSE
 ```
 
-Hacking the Beats bundles Strudel and is released under the same licence, the GNU Affero General Public License v3
+Hack The Beats bundles Strudel and is released under the same licence, the GNU Affero General Public License v3
 or later, with no warranty. If you run a changed copy as a public site, the licence asks you to offer your source
 to the people using it; the build does that for you with the archive linked from the About page. Keep the credit
 in place.

@@ -150,7 +150,7 @@ if (!database) songs = songsFromFiles();
 /* ---------- the pages ---------- */
 
 const origin = (config.appOrigin || '').replace(/\/$/, '');
-const archiveName = `hacking-the-beats-${version}`;
+const archiveName = `hack-the-beats-${version}`;
 const esc = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const replaceOnce = (html, from, to, what) => {
   if (!html.includes(from)) throw new Error(`build: could not find ${what} in the page template`);
@@ -252,7 +252,7 @@ write(
 // people with an account gets its title, credit, description and notes instead.
 for (const song of songs) {
   let html = player;
-  html = replaceOnce(html, '<h1 class="visually-hidden">Hacking the Beats</h1>', `<h1 class="visually-hidden">${esc(credit(song))} · ${esc(SITE_NAME)}</h1>`, 'the page heading');
+  html = replaceOnce(html, '<h1 class="visually-hidden">Hack The Beats</h1>', `<h1 class="visually-hidden">${esc(credit(song))} · ${esc(SITE_NAME)}</h1>`, 'the page heading');
   html = replaceOnce(
     html,
     '<section class="sheet__song" id="about-song"></section>',

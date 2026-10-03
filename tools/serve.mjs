@@ -132,6 +132,6 @@ addresses.forEach((address, i) => {
     throw error;
   });
   server.listen(port, address, () => {
-    if (i === 0) console.log(`Hacking the Beats → http://localhost:${port}${open ? `  (open to the network: SERVE_HOST=${open})` : ''}`);
+    if (i === 0) console.log(`Hack The Beats → http://localhost:${port}${open ? `  (open to the network: SERVE_HOST=${open})` : ''}`);
   });
 });

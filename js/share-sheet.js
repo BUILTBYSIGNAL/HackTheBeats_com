@@ -194,7 +194,7 @@ export const shareSheet = {
     const url = this.view?.link?.text;
     if (!url) return;
     try {
-      await navigator.share({ title: this.input.title, text: `"${this.input.title}", a live-coded song on Hacking the Beats`, url });
+      await navigator.share({ title: this.input.title, text: `"${this.input.title}", a live-coded song on Hack The Beats`, url });
       this.hooks.shared('native', this.input.kind);
     } catch (error) {
       if (error?.name !== 'AbortError') this.announce('That did not work here: copy the link instead.');

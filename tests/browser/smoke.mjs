@@ -479,7 +479,7 @@ async function addresses(browser) {
   await page.goto(URL);
   await ready();
   const home = await head();
-  check('the home page has its own title and address', home.title.startsWith('Hacking the Beats —') && home.path === '/', home.title);
+  check('the home page has its own title and address', home.title.startsWith('Hack The Beats —') && home.path === '/', home.title);
 
   const target = await page.evaluate(() => {
     const h = window.hackingTheBeats;
@@ -490,7 +490,7 @@ async function addresses(browser) {
   await page.waitForFunction((slug) => location.pathname === `/beats/${slug}`, target.slug, { timeout: 15000 });
   await ready();
   const chosen = await head();
-  check("choosing a beat gives the page that beat's address, title and description", chosen.title === `${target.title} by ${target.by} — Hacking the Beats` && chosen.description.startsWith(`${target.title} by ${target.by}:`), `${chosen.path} · ${chosen.title}`);
+  check("choosing a beat gives the page that beat's address, title and description", chosen.title === `${target.title} by ${target.by} — Hack The Beats` && chosen.description.startsWith(`${target.title} by ${target.by}:`), `${chosen.path} · ${chosen.title}`);
 
   await page.goBack();
   await page.waitForFunction(() => location.pathname === '/');
@@ -516,7 +516,7 @@ async function addresses(browser) {
   const about = { title: await page.title(), beats: await page.locator('.beats a').count(), h1: await page.locator('h1').textContent() };
   await page.goto(`${URL}privacy`);
   const privacy = await page.title();
-  check('About and Privacy are pages of their own', about.title.startsWith('About Hacking the Beats') && about.h1 === 'About' && privacy.startsWith('Privacy'), `${about.title} · ${privacy}`);
+  check('About and Privacy are pages of their own', about.title.startsWith('About Hack The Beats') && about.h1 === 'About' && privacy.startsWith('Privacy'), `${about.title} · ${privacy}`);
 
   if (built) {
     // what a crawler that runs no scripts is given
@@ -528,7 +528,7 @@ async function addresses(browser) {
     const sitemap = await fetch(`${URL}sitemap.xml`).then((response) => (response.ok ? response.text() : null));
     check(
       "a beat's page says what it is before any script runs",
-      html.includes(`<title>${target.title} by ${target.by} — Hacking the Beats</title>`) && /<pre class="prerender" id="prerender">[^<]*setcp/.test(html) && html.includes('og:title'),
+      html.includes(`<title>${target.title} by ${target.by} — Hack The Beats</title>`) && /<pre class="prerender" id="prerender">[^<]*setcp/.test(html) && html.includes('og:title'),
     );
     if (sitemap) check('and where it lives', /<link rel="canonical" href="https:\/\/[^"]+\/beats\//.test(html) && html.includes('application/ld+json'));
     check(

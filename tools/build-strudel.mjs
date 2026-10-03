@@ -11,7 +11,7 @@ const outfile = resolve(root, 'vendor/strudel.bundle.js');
 const version = (name) => JSON.parse(readFileSync(resolve(root, 'node_modules', name, 'package.json'), 'utf8')).version;
 
 const banner = `/*
- * Strudel (https://strudel.cc) — bundled for Hacking the Beats.
+ * Strudel (https://strudel.cc) — bundled for Hack The Beats.
  * @strudel/core ${version('@strudel/core')}, @strudel/codemirror ${version('@strudel/codemirror')}, superdough ${version('superdough')}
  * Copyright (C) Strudel contributors — https://codeberg.org/uzu/strudel
  * Licensed under the GNU Affero General Public License v3.0 or later.

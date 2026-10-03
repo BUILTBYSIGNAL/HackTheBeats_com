@@ -554,7 +554,7 @@ try {
   check(
     "a shared song's address is answered with its own title, description and picture",
     page.status === 200 &&
-      html.includes('<title>Glass &amp; &lt;Tide&gt; &quot;one&quot; by Test Person — Hacking the Beats</title>') &&
+      html.includes('<title>Glass &amp; &lt;Tide&gt; &quot;one&quot; by Test Person — Hack The Beats</title>') &&
       html.includes('<meta name="twitter:card" content="summary_large_image" />') &&
       new RegExp(`og:image" content="[^"]+/s/${preview.shareId}/card\\.png\\?v=`).test(html) &&
       /s-maxage/.test(page.headers.get('cache-control')) &&

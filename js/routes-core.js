@@ -2,7 +2,7 @@
 // title and description. Shared by the site, the site build and the tests, so the three
 // always agree. No imports: it runs in Node as well as the browser.
 
-export const SITE_NAME = 'Hacking the Beats';
+export const SITE_NAME = 'Hack The Beats';
 export const HOME_TITLE = `${SITE_NAME} — live-coded music you can watch, mix and edit`;
 export const HOME_DESCRIPTION = 'Live-coded music as an art piece. Watch Strudel code play itself, mix beats on a two-deck DJ panel, and edit the code in your browser.';
 

@@ -86,11 +86,11 @@ export function frameLayout(format) {
   return { width: f.width, height: f.height, safe: f.safe, header, code, scope, footer };
 }
 
-// "hacking-the-beats Low Tide clip 2026-10-02-18-40.mp4", like the WAV recordings.
+// "hack-the-beats Low Tide clip 2026-10-02-18-40.mp4", like the WAV recordings.
 export function clipFilename({ title, type, date = new Date() } = {}) {
   const name = String(title || '').replace(/[^\w\- ]+/g, '').replace(/\s+/g, ' ').trim() || 'clip';
   const stamp = date.toISOString().slice(0, 16).replace(/[T:]/g, '-');
-  return `hacking-the-beats ${name} clip ${stamp}.${fileExtension(type)}`;
+  return `hack-the-beats ${name} clip ${stamp}.${fileExtension(type)}`;
 }
 
 // "MP4 · 1080 × 1920 · 4.2 MB · 16 s"

@@ -49,7 +49,7 @@ test("a live link's page is the song's own: escaped title, description, picture,
   assert.match(result.headers['Cache-Control'], /s-maxage=300/);
   assert.equal(result.headers['X-Robots-Tag'], 'noindex');
   const html = result.body;
-  assert.match(html, /<title>Glass &amp; &lt;Tide&gt; &quot;one&quot; by Test Person — Hacking the Beats<\/title>/);
+  assert.match(html, /<title>Glass &amp; &lt;Tide&gt; &quot;one&quot; by Test Person — Hack The Beats<\/title>/);
   assert.match(html, /<meta property="og:image" content="https:\/\/play\.example\.org\/s\/[0-9a-f-]{36}\/card\.png\?v=[0-9a-z]+" \/>/);
   assert.match(html, /<meta name="twitter:card" content="summary_large_image" \/>/);
   assert.match(html, /<meta name="robots" content="noindex" \/>/);
@@ -104,6 +104,6 @@ test('HEAD answers without a body; other methods are refused', async () => {
 
 test('the closed page is the plain player, with its own generic tags', () => {
   const html = renderSharePage(template, closedMeta('https://play.example.org'));
-  assert.match(html, /<title>A shared song — Hacking the Beats<\/title>/);
+  assert.match(html, /<title>A shared song — Hack The Beats<\/title>/);
   assert.match(html, /id="curtain-title">&nbsp;</);
 });

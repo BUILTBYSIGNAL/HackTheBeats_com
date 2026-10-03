@@ -30,7 +30,7 @@ function cardHTML({ kicker, title, detail, seed }) {
   </style></head><body><div class="card">
     <div class="brand">
       <svg viewBox="0 0 20 20"><rect x="1" y="2" width="5" height="4" fill="#eceae4"/><rect x="14" y="2" width="5" height="4" fill="#eceae4" opacity=".45"/><rect x="7.5" y="8" width="5" height="4" fill="#ff6b35"/><rect x="1" y="14" width="5" height="4" fill="#eceae4" opacity=".45"/><rect x="14" y="14" width="5" height="4" fill="#eceae4"/></svg>
-      Hacking the Beats
+      Hack The Beats
     </div>
     <p class="kicker">${esc(kicker)}</p>
     <h1>${esc(title)}</h1>
