@@ -1126,6 +1126,10 @@ body:not(.has-played) #map-toggle,
   gap: 8px;
   margin-top: 6px;
 }
+/* the featured beats, to play instead */
+.locked__instead {
+  display: contents;
+}
 
 /* ---------- messages ---------- */
 

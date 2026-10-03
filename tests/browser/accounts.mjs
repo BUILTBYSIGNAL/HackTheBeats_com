@@ -775,11 +775,13 @@ try {
   const row = (id) => boss.locator(`#admin-beats .admin__row[data-id="${id}"]`);
   await boss.setInputFiles('#admin-file', { name: 'seed.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(seed)) });
   await status('Added 3 beats');
-  await row('t2').getByRole('button', { name: 'Featured' }).click();
-  await status('"Beta" is now the featured beat');
+  // the first beat in is featured; a second can be too, and then the first need not be
+  await row('t2').getByRole('button', { name: 'Anyone' }).click();
+  await status('"Beta" is featured');
   await row('t1').getByRole('button', { name: 'Members' }).click();
   await status('"Alpha" is open to members');
-  await row('t2').getByRole('button', { name: '↑' }).click();
+  await row('t2').locator('summary').click();
+  await row('t2').getByRole('button', { name: 'Move up' }).click();
   await status('Moved "Beta"');
   const managed = await boss.evaluate(async () => {
     const h = window.hackingTheBeats;
@@ -787,6 +789,10 @@ try {
     return { order: h.admin.beats.map((entry) => entry.id), catalog: catalog.beats.map((entry) => `${entry.id}${entry.featured ? '*' : ''}`), noCode: !JSON.stringify(catalog).includes('setcps'), mode: h.app.libraryMode };
   });
   check('the admin adds beats, features one, opens one to members and reorders them', managed.order.join() === 't2,t1,t3' && managed.catalog.join() === 't2*,t1' && managed.noCode, JSON.stringify(managed));
+  // the last featured beat stays featured
+  await row('t2').getByRole('button', { name: 'Only me' }).click();
+  await status('One beat always stays featured');
+  check('the one featured beat cannot be taken back while it is the only one', (await boss.evaluate(() => window.hackingTheBeats.admin.beats.find((entry) => entry.id === 't2').featured)) === true);
 
   // what a visitor with no account is given now
   const passerby = await visitor();
@@ -850,11 +856,15 @@ try {
 
   // the admin adds one of their own songs: it is theirs alone until opened to members
   const added = await boss.evaluate(() => window.hackingTheBeats.songs.createBlank().id);
-  await boss.click('[data-admin-tab="beats"]');
-  await boss.waitForFunction((id) => [...document.getElementById('admin-song').options].some((option) => option.value === id), added);
-  await boss.selectOption('#admin-song', added);
-  await boss.click('#admin-publish');
+  await boss.click('[data-admin-tab="mine"]');
+  const mineRow = boss.locator(`#admin-mine .admin__row[data-id="${added}"]`);
+  await mineRow.getByRole('button', { name: 'Publish as beat' }).click();
   await status('Added "New song"');
+  const linked = await boss.evaluate((id) => ({ song: window.hackingTheBeats.admin.beats.find((entry) => entry.title === 'New song')?.song === id }), added);
+  const update = mineRow.getByRole('button', { name: 'Update beat' });
+  check('a song published from My songs is linked to its beat, which it can update', linked.song && (await update.count()) === 1 && (await update.isDisabled()), JSON.stringify(linked));
+  await boss.click('[data-admin-tab="beats"]');
+  await boss.waitForFunction(() => document.querySelector('#admin-beats .admin__row'));
   await passerby.reload();
   await arrive(passerby);
   const kept = await passerby.evaluate(() => window.hackingTheBeats.app.songs.map((song) => song.title).join());
@@ -865,6 +875,26 @@ try {
   await arrive(passerby);
   const opened = await passerby.evaluate(() => window.hackingTheBeats.app.songs.map((song) => song.title).join());
   check("a beat the admin adds is theirs alone until they open it to members", kept === 'Beta,Alpha' && opened === 'Beta,Alpha,New song' && bossSees === 'Beta:everyone,Alpha:members,Gamma:admin,New song:admin', `${kept} → ${opened} · ${bossSees}`);
+
+  // several featured beats: each plays without an account, with a chip each beside deck A
+  await row('t1').getByRole('button', { name: 'Anyone' }).click();
+  await status('"Alpha" is featured');
+  const outsider = await visitor();
+  const picks = await outsider.evaluate(() => {
+    const h = window.hackingTheBeats;
+    return {
+      songs: h.app.songs.map((song) => `${song.title}:${song.code ? 'code' : 'no code'}`),
+      chips: [...document.querySelectorAll('#featured-picks button')].map((chip) => `${chip.textContent}${chip.getAttribute('aria-pressed') === 'true' ? '*' : ''}`),
+      shown: !document.getElementById('featured-picks').hidden,
+    };
+  });
+  await outsider.click('#featured-picks button:nth-child(2)');
+  await outsider.waitForFunction(() => window.hackingTheBeats.players.A.song?.id === 't1', null, { timeout: 15000 });
+  const switched = await outsider.evaluate(() => [...document.querySelectorAll('#featured-picks button')].map((chip) => chip.getAttribute('aria-pressed')).join());
+  check('signed out, every featured beat plays, and the chips beside deck A switch between them', picks.shown && picks.songs.join() === 'Beta:code,Alpha:code,New song:no code' && picks.chips.join() === 'Beta*,Alpha' && switched === 'false,true', JSON.stringify({ ...picks, switched }));
+  await outsider.close();
+  await row('t1').getByRole('button', { name: 'Members' }).click();
+  await status('"Alpha" is open to members');
 
   /* ---------- the community shelf ---------- */
 

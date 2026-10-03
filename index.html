@@ -60,6 +60,7 @@
             <span class="deckchip__meta" id="meta-b"></span>
           </button>
         </div>
+        <div class="featured-picks" id="featured-picks" role="group" aria-label="Featured beats" hidden></div>
       </div>
 
       <div class="transport" role="group" aria-label="Change the beat on the deck in focus">
@@ -230,7 +231,7 @@
         <div class="locked__notes" id="locked-notes"></div>
         <div class="gate__actions">
           <button type="button" class="gsi" id="locked-sign-in">Sign in with Google</button>
-          <button type="button" class="pillbtn" id="locked-featured">Play the featured beat</button>
+          <span class="locked__instead" id="locked-featured"></span>
         </div>
       </div>
 
@@ -586,29 +587,35 @@
       <div class="sheet__body">
         <div class="admin__tabs" role="group" aria-label="Admin sections">
           <button type="button" class="chipbtn" data-admin-tab="beats" aria-pressed="true">Beats</button>
+          <button type="button" class="chipbtn" data-admin-tab="mine" aria-pressed="false">My songs</button>
           <button type="button" class="chipbtn" data-admin-tab="shared" aria-pressed="false">Shared songs</button>
         </div>
         <p class="admin__status" id="admin-status" role="status" aria-live="polite"></p>
 
         <section data-admin-panel="beats">
           <p class="sheet__fine">
-            The site's beats, in this order. Anyone can play the <strong>featured</strong> beat, signed in or not. A beat switched to
-            <strong>Members</strong> can be played by everyone who is signed in. Every other beat is yours alone.
+            The site's beats, in the order the song list shows them. For each, choose who can play it: <strong>Anyone</strong>
+            makes it a featured beat, which visitors can play without an account (up to six, one chip each on the stage);
+            <strong>Members</strong> is everyone who is signed in; <strong>Only me</strong> is you alone. To add a beat, publish one
+            of yours from <strong>My songs</strong>.
           </p>
+          <div class="admin__filter" id="admin-filter" role="group" aria-label="Show"></div>
           <ol class="admin__list" id="admin-beats"></ol>
           <div class="sheet__row">
             <button type="button" class="pillbtn pillbtn--go" id="admin-seed" hidden>Publish the site's own beats</button>
-          </div>
-          <h3>Add a beat</h3>
-          <div class="sheet__row">
-            <select id="admin-song" aria-label="One of my songs"></select>
-            <button type="button" class="pillbtn" id="admin-publish">Add this song</button>
-          </div>
-          <div class="sheet__row">
-            <button type="button" class="pillbtn" id="admin-import">Import a file</button>
+            <button type="button" class="pillbtn" id="admin-import">Import a strudel.cc file</button>
             <input type="file" id="admin-file" accept=".json,application/json" hidden />
           </div>
-          <p class="sheet__fine">A file is a strudel.cc export. Patterns already here are skipped. A new beat is yours alone until you open it to members.</p>
+          <p class="sheet__fine">Patterns already here are skipped. A new beat is yours alone until you say who else can play it.</p>
+        </section>
+
+        <section data-admin-panel="mine" hidden>
+          <p class="sheet__fine">
+            Your own songs, the newest change first. <strong>Publish as beat</strong> adds one to the beats, for you alone until
+            you say who else can play it. A song that is a beat already can put its latest code on it with
+            <strong>Update beat</strong>.
+          </p>
+          <ol class="admin__list" id="admin-mine"></ol>
         </section>
 
         <section data-admin-panel="shared" hidden>

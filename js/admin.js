@@ -1,12 +1,12 @@
-// The admin sheet: the public beats, and the songs people have shared (and which of them
-// the community shelf features). Only an admin
+// The admin sheet: the public beats, the admin's own songs (to publish as beats), and the
+// songs people have shared (and which of them the community shelf features). Only an admin
 // account is offered it, and the database refuses these writes from anyone else
 // (firestore.rules), so nothing here is what keeps other people out.
 import { cloud } from './cloud.js';
 import { songs, linkToSong } from './songs.js';
 import { describeSong } from './library.js';
 import { newId } from './songs-core.js';
-import { orderBeats, newBeat, featuredOf, audienceOf, buildCatalog, beatsFromExport } from './beats-core.js';
+import { orderBeats, newBeat, featuredIds, audienceOf, buildCatalog, beatsFromExport, MAX_FEATURED } from './beats-core.js';
 import { SHELF_MAX, eligibleForShelf, communityEntry } from './community-core.js';
 
 const describe = (beat) => describeSong({ id: beat.id || 'new', code: beat.code }, 'beats');
@@ -35,6 +35,21 @@ const confirmButton = (label, sure, onConfirm) => {
   }, { danger: true });
   return el;
 };
+const span = (className, text) => {
+  const el = document.createElement('span');
+  el.className = className;
+  if (text !== undefined) el.textContent = text;
+  return el;
+};
+const day = (ms) => new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+
+// Who may play a beat, as the sheet names it.
+const AUDIENCES = [
+  ['everyone', 'Anyone', 'Featured: anyone can play it, signed in or not'],
+  ['members', 'Members', 'Everyone who is signed in can play it'],
+  ['admin', 'Only me', 'Only you can play it'],
+];
+const audienceName = (audience) => AUDIENCES.find(([key]) => key === audience)[1].toLowerCase();
 
 export const admin = {
   els: null,
@@ -42,20 +57,28 @@ export const admin = {
   shared: [],
   // the share ids on the community shelf
   featured: new Set(),
+  // which beats the list shows: 'all', or one audience
+  filter: 'all',
+  // the beat whose code is being replaced from one of the admin's songs
+  replacing: null,
   onChange: () => {},
   busy: false,
 
   // `siteBeats()` gives the beats that came with the site's own files, for a first
-  // publication into an empty database.
-  init(els, { onChange, siteBeats }) {
+  // publication into an empty database; `openSong(id)` puts one of the admin's songs on deck A.
+  init(els, { onChange, siteBeats, openSong }) {
     this.els = els;
     this.onChange = onChange;
     this.siteBeats = siteBeats;
+    this.openSong = openSong;
     els.seed.addEventListener('click', () => this.seed());
     els.close.addEventListener('click', () => els.dialog.close());
     els.dialog.addEventListener('click', (event) => event.target === els.dialog && els.dialog.close());
     for (const tab of els.tabs) tab.addEventListener('click', () => this.show(tab.dataset.adminTab));
-    els.publish.addEventListener('click', () => this.publish(els.song.value));
+    // one ⋯ menu open at a time, and a click anywhere else closes it
+    els.dialog.addEventListener('click', (event) => {
+      for (const menu of els.dialog.querySelectorAll('.admin__more[open]')) if (!menu.contains(event.target)) menu.open = false;
+    });
     els.importButton.addEventListener('click', () => els.file.click());
     els.file.addEventListener('change', async (event) => {
       const [file] = event.target.files;
@@ -75,7 +98,7 @@ export const admin = {
     for (const panel of this.els.panels) panel.hidden = panel.dataset.adminPanel !== tab;
     this.status('');
     try {
-      if (tab === 'beats') await this.loadBeats();
+      if (tab === 'beats' || tab === 'mine') await this.loadBeats();
       else await this.loadShared();
     } catch (error) {
       console.warn('[admin]', error);
@@ -91,66 +114,151 @@ export const admin = {
 
   async loadBeats() {
     this.beats = orderBeats(await cloud.listBeats({ all: true }));
+    this.render();
+  },
+
+  render() {
     this.renderBeats();
+    this.renderMine();
+  },
+
+  // The beat published from one of the admin's songs: by the link it was published with,
+  // else one that plays exactly that song's code.
+  beatOf(song) {
+    return this.beats.find((beat) => beat.song === song.id) || this.beats.find((beat) => !beat.song && beat.code === song.code) || null;
   },
 
   renderBeats() {
-    const { list, song } = this.els;
+    const { list, filter } = this.els;
     list.replaceChildren();
+    // an empty database can be filled with the beats the site came with, in one go
+    this.els.seed.hidden = this.beats.length > 0 || !this.siteBeats().length;
+    const featured = featuredIds(this.beats);
+    const audiences = new Map(this.beats.map((beat) => [beat.id, audienceOf(beat, featured)]));
+    const count = (audience) => [...audiences.values()].filter((value) => value === audience).length;
+    if (this.filter !== 'all' && !count(this.filter)) this.filter = 'all';
+    filter.replaceChildren(
+      ...[['all', 'All', this.beats.length], ...AUDIENCES.map(([key, label]) => [key, label, count(key)])].map(([key, label, n]) => {
+        const chip = button(`${label} ${n}`, () => {
+          this.filter = key;
+          this.renderBeats();
+        }, { pressed: this.filter === key });
+        chip.dataset.filter = key;
+        return chip;
+      }),
+    );
+    filter.hidden = !this.beats.length;
     if (!this.beats.length) {
       const empty = document.createElement('li');
       empty.className = 'admin__empty';
       empty.textContent = 'There are no beats in the database yet. Until there are, the site plays the beats in its own files.';
       list.append(empty);
     }
-    // an empty database can be filled with the beats the site came with, in one go
-    this.els.seed.hidden = this.beats.length > 0 || !this.siteBeats().length;
-    const featuredId = featuredOf(this.beats)?.id;
+    const mine = songs.list();
     this.beats.forEach((beat, i) => {
-      const audience = audienceOf(beat, featuredId);
+      const audience = audiences.get(beat.id);
       const row = document.createElement('li');
-      row.className = `admin__row${audience === 'admin' ? ' is-private' : ''}`;
+      row.className = `admin__row admin__row--beat${audience === 'admin' ? ' is-private' : ''}`;
       row.dataset.id = beat.id;
-      const name = document.createElement('span');
-      name.className = 'admin__name';
-      name.textContent = beat.by ? `${beat.title} — ${beat.by}` : beat.title;
-      const meta = document.createElement('span');
-      meta.className = 'admin__meta';
-      meta.textContent = `${{ everyone: 'featured: anyone can play it', members: 'members can play it', admin: 'only you' }[audience]} · /beats/${beat.slug}`;
-      const tools = document.createElement('span');
-      tools.className = 'admin__tools';
-      const up = button('↑', () => this.move(beat.id, -1), { title: 'Move up' });
-      const down = button('↓', () => this.move(beat.id, 1), { title: 'Move down' });
+      row.dataset.audience = audience;
+      row.hidden = this.filter !== 'all' && this.filter !== audience;
+      const source = beat.song && mine.find((song) => song.id === beat.song);
+      const meta = [`/beats/${beat.slug}`, source ? `from your song "${source.title}"` : null, beat.updatedAt ? `changed ${day(beat.updatedAt)}` : null];
+
+      const who = span('admin__audience');
+      who.setAttribute('role', 'group');
+      who.setAttribute('aria-label', `Who can play ${beat.title}`);
+      for (const [key, label, title] of AUDIENCES) {
+        const choice = button(label, () => key !== audience && this.setAudience(beat.id, key), { pressed: key === audience, title });
+        choice.dataset.audience = key;
+        who.append(choice);
+      }
+
+      const more = document.createElement('details');
+      more.className = 'admin__more';
+      const summary = document.createElement('summary');
+      summary.className = 'chipbtn';
+      summary.textContent = '⋯';
+      summary.title = 'More';
+      summary.setAttribute('aria-label', `More for ${beat.title}`);
+      const menu = span('admin__menu');
+      const up = button('Move up', () => this.move(beat.id, -1));
+      const down = button('Move down', () => this.move(beat.id, 1));
       up.disabled = i === 0;
       down.disabled = i === this.beats.length - 1;
-      const feature = button('Featured', () => this.feature(beat.id), { pressed: audience === 'everyone', title: 'The beat anyone can play without an account' });
-      const members = button('Members', () => this.setMembers(beat.id, audience !== 'members'), { pressed: audience === 'members', title: 'Let everyone who is signed in play this beat' });
-      members.disabled = audience === 'everyone';
-      tools.append(
-        up,
-        down,
-        feature,
-        members,
-        button('Rename', () => this.rename(beat.id)),
-        button('Replace', () => this.replace(beat.id, song.value), { title: 'Replace its code with the song chosen below' }),
-        confirmButton('Remove', 'Really remove?', () => this.remove(beat.id)),
-      );
-      row.append(name, tools, meta);
+      const replace = button('Replace code…', () => {
+        this.replacing = beat.id;
+        this.renderBeats();
+      }, { title: 'Play the code of one of your songs instead' });
+      replace.disabled = !mine.length;
+      menu.append(up, down, button('Rename', () => this.rename(beat.id)), replace, confirmButton('Remove', 'Really remove?', () => this.remove(beat.id)));
+      more.append(summary, menu);
+
+      const tools = span('admin__tools');
+      tools.append(who, more);
+      row.append(span('admin__name', beat.by ? `${beat.title} — ${beat.by}` : beat.title), tools, span('admin__meta', meta.filter(Boolean).join(' · ')));
+      if (this.replacing === beat.id) row.append(this.replacePicker(beat, mine));
       list.append(row);
     });
+  },
 
-    // the admin's own songs, to publish or to replace a beat with
+  // Under a beat: choose one of the admin's songs to take its code from.
+  replacePicker(beat, mine) {
+    const picker = span('admin__replace');
+    const select = document.createElement('select');
+    select.setAttribute('aria-label', `The song whose code "${beat.title}" will play`);
+    for (const song of mine) {
+      const option = document.createElement('option');
+      option.value = song.id;
+      option.textContent = song.title;
+      option.selected = song.id === beat.song;
+      select.append(option);
+    }
+    const cancel = () => {
+      this.replacing = null;
+      this.renderBeats();
+    };
+    picker.append(span('admin__meta', 'Play the code of'), select, button('Use its code', () => this.replace(beat.id, select.value)), button('Cancel', cancel));
+    return picker;
+  },
+
+  // The admin's own songs, newest change first: each can become a beat, and one that is a
+  // beat already can put its latest code on it.
+  renderMine() {
+    const list = this.els.mine;
+    list.replaceChildren();
     const mine = songs.list();
-    song.replaceChildren(
-      ...mine.map((entry) => {
-        const option = document.createElement('option');
-        option.value = entry.id;
-        option.textContent = entry.title;
-        return option;
-      }),
-    );
-    song.disabled = !mine.length;
-    this.els.publish.disabled = !mine.length;
+    if (!mine.length) {
+      const empty = document.createElement('li');
+      empty.className = 'admin__empty';
+      empty.textContent = 'You have no songs of your own yet. Copy a beat or start a new song from the song list.';
+      list.append(empty);
+    }
+    const featured = featuredIds(this.beats);
+    for (const song of mine) {
+      const beat = this.beatOf(song);
+      const row = document.createElement('li');
+      row.className = 'admin__row';
+      row.dataset.id = song.id;
+      const meta = [
+        song.updatedAt ? `changed ${day(song.updatedAt)}` : null,
+        song.shared ? 'shared' : null,
+        beat ? `beat "${beat.title}" (${audienceName(audienceOf(beat, featured))})` : song.from?.title ? `a copy of "${song.from.title}"` : null,
+      ];
+      const tools = span('admin__tools');
+      const open = button('Open', () => this.openSong(song.id), { title: 'Put it on deck A' });
+      if (beat) {
+        const update = button('Update beat', () => this.replace(beat.id, song.id), { title: `Put this song's code on "${beat.title}"` });
+        const current = beat.code === song.code;
+        update.disabled = current;
+        if (current) update.title = `"${beat.title}" already plays this code`;
+        tools.append(open, update);
+      } else {
+        tools.append(open, button('Publish as beat', () => this.publish(song.id), { title: 'Add it to the beats. Only you can play it until you say who else can.' }));
+      }
+      row.append(span('admin__name', song.title), tools, span('admin__meta', meta.filter(Boolean).join(' · ')));
+      list.append(row);
+    }
   },
 
   // Write a new state of the collection: the changed beats, and the catalog made from all of them.
@@ -162,10 +270,10 @@ export const admin = {
     const now = Date.now();
     const changed = new Map(save.map((beat) => [beat.id, { ...beat, updatedAt: now }]));
     const all = next.map((beat) => changed.get(beat.id) || beat);
-    // exactly one beat is the featured one
-    const featured = featuredOf(all);
+    // at least one beat is featured: with none marked, the first one is
+    const featured = featuredIds(all);
     const settled = all.map((beat) => {
-      const want = beat.id === featured?.id;
+      const want = featured.has(beat.id);
       if (beat.featured === want) return beat;
       const fixed = { ...beat, featured: want, updatedAt: now };
       changed.set(beat.id, fixed);
@@ -174,6 +282,7 @@ export const admin = {
     try {
       await cloud.saveBeats({ save: [...changed.values()], remove, catalog: buildCatalog(settled, describe, now) });
       this.beats = orderBeats(settled);
+      this.replacing = null;
       this.status(message);
       saved = true;
       this.onChange();
@@ -182,7 +291,7 @@ export const admin = {
       this.status('That was not saved. Nothing has changed.');
     } finally {
       this.busy = false;
-      this.renderBeats();
+      this.render();
     }
     return saved;
   },
@@ -208,16 +317,23 @@ export const admin = {
     this.commit(this.beats.map((beat) => (beat.id === a.id ? a : beat.id === b.id ? b : beat)), { save: [a, b] }, `Moved "${a.title}".`);
   },
 
-  feature(id) {
-    const next = this.beats.map((beat) => ({ ...beat, featured: beat.id === id }));
-    const save = next.filter((beat, i) => beat.featured !== this.beats[i].featured);
-    this.commit(next, { save }, `"${next.find((beat) => beat.id === id).title}" is now the featured beat.`);
-  },
-
-  // Open a beat to everyone who is signed in, or take it back for the admin alone.
-  setMembers(id, members) {
-    const beat = { ...this.beats.find((entry) => entry.id === id), members, hidden: false };
-    this.commit(this.beats.map((entry) => (entry.id === id ? beat : entry)), { save: [beat] }, members ? `"${beat.title}" is open to members.` : `"${beat.title}" is yours alone again.`);
+  // Who may play a beat: 'everyone' (featured), 'members', or 'admin' (the admin alone).
+  setAudience(id, audience) {
+    const current = this.beats.find((entry) => entry.id === id);
+    const featured = featuredIds(this.beats);
+    if (audience === 'everyone' && !featured.has(id) && this.beats.filter((beat) => beat.featured).length >= MAX_FEATURED) {
+      return this.status(`Up to ${MAX_FEATURED} beats can be featured. Choose Members or Only me for one of them first.`);
+    }
+    if (audience !== 'everyone' && featured.has(id) && featured.size === 1) {
+      return this.status('One beat always stays featured: it is what visitors without an account hear. Feature another beat first.');
+    }
+    const beat = { ...current, featured: audience === 'everyone', members: audience !== 'admin', hidden: false };
+    const message = {
+      everyone: `"${beat.title}" is featured: anyone can play it.`,
+      members: `"${beat.title}" is open to members.`,
+      admin: `"${beat.title}" is yours alone again.`,
+    }[audience];
+    this.commit(this.beats.map((entry) => (entry.id === id ? beat : entry)), { save: [beat] }, message);
   },
 
   rename(id) {
@@ -228,10 +344,11 @@ export const admin = {
     this.commit(this.beats.map((entry) => (entry.id === id ? beat : entry)), { save: [beat] }, `Renamed to "${beat.title}". Its address stays /beats/${beat.slug}.`);
   },
 
+  // A beat plays the code of one of the admin's songs, and remembers which.
   replace(id, songId) {
     const song = songs.get(songId);
-    if (!song) return this.status('Choose one of your songs below first.');
-    const beat = { ...this.beats.find((entry) => entry.id === id), code: song.code };
+    if (!song) return this.status('Choose one of your songs first.');
+    const beat = { ...this.beats.find((entry) => entry.id === id), code: song.code, song: song.id };
     this.commit(this.beats.map((entry) => (entry.id === id ? beat : entry)), { save: [beat] }, `"${beat.title}" now plays the code of your song "${song.title}".`);
   },
 
@@ -243,12 +360,12 @@ export const admin = {
   publish(songId) {
     const song = songs.get(songId);
     if (!song) return;
-    const beat = newBeat({ id: newId(), code: song.code, title: song.title, by: song.by, createdAt: song.createdAt }, this.beats);
-    this.commit([...this.beats, beat], { save: [beat] }, `Added "${beat.title}". Only you can play it until you open it to members.`);
+    const beat = newBeat({ id: newId(), code: song.code, title: song.title, by: song.by, song: song.id, createdAt: song.createdAt }, this.beats);
+    this.commit([...this.beats, beat], { save: [beat] }, `Added "${beat.title}". Only you can play it until you say who else can.`);
   },
 
   // The first publication: every beat in the site's own files, in their order, with the
-  // one the site was featuring as the featured beat.
+  // ones the site was featuring as the featured beats.
   seed() {
     const beats = [];
     for (const song of this.siteBeats()) {
@@ -256,7 +373,7 @@ export const admin = {
       beats.push({ ...beat, featured: Boolean(song.featured) });
     }
     if (!beats.length) return;
-    this.commit(beats, { save: beats }, `Published the site's ${beats.length} beats. Anyone can play the featured one; the rest are yours until you open them to members.`);
+    this.commit(beats, { save: beats }, `Published the site's ${beats.length} beats. Anyone can play the featured ones; the rest are yours until you open them to members.`);
   },
 
   // The catalog is what everyone else is told about the beats. If it no longer says what

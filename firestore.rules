@@ -160,7 +160,7 @@ service cloud.firestore {
     }
 
     function validBeat(beat) {
-      return beat.keys().hasOnly(['code', 'title', 'by', 'slug', 'order', 'featured', 'members', 'hidden', 'createdAt', 'updatedAt'])
+      return beat.keys().hasOnly(['code', 'title', 'by', 'slug', 'order', 'featured', 'members', 'hidden', 'song', 'createdAt', 'updatedAt'])
         && beat.keys().hasAll(['code', 'title', 'slug', 'order', 'featured', 'hidden', 'createdAt', 'updatedAt'])
         && beat.code is string && beat.code.size() <= 200000
         && beat.title is string && beat.title.size() <= 200
@@ -171,7 +171,8 @@ service cloud.firestore {
         && beat.createdAt is number
         && beat.updatedAt is number
         && (!('by' in beat) || (beat.by is string && beat.by.size() <= 200))
-        && (!('members' in beat) || beat.members is bool);
+        && (!('members' in beat) || beat.members is bool)
+        && (!('song' in beat) || (beat.song is string && beat.song.size() <= 64));
     }
 
     match /beats/{beatId} {

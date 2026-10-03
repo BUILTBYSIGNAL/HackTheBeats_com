@@ -9,9 +9,9 @@
 //
 // Where the beats come from:
 //   - A site with accounts (config.site.json has a Firebase config) keeps its beats in the
-//     database. The build reads the public catalog and the featured beat from there, and
+//     database. The build reads the public catalog and the featured beats from there, and
 //     publishes no song files: a beat's code is only given to people who are signed in,
-//     so only the featured beat's page carries code.
+//     so only the featured beats' pages carry code.
 //   - Otherwise every song in beats/ is merged into one published file, the same pattern
 //     exported twice kept once, except songs marked `"publish": false` in beats/titles.json.
 //
@@ -93,7 +93,7 @@ async function publicDocument(path) {
   return response.ok ? plain({ mapValue: await response.json() }) : null;
 }
 
-// From the database: the catalog, and the one beat anyone may play.
+// From the database: the catalog, and the beats anyone may play.
 async function songsFromDatabase() {
   const catalog = await publicDocument('catalog/public').catch(() => null);
   if (!catalog?.beats?.length) return null;
@@ -103,9 +103,10 @@ async function songsFromDatabase() {
   // before a beat was taken back still does, until an admin's visit to the site rewrites it.
   const unlisted = catalog.beats.length - listed.length;
   if (unlisted) mustFix.push(`The public catalog still names ${unlisted} beat(s) that are not public (title and notes, not code). Sign in on the site as an admin, which rewrites it, then build again.`);
-  const featured = listed.find((song) => song.featured);
-  const beat = featured && (await publicDocument(`beats/${featured.id}`));
-  if (beat?.code) Object.assign(featured, { code: beat.code, locked: false });
+  for (const featured of listed.filter((song) => song.featured)) {
+    const beat = await publicDocument(`beats/${featured.id}`);
+    if (beat?.code) Object.assign(featured, { code: beat.code, locked: false });
+  }
   return listed;
 }
 
@@ -361,7 +362,10 @@ if (config.firebase && !(config.appOrigin && config.shareOrigin)) {
 }
 if (!config.contact) notes.push('No contact address in config.site.json: the About page will not say where to write about credits or removal.');
 if (heldBack.length) notes.push(`Held back from the public site: ${heldBack.join(', ')}.`);
-if (database && songs.length) notes.push(`Beats come from the database: only "${songs.find((song) => song.code)?.title ?? 'no beat'}" is published with its code.`);
+if (database && songs.length) {
+  const withCode = songs.filter((song) => song.code).map((song) => `"${song.title}"`);
+  notes.push(`Beats come from the database: only ${withCode.length ? withCode.join(', ') : 'no beat'} ${withCode.length > 1 ? 'are' : 'is'} published with code.`);
+}
 
 const megabytes = (path) => `${(statSync(path).size / 1048576).toFixed(1)} MB`;
 console.log(`✓ dist/ — version ${version}, ${songs.length} songs, ${paths.length} pages, source archive ${megabytes(archive)}`);

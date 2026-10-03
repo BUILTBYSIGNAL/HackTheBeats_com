@@ -1,12 +1,13 @@
 // The public beats as the database holds them, and the catalog made from them. Plain
 // logic with no browser in it: the site, the site build and the tests all use it.
 //
-//   beats/{id}       { code, title, by?, slug, order, featured, members?, hidden, createdAt, updatedAt }
+//   beats/{id}       { code, title, by?, slug, order, featured, members?, hidden, song?, createdAt, updatedAt }
+//                    (`song` is the id of the admin's own song it was published from)
 //   catalog/public   { beats: [entry…], updatedAt }: the beats other people may know
 //                    about, in order, without their code.
 //
 // Who may play a beat:
-//   'everyone'   the featured beat (exactly one): anyone, signed in or not
+//   'everyone'   a featured beat (at least one, at most MAX_FEATURED): anyone, signed in or not
 //   'members'    a beat the admin has opened to members: anyone who is signed in
 //   'admin'      every other beat: only the site's admin. This is what a beat is until
 //                the admin says otherwise.
@@ -25,9 +26,12 @@ export function freshSlug(title, taken) {
   return slug;
 }
 
-// A new beat, placed after the ones already there. The first beat is the featured one;
-// any other starts as the admin's own.
-export function newBeat({ id, code, title, by = null, createdAt }, beats, now = Date.now()) {
+// How many beats can be featured at once: each is a chip on the stage for visitors.
+export const MAX_FEATURED = 6;
+
+// A new beat, placed after the ones already there. The first beat is featured; any other
+// starts as the admin's own.
+export function newBeat({ id, code, title, by = null, song = null, createdAt }, beats, now = Date.now()) {
   const beat = {
     id,
     code,
@@ -41,23 +45,30 @@ export function newBeat({ id, code, title, by = null, createdAt }, beats, now = 
     updatedAt: now,
   };
   if (by) beat.by = by;
+  if (song) beat.song = song;
   return beat;
 }
 
-// Exactly one beat is the featured one: the one anybody may play.
-export function featuredOf(beats) {
+// The featured beats, the ones anybody may play, in order. There is always at least one:
+// with none marked, the first beat is.
+export function featuredBeats(beats) {
   const ordered = orderBeats(beats);
-  return ordered.find((beat) => beat.featured) || ordered[0] || null;
+  const marked = ordered.filter((beat) => beat.featured);
+  return marked.length ? marked : ordered.slice(0, 1);
 }
+// The first of them: the one the front door opens.
+export const featuredOf = (beats) => featuredBeats(beats)[0] || null;
+export const featuredIds = (beats) => new Set(featuredBeats(beats).map((beat) => beat.id));
 
-export const audienceOf = (beat, featuredId) => (beat.id === featuredId ? 'everyone' : beat.members === true && !beat.hidden ? 'members' : 'admin');
+// `featured` is featuredIds() of all the beats.
+export const audienceOf = (beat, featured) => (featured.has(beat.id) ? 'everyone' : beat.members === true && !beat.hidden ? 'members' : 'admin');
 
 // `describe(beat)` works out what the code says about itself: { bpm, notes, trackCount, knobCount }.
 export function buildCatalog(beats, describe, now = Date.now()) {
-  const featured = featuredOf(beats);
+  const featured = featuredIds(beats);
   return {
     beats: orderBeats(beats)
-      .filter((beat) => audienceOf(beat, featured?.id) !== 'admin')
+      .filter((beat) => audienceOf(beat, featured) !== 'admin')
       .map((beat) => {
         const said = describe(beat);
         const entry = {
@@ -69,8 +80,8 @@ export function buildCatalog(beats, describe, now = Date.now()) {
           trackCount: said.trackCount || 0,
           knobCount: said.knobCount || 0,
           notes: (said.notes || []).slice(0, 12).map((note) => String(note).slice(0, 300)),
-          featured: beat.id === featured?.id,
-          members: beat.id !== featured?.id,
+          featured: featured.has(beat.id),
+          members: !featured.has(beat.id),
         };
         entry.description = songDescription(entry);
         return entry;

@@ -1,7 +1,7 @@
 // Reads the beats/ folder: strudel.cc export files (JSON) and loose song files.
 import { analyze } from './analyze.js';
 import { collect, createLibrary } from './library-core.js';
-import { lockedSong, publicEntries, orderBeats, featuredOf, audienceOf } from './beats-core.js';
+import { lockedSong, publicEntries, orderBeats, featuredIds, audienceOf } from './beats-core.js';
 import { cloud } from './cloud.js';
 import { site } from './config.js';
 
@@ -39,18 +39,18 @@ async function fromDatabase(catalog) {
   if (cloud.user?.admin) {
     try {
       const all = orderBeats(await cloud.listBeats({ all: true }));
-      const featured = featuredOf(all);
-      return all.map((beat) => ({ ...describeBeat(beat), featured: beat.id === featured?.id, audience: audienceOf(beat, featured?.id) }));
+      const featured = featuredIds(all);
+      return all.map((beat) => ({ ...describeBeat(beat), featured: featured.has(beat.id), audience: audienceOf(beat, featured) }));
     } catch (error) {
       console.warn('[library] could not read the beats', error);
     }
   }
   const listed = publicEntries(catalog).map(lockedSong);
   const playable = new Map();
-  // the featured beat comes with its code for anyone
-  const featured = listed.find((song) => song.featured);
-  const beat = featured && (await cloud.getBeat(featured.id));
-  if (beat) playable.set(beat.id, beat);
+  // the featured beats come with their code for anyone
+  for (const beat of await Promise.all(listed.filter((song) => song.featured).map((song) => cloud.getBeat(song.id)))) {
+    if (beat) playable.set(beat.id, beat);
+  }
   if (cloud.user) {
     try {
       for (const open of await cloud.listBeats()) playable.set(open.id, open);
@@ -58,7 +58,7 @@ async function fromDatabase(catalog) {
       console.warn('[library] could not read the beats', error);
     }
   }
-  // the catalog sets the order and says which beat is featured
+  // the catalog sets the order and says which beats are featured
   return listed.map((entry) => (playable.has(entry.id) ? { ...describeBeat(playable.get(entry.id)), featured: entry.featured } : entry));
 }
 
@@ -83,12 +83,12 @@ async function fromFiles() {
     }
   }
   const songs = library.describeAll(collect(texts), titles);
-  // the beat anybody may play: the one marked `"featured": true`, else the newest with
+  // the beats anybody may play: those marked `"featured": true`, else the newest with
   // channels and knobs to show off
-  const marked = songs.find((song) => titles[song.id]?.featured);
+  const marked = songs.filter((song) => titles[song.id]?.featured);
   const showpiece = songs.filter((song) => !song.untitled && !song.broken && song.trackCount && song.knobCount).at(-1);
-  const featured = marked || showpiece || songs.at(-1);
-  for (const song of songs) song.featured = song === featured;
+  const featured = new Set(marked.length ? marked : [showpiece || songs.at(-1)]);
+  for (const song of songs) song.featured = featured.has(song);
   return songs;
 }
 

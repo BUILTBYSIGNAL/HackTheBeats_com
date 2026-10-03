@@ -326,11 +326,13 @@ function setGallery(on) {
 
 /* ---------- who may do what ---------- */
 
-// Without an account a visitor gets a small player: the featured beat (or a song someone
+// Without an account a visitor gets a small player: the featured beats (or a song someone
 // shared with them), to listen to. Everything else needs an account. The database
 // enforces the part that matters (firestore.rules); this is the screen in front of it.
 const walled = () => site.guest || (cloud.accounts && !cloud.user);
-const featuredBeat = () => app.songs.find((song) => song.featured) || app.songs[0] || null;
+const featuredBeats = () => app.songs.filter((song) => song.featured && !song.locked);
+// the one the front door opens
+const featuredBeat = () => featuredBeats()[0] || app.songs[0] || null;
 const isLocked = (song) => Boolean(song.locked) || (app.access === 'preview' && song.source === 'beats' && !song.featured);
 
 function setAccess(access) {
@@ -338,6 +340,7 @@ function setAccess(access) {
   document.body.classList.toggle('is-preview', access === 'preview');
   document.body.classList.toggle('is-guest', site.guest);
   renderTries();
+  renderPicks();
   if (access !== 'preview') return;
   // leave nothing running that the small player has no control for
   players.forEach((player) => player.stage.editing && player.setEditable(false));
@@ -371,6 +374,7 @@ function renderLocked() {
   const song = app.lockedSong;
   els.locked.hidden = !song;
   document.body.classList.toggle('is-locked', Boolean(song));
+  renderPicks();
   if (!song) return;
   $('locked-title').textContent = song.title;
   $('locked-by').textContent = [song.by ? `by ${song.by}` : null, song.bpm ? `${Math.round(song.bpm)} bpm` : null, song.trackCount > 1 ? `${song.trackCount} tracks` : null].filter(Boolean).join(' · ');
@@ -383,9 +387,40 @@ function renderLocked() {
     }),
   );
   $('locked-sign-in').hidden = Boolean(cloud.user);
-  const featured = featuredBeat();
-  $('locked-featured').hidden = !featured || featured.id === song.id;
-  if (featured) $('locked-featured').textContent = `Play "${featured.title}" instead`;
+  // what can be played instead: every featured beat
+  const instead = featuredBeats().filter((beat) => beat.id !== song.id);
+  $('locked-featured').replaceChildren(
+    ...instead.map((beat) => {
+      const play = document.createElement('button');
+      play.type = 'button';
+      play.className = 'pillbtn';
+      play.textContent = instead.length === 1 ? `Play "${beat.title}" instead` : `Play "${beat.title}"`;
+      play.addEventListener('click', () => loadSong(beat.id, 'A'));
+      return play;
+    }),
+  );
+}
+
+// Signed out, with more than one featured beat: a chip for each beside deck A, to switch
+// between them.
+function renderPicks() {
+  const picks = $('featured-picks');
+  const beats = app.access === 'preview' && !site.guest ? featuredBeats() : [];
+  picks.hidden = beats.length < 2;
+  if (picks.hidden) return picks.replaceChildren();
+  const onDeck = app.lockedSong ? null : A.song?.id;
+  picks.replaceChildren(
+    ...beats.map((beat) => {
+      const pick = document.createElement('button');
+      pick.type = 'button';
+      pick.className = 'featured-picks__pick';
+      pick.textContent = beat.title;
+      pick.dataset.id = beat.id;
+      pick.setAttribute('aria-pressed', String(beat.id === onDeck));
+      pick.addEventListener('click', () => beat.id !== onDeck && loadSong(beat.id, 'A'));
+      return pick;
+    }),
+  );
 }
 
 function showLocked(song, { route = true } = {}) {
@@ -642,6 +677,7 @@ function refreshSongLabels(player) {
 
 let thumbTimer;
 function renderCrate() {
+  renderPicks();
   const mine = app.access === 'preview' ? [] : songs.list();
   crate.render({ mine, beats: app.songs, community: site.guest ? [] : app.community }, (song) => thumbs.get(song));
   crate.setLoaded({ A: A.song?.id, B: B.song?.id });
@@ -894,12 +930,12 @@ async function onAccountChange(user) {
       else if (starter) openStarter(starter);
     }
   } else {
-    // signed out: back to the featured beat, at the front door
+    // signed out: back to a featured beat, at the front door
     const featured = featuredBeat();
     app.lockedSong = null;
     renderLocked();
     if (location.pathname !== '/') history.replaceState(null, '', '/');
-    if (featured && A.song?.id !== featured.id) loadSong(featured.id, 'A', { autoplay: false, route: false });
+    if (featured && !featuredBeats().some((beat) => beat.id === A.song?.id)) loadSong(featured.id, 'A', { autoplay: false, route: false });
   }
   renderFocus();
   renderHead();
@@ -1484,6 +1520,7 @@ async function boot() {
       renderChip(player);
       $(`pane-${id}`).classList.toggle('has-song', Boolean(player.song));
       if (player === A) renderCurtain();
+      if (player === A) renderPicks();
       crate.setLoaded({ A: A.song?.id, B: B.song?.id });
       if (player === focused()) renderFocus();
     });
@@ -1616,10 +1653,6 @@ async function boot() {
   els.split.addEventListener('click', () => setSplit(!app.split));
   els.gallery.addEventListener('click', () => setGallery(true));
   $('locked-sign-in').addEventListener('click', signIn);
-  $('locked-featured').addEventListener('click', () => {
-    const featured = featuredBeat();
-    if (featured) loadSong(featured.id, 'A');
-  });
   $('intro-sign-in').addEventListener('click', () => (site.guest ? takeHome(A) : signIn()));
   $('hud-exit').addEventListener('click', () => setGallery(false));
   document.addEventListener('fullscreenchange', () => {
@@ -1696,8 +1729,8 @@ async function boot() {
       panels: [...document.querySelectorAll('[data-admin-panel]')],
       status: $('admin-status'),
       list: $('admin-beats'),
-      song: $('admin-song'),
-      publish: $('admin-publish'),
+      filter: $('admin-filter'),
+      mine: $('admin-mine'),
       importButton: $('admin-import'),
       file: $('admin-file'),
       seed: $('admin-seed'),
@@ -1707,6 +1740,10 @@ async function boot() {
       // what the admin changed is what everybody is offered: read it back
       onChange: () => reloadLibrary().catch(() => {}),
       siteBeats: () => (app.libraryMode === 'files' ? app.songs.filter((song) => song.code && !song.broken) : []),
+      openSong: (id) => {
+        $('admin').close();
+        loadSong(id, 'A');
+      },
     },
   );
   $('open-admin').addEventListener('click', () => {

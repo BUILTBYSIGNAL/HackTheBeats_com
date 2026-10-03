@@ -187,6 +187,40 @@ body[data-transport='loading'] .curtain__play .spinner {
   display: none;
 }
 
+/* signed out, with several featured beats: one chip each, beside deck A */
+.featured-picks {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.featured-picks[hidden] {
+  display: none;
+}
+.featured-picks__pick {
+  flex: none;
+  max-width: 18ch;
+  padding: 7px 12px;
+  border: 1px solid var(--hb-line-soft);
+  border-radius: 999px;
+  font: 500 12.5px/1.2 var(--hb-sans);
+  color: var(--hb-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.featured-picks__pick:hover {
+  color: var(--hb-ink);
+  border-color: var(--hb-ink-4);
+}
+.featured-picks__pick[aria-pressed='true'] {
+  color: var(--hb-ink);
+  border-color: var(--hb-accent);
+  background: var(--hb-panel);
+}
+
 .transport {
   display: flex;
   align-items: center;
@@ -1189,6 +1223,13 @@ body.is-gallery {
   .deckchip {
     flex: 1 1 0;
   }
+  /* on a narrow screen deck A gives way to the chips, which say what is playing */
+  .is-preview .decks:has(.featured-picks:not([hidden])) #chip-a {
+    flex: none;
+  }
+  .is-preview .decks:has(.featured-picks:not([hidden])) #chip-a .deckchip__main {
+    display: none;
+  }
   .deckchip__title {
     max-width: none;
   }
@@ -1515,6 +1556,95 @@ body > .consent {
   gap: 4px;
   max-width: 330px;
 }
+@media (max-width: 560px) {
+  .admin__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin__tools {
+    grid-row: auto;
+    grid-column: 1;
+    justify-content: flex-start;
+    max-width: none;
+  }
+  .admin__menu {
+    right: auto;
+    left: 0;
+  }
+}
+.admin__filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 12px;
+}
+.admin__filter[hidden] {
+  display: none;
+}
+.admin__row[hidden] {
+  display: none;
+}
+/* who can play a beat: one of three */
+.admin__audience {
+  display: inline-flex;
+}
+.admin__audience .chipbtn {
+  border-radius: 0;
+  margin-left: -1px;
+}
+.admin__audience .chipbtn:first-child {
+  border-radius: 4px 0 0 4px;
+  margin-left: 0;
+}
+.admin__audience .chipbtn:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.admin__row[data-audience='everyone'] .admin__audience .chipbtn[aria-pressed='true'] {
+  background: var(--hb-accent);
+  border-color: var(--hb-accent);
+  color: var(--hb-accent-ink);
+}
+/* everything else about a beat, behind ⋯ */
+.admin__more {
+  position: relative;
+}
+.admin__more > summary {
+  list-style: none;
+  cursor: pointer;
+  letter-spacing: 0;
+}
+.admin__more > summary::-webkit-details-marker {
+  display: none;
+}
+.admin__more[open] > summary {
+  color: var(--hb-ink);
+  border-color: var(--hb-ink-4);
+}
+.admin__menu {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+  padding: 6px;
+  border: 1px solid var(--hb-line);
+  border-radius: 6px;
+  background: var(--hb-panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+.admin__menu .chipbtn {
+  text-align: left;
+}
+/* a beat taking its code from one of the admin's songs */
+.admin__replace {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-top: 6px;
+}
 .admin__offer {
   align-self: center;
   padding: 0 6px;
@@ -1528,7 +1658,7 @@ body > .consent {
 }
 #admin select {
   min-width: 0;
-  flex: 1 1 180px;
+  flex: 1 1 160px;
   padding: 8px 10px;
   border: 1px solid var(--hb-line);
   border-radius: 6px;

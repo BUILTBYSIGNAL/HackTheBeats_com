@@ -53,10 +53,11 @@ const beatFromDoc = (id, data) => ({
   featured: data.featured === true,
   members: data.members === true && data.hidden !== true,
   hidden: data.hidden === true,
+  song: typeof data.song === 'string' && data.song ? data.song : null,
   createdAt: Number(data.createdAt) || 0,
   updatedAt: Number(data.updatedAt) || 0,
 });
-const beatToDoc = ({ id, by, ...beat }) => (by ? { ...beat, by } : beat);
+const beatToDoc = ({ id, by, song, ...beat }) => ({ ...beat, ...(by ? { by } : {}), ...(song ? { song } : {}) });
 
 export const cloud = {
   // shared songs can be read
