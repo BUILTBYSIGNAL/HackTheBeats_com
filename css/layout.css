@@ -1408,3 +1408,44 @@ body > .consent {
   }
 }
 
+
+/* trimming the arrangement (js/trim.js): the buttons over the bars that are picked */
+.ribbon__canvas {
+  touch-action: none;
+}
+.trimbar {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px 10px;
+  background: var(--hb-raise);
+  border: 1px solid var(--hb-line);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  white-space: nowrap;
+}
+.trimbar[hidden] {
+  display: none;
+}
+.trimbar__label {
+  margin-right: 4px;
+  font: 500 10.5px/1 var(--hb-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hb-ink-2);
+}
+.trimbar__close {
+  width: 22px;
+  height: 22px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--hb-ink-4);
+  border-radius: 4px;
+}
+.trimbar__close:hover {
+  color: var(--hb-ink);
+  background: var(--hb-line-soft);
+}

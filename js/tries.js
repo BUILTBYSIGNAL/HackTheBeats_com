@@ -6,7 +6,7 @@ import { analyze, planTry } from './analyze.js';
 const MAX = 4;
 
 // The edit that undoes `changes` once they have been made to `code`.
-function reverse(code, changes) {
+export function reverse(code, changes) {
   let shift = 0;
   return changes.map(({ from, to, insert }) => {
     const at = from + shift;

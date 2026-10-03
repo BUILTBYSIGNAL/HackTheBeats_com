@@ -29,11 +29,13 @@ export const visuals = {
   colors: {},
   open: false,
   hover: null,
+  // bars picked on the strip to trim (trim.js): { from, to, row } (row null: every track)
+  selection: null,
   ribbonKey: '',
 
   start({ scope, spectrum, ribbon, meter, getPlayer, anyPlaying }) {
     Object.assign(this, { scope, spectrum, ribbon, meter, getPlayer, anyPlaying });
-    this.colors = { ink: css('--hb-ink'), dim: css('--hb-ink-5'), mid: css('--hb-ink-3'), accent: css('--hb-accent') };
+    this.colors = { ink: css('--hb-ink'), dim: css('--hb-ink-5'), mid: css('--hb-ink-3'), accent: css('--hb-accent'), bg: css('--hb-bg-deep') };
     window.addEventListener('resize', () => this.invalidate());
     const loop = () => {
       this.frame();
@@ -60,7 +62,8 @@ export const visuals = {
     if (!player) return;
     const column = this.columnOf(player);
     // redraw only when something visible changed
-    const key = `${player.id}|${player.song?.id}|${column}|${player.started}|${this.hover}|${this.open}|${this.ribbon?.clientWidth}x${this.ribbon?.clientHeight}`;
+    const selection = this.selection ? `${this.selection.from}-${this.selection.to}-${this.selection.row}` : '';
+    const key = `${player.id}|${player.song?.id}|${column}|${player.started}|${this.hover}|${this.open}|${selection}|${this.ribbon?.clientWidth}x${this.ribbon?.clientHeight}`;
     if (key !== this.ribbonKey || this.gridVersion !== player.grid) {
       this.ribbonKey = key;
       this.gridVersion = player.grid;
@@ -68,9 +71,11 @@ export const visuals = {
     }
   },
 
+  // The bar of the strip that is playing. A trimmed song loops sooner than the strip is long.
   columnOf(player) {
     const bar = Math.floor(player.position());
-    return ((bar % ARRANGEMENT_BARS) + ARRANGEMENT_BARS) % ARRANGEMENT_BARS;
+    const length = player.loopLength?.() ?? ARRANGEMENT_BARS;
+    return ((bar % length) + length) % length;
   },
 
   drawScope(wave) {
@@ -156,6 +161,36 @@ export const visuals = {
     return null;
   },
 
+  // The bar of the strip nearest a pointer, even between bars or past either end (for drags).
+  columnNear(clientX) {
+    const canvas = this.ribbon;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const { left } = this.columns(rect.width);
+    let best = 0;
+    for (let c = 0; c < ARRANGEMENT_BARS; c++) if (x >= left(c) - 1) best = c;
+    return best;
+  },
+
+  // Where a bar of the strip starts, in CSS pixels from the canvas's left edge.
+  columnLeft(column) {
+    const canvas = this.ribbon;
+    return canvas ? this.columns(canvas.getBoundingClientRect().width).left(column) : 0;
+  },
+
+  // Which track's row of the open strip a pointer is over: a row index, 'header' for the bar
+  // numbers, or null when the strip is closed (it shows no names, so there are no rows to pick).
+  rowAt(clientY, rows) {
+    const canvas = this.ribbon;
+    if (!canvas || !this.open || !rows) return null;
+    const rect = canvas.getBoundingClientRect();
+    const y = clientY - rect.top;
+    if (y < RIBBON.header) return 'header';
+    const pitch = (rect.height - RIBBON.header + RIBBON.rowGap) / rows;
+    return Math.max(0, Math.min(rows - 1, Math.floor((y - RIBBON.header) / pitch)));
+  },
+
   drawRibbon(player, column) {
     const canvas = this.ribbon;
     if (!canvas || !canvas.clientWidth) return;
@@ -209,6 +244,39 @@ export const visuals = {
       ctx.globalAlpha = 1;
     };
     if (!player.started && column > 0) outline(column, this.colors.accent, 0.9);
-    if (this.hover !== null && this.hover !== column) outline(this.hover, this.colors.ink, 0.55);
+    if (this.hover !== null && this.hover !== column && !this.selection) outline(this.hover, this.colors.ink, 0.55);
+
+    // a trimmed song loops before the strip ends: mark where, and dim the bars that repeat
+    const length = player.loopLength?.() ?? ARRANGEMENT_BARS;
+    if (length < ARRANGEMENT_BARS) {
+      const x = left(length) * ratio - (RIBBON.gapX * ratio) / 2 - ratio;
+      ctx.fillStyle = this.colors.accent;
+      ctx.fillRect(x, header, 2 * ratio, height - header);
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = this.colors.bg;
+      ctx.fillRect(x + 2 * ratio, header, width - x - 2 * ratio, height - header);
+      ctx.globalAlpha = 1;
+    }
+
+    // bars picked to trim: a band over the bars, or over one track's row
+    const pick = this.selection;
+    if (pick) {
+      const [a, b] = [Math.min(pick.from, pick.to), Math.max(pick.from, pick.to)];
+      const x = left(a) * ratio - ratio;
+      const w = (left(b) - left(a)) * ratio + cellW + 2 * ratio;
+      let y = header;
+      let h = height - header;
+      if (pick.row !== null && grid.length) {
+        y = header + pick.row * (cellH + gapY) - ratio;
+        h = cellH + 2 * ratio;
+      }
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = this.colors.accent;
+      ctx.fillRect(x, y, w, h);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = this.colors.accent;
+      ctx.lineWidth = ratio;
+      ctx.strokeRect(x, y, w, h);
+    }
   },
 };

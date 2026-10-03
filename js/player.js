@@ -9,6 +9,7 @@ import { analyze, applySaved, sliderText, shapeOf } from './analyze.js';
 import { computeArrangement } from './arrangement.js';
 import { persist } from './persist.js';
 import { nextBar, loopPhase, sounds } from './snapshots-core.js';
+import { parseCut, loopLength } from './trim-core.js';
 
 const { core, draw, webaudio, codemirror, transpilerPkg } = S;
 
@@ -57,6 +58,8 @@ export class Player {
     this.warm = null;
     this.grid = null;
     this.cancelArrangement = null;
+    // the song's trim (trim-core.js), as of its last evaluation: [[start, length], …] or null
+    this.cut = null;
     this.loading = false;
     this.hot = false;
     this.evalShape = '';
@@ -453,10 +456,20 @@ export class Player {
 
   refreshArrangement() {
     this.cancelArrangement?.();
-    this.cancelArrangement = computeArrangement(this.mixer.tracks, (grid) => {
-      this.grid = grid;
-      this.emit('grid');
-    });
+    this.cut = parseCut(this.code)?.segments ?? null;
+    this.cancelArrangement = computeArrangement(
+      this.mixer.tracks,
+      (grid) => {
+        this.grid = grid;
+        this.emit('grid');
+      },
+      this.cut,
+    );
+  }
+
+  // How many bars the song loops over, as far as the strip can tell: 32, or fewer once trimmed.
+  loopLength() {
+    return loopLength(this.cut);
   }
 
   // Evaluates the code on stage. Resolves to true when the song produced a pattern.

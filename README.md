@@ -179,7 +179,7 @@ the check refuses it, and the dev server will not serve it.
 | **Snapshots** | Eight pads of captured loops. Press **●** on a channel (1, 2, 4 or 8 bars, chosen beside the Channels title) and it records that channel alone, as it sounds now, from the next bar line; the rest of the mix is not in it and nothing you hear changes. Tap a snapshot pad to bring it in on the next bar and again to stop it, Shift-tap to play it once. While it plays it is a channel of its own on that deck (level, mute, solo), and **Pin** keeps it there, looping in time and muted until you bring it in. It follows the deck's tempo like a record (pitch and all). Right-click or long-press a pad to rename, pin, download as WAV or clear it. Kept in the browser and, signed in, in the account; with an account, like recording. |
 | **Master** | Filter, tempo-synced echo, reverb, tempo, volume, and the crossfader. A limiter keeps the output under full scale; the meter turns orange while it is working. |
 | **Sync / Mix** | With Sync on, a deck started while the other plays comes in on its bar line at its tempo. **Mix** starts the other deck that way and fades across over eight bars. |
-| **Arrangement** | Which tracks play in each of 32 bars. Click a bar to jump there; open it for track names. |
+| **Arrangement** | Which tracks play in each of 32 bars. Click a bar to jump there; open it for track names. Drag across bars (or Shift-click one) to **Cut** them or **Keep only** them; with it open, drag along one track to **Silence** it there. The change is written into the code and runs at once: a cut is one line, `all(x => arrange([8, x.ribbon(0, 8)], [20, x.ribbon(12, 20)]))`, and a silenced stretch is a `.mask("<1!8 0!4 1!20>")` on that track, plain Strudel that plays anywhere. Further trims rewrite the same line or mask. It is an edit like any other (marked, Save keeps it, Revert undoes it), with **Undo** offered for a moment after each; a trimmed song is the bars kept out of the 32 shown, and the strip marks where it now loops. |
 
 Positions are remembered per song in the browser; **Reset** returns a song to what its code says.
 
@@ -555,6 +555,7 @@ and the offline cache name in `sw.js` together.
     visuals.js .......... scope, spectrum, arrangement ribbon   arrangement.js computes it
     recorder.js ......... WAV recording    share.js mix links    midi.js controller bindings
     snapshots.js ........ channel snapshots: capture, slots, browser and account storage
+    trim.js ............. trimming from the arrangement strip   trim-core.js the code it writes
     clip.js ............. video clips: the code drawn again, recorded with the mix
     library.js .......... the built-in beats   crate.js the song picker   thumbs.js
     songs.js ............ My songs: browser storage and account sync

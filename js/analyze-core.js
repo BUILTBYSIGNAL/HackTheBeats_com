@@ -123,6 +123,8 @@ export const createAnalyzer = (parse) => function analyze(code) {
       disabled,
       from: statement.start,
       to: statement.end,
+      // the end of the pattern itself (before any `;`): where a call can be added to it
+      exprTo: statement.body.expression?.end ?? statement.body.end,
       labelFrom: statement.label.start,
       labelTo: colon >= 0 ? colon + 1 : statement.label.end,
       node: statement,

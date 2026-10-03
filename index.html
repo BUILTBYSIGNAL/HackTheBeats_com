@@ -263,7 +263,8 @@
         </button>
         <ol class="ribbon__rows" id="ribbon-rows"></ol>
       </div>
-      <canvas class="ribbon__canvas" id="ribbon" role="img" aria-label="Arrangement: which tracks play in each of 32 bars. Click a bar to jump there."></canvas>
+      <canvas class="ribbon__canvas" id="ribbon" role="img" aria-label="Arrangement: which tracks play in each of 32 bars. Click a bar to jump there; drag across bars to cut them from the song."></canvas>
+      <div class="trimbar" id="trimbar" role="toolbar" aria-label="Trim the song" hidden></div>
       <div class="ribbon__tools">
         <button type="button" class="ribbon__btn" id="coach-toggle" aria-expanded="false" aria-controls="coach" hidden>Steps <span id="coach-progress"></span></button>
         <button type="button" class="ribbon__btn" id="midi-button" aria-pressed="false" title="Bind a MIDI controller to the deck">MIDI</button>
@@ -645,6 +646,7 @@
           <div><dt><kbd>1</kbd>–<kbd>9</kbd> <kbd>0</kbd> <kbd>-</kbd> <kbd>=</kbd></dt><dd>Mute channels 1 to 12</dd></div>
           <div><dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></dt><dd>Hold a pad: echo, drop, wash, half, stutter, no drums. With <kbd>Shift</kbd> it stays on.</dd></div>
           <div><dt><kbd>T</kbd> <kbd>Y</kbd> <kbd>U</kbd> <kbd>I</kbd> <kbd>H</kbd> <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd></dt><dd>Snapshot pads 1 to 8: bring one in on the next bar, or stop it. With <kbd>Shift</kbd> it plays once. Capture one with ● on a channel in the Mixer (<kbd>Esc</kbd> lets a capture go).</dd></div>
+          <div><dt>On the arrangement</dt><dd>Drag across bars to cut them or keep only them; open it and drag along a track to silence that track there. <kbd>Shift</kbd>-click picks one bar, <kbd>Delete</kbd> cuts what is picked, <kbd>Esc</kbd> lets it go. The change is made in the code: Save keeps it.</dd></div>
           <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Jump back or forward four bars</dd></div>
           <div><dt><kbd>F</kbd> <kbd>G</kbd></dt><dd>Follow the music with the code; gallery (full-screen) view</dd></div>
           <div><dt><kbd>R</kbd> <kbd>B</kbd></dt><dd>Record the mix to a WAV file; open the beats list</dd></div>

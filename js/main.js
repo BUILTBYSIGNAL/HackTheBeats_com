@@ -18,7 +18,6 @@ import { mixFromHash, linkForMix } from './share.js';
 import { midi } from './midi.js';
 import { thumbs } from './thumbs.js';
 import { register, registry } from './controls.js';
-import { ARRANGEMENT_BARS } from './arrangement.js';
 import { admin } from './admin.js';
 import { analytics } from './analytics.js';
 import { isApple, keyLabels, localizeKeys } from './keys-core.js';
@@ -29,6 +28,7 @@ import { shareSheet } from './share-sheet.js';
 import { songMap } from './outline.js';
 import { clip } from './clip.js';
 import { snapshots } from './snapshots.js';
+import { trim } from './trim.js';
 import { SLOT_KEYS } from './snapshots-core.js';
 
 const $ = (id) => document.getElementById(id);
@@ -270,6 +270,7 @@ function renderFocus() {
 function setFocus(id) {
   if (app.focusId === id) return;
   app.focusId = id;
+  trim.act('cancel');
   renderFocus();
 }
 
@@ -1728,14 +1729,23 @@ async function boot() {
     visuals.hover = visuals.columnAt(event.clientX);
   });
   els.ribbon.addEventListener('pointerleave', () => (visuals.hover = null));
-  els.ribbon.addEventListener('click', (event) => {
-    const column = visuals.columnAt(event.clientX);
-    const player = focused();
-    if (column === null || !player.song) return;
-    const base = Math.floor(player.position() / ARRANGEMENT_BARS) * ARRANGEMENT_BARS;
-    player.seek(base + column);
-    if (!player.started) setStatus(column ? `Deck ${player.id} will start from bar ${column + 1}` : '');
-  });
+  // a click jumps to a bar; a drag picks bars to trim (js/trim.js)
+  trim.init(
+    { canvas: els.ribbon, bar: $('trimbar') },
+    {
+      focused,
+      canTrim: () => !needsAccount('trim the song'),
+      status: setStatus,
+      seek: (column) => {
+        const player = focused();
+        // a trimmed song loops sooner than the strip is long
+        const length = player.loopLength();
+        const base = Math.floor(player.position() / length) * length;
+        player.seek(base + column);
+        if (!player.started) setStatus(column ? `Deck ${player.id} will start from bar ${column + 1}` : '');
+      },
+    },
+  );
 
   els.deckToggle.addEventListener('click', () => {
     const collapsed = document.body.classList.toggle('deck-collapsed');
@@ -1808,6 +1818,12 @@ async function boot() {
 
     // Esc throws away a video clip being recorded, and lets a snapshot capture go
     if (key === 'Escape' && clip.active) return void clip.cancel();
+    // bars picked on the arrangement: Esc lets them go, Delete cuts them
+    if (trim.selection && key === 'Escape') return void trim.act('cancel');
+    if (trim.selection && (key === 'Backspace' || key === 'Delete') && !interactive) {
+      event.preventDefault();
+      return void trim.cutSelection();
+    }
     if (key === 'Escape' && snapshots.cancel('The capture was let go.')) return;
     if (key === 'Escape') {
       if (midi.learning) toggleLearn();
