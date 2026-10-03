@@ -588,7 +588,7 @@
         <div class="admin__tabs" role="group" aria-label="Admin sections">
           <button type="button" class="chipbtn" data-admin-tab="beats" aria-pressed="true">Beats</button>
           <button type="button" class="chipbtn" data-admin-tab="mine" aria-pressed="false">My songs</button>
-          <button type="button" class="chipbtn" data-admin-tab="shared" aria-pressed="false">Shared songs</button>
+          <button type="button" class="chipbtn" data-admin-tab="people" aria-pressed="false">People</button>
         </div>
         <p class="admin__status" id="admin-status" role="status" aria-live="polite"></p>
 
@@ -618,11 +618,18 @@
           <ol class="admin__list" id="admin-mine"></ol>
         </section>
 
-        <section data-admin-panel="shared" hidden>
+        <section data-admin-panel="people" hidden>
           <p class="sheet__fine">
-            Every song someone has switched sharing on for. Switching one off closes its link, and its owner cannot share it again.
+            Everyone with an account, the most recent visit first: when they joined and last visited, and how many songs they
+            have. Of their songs you see the ones they share; the rest are private, from you too, and are only counted.
+            Switching sharing off for a song closes its link, and its owner cannot share it again.
           </p>
-          <ol class="admin__list" id="admin-shared"></ol>
+          <div class="admin__filter" role="group" aria-label="Show">
+            <button type="button" class="chipbtn" data-people-view="people" aria-pressed="true">People</button>
+            <button type="button" class="chipbtn" data-people-view="shared" aria-pressed="false">All shared songs</button>
+          </div>
+          <ol class="admin__list" id="admin-people"></ol>
+          <ol class="admin__list" id="admin-shared" hidden></ol>
         </section>
       </div>
     </dialog>

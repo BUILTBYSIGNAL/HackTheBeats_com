@@ -1,5 +1,6 @@
 // The admin sheet: the public beats, the admin's own songs (to publish as beats), and the
-// songs people have shared (and which of them the community shelf features). Only an admin
+// people with accounts: what each shares (and which of it the community shelf features),
+// and how many songs they keep private. Only an admin
 // account is offered it, and the database refuses these writes from anyone else
 // (firestore.rules), so nothing here is what keeps other people out.
 import { cloud } from './cloud.js';
@@ -8,6 +9,7 @@ import { describeSong } from './library.js';
 import { newId } from './songs-core.js';
 import { orderBeats, newBeat, featuredIds, audienceOf, buildCatalog, beatsFromExport, MAX_FEATURED } from './beats-core.js';
 import { SHELF_MAX, eligibleForShelf, communityEntry } from './community-core.js';
+import { peopleFrom, privateCount } from './profiles-core.js';
 
 const describe = (beat) => describeSong({ id: beat.id || 'new', code: beat.code }, 'beats');
 const describeShared = (song) => describeSong({ id: song.id, code: song.code }, 'shared');
@@ -55,6 +57,11 @@ export const admin = {
   els: null,
   beats: [],
   shared: [],
+  profiles: [],
+  // the People panel shows 'people', or 'shared': every shared song at once
+  peopleView: 'people',
+  // the person whose shared songs are open
+  person: null,
   // the share ids on the community shelf
   featured: new Set(),
   // which beats the list shows: 'all', or one audience
@@ -75,6 +82,12 @@ export const admin = {
     els.close.addEventListener('click', () => els.dialog.close());
     els.dialog.addEventListener('click', (event) => event.target === els.dialog && els.dialog.close());
     for (const tab of els.tabs) tab.addEventListener('click', () => this.show(tab.dataset.adminTab));
+    for (const view of els.peopleViews) {
+      view.addEventListener('click', () => {
+        this.peopleView = view.dataset.peopleView;
+        this.renderPeople();
+      });
+    }
     // one ⋯ menu open at a time, and a click anywhere else closes it
     els.dialog.addEventListener('click', (event) => {
       for (const menu of els.dialog.querySelectorAll('.admin__more[open]')) if (!menu.contains(event.target)) menu.open = false;
@@ -99,7 +112,7 @@ export const admin = {
     this.status('');
     try {
       if (tab === 'beats' || tab === 'mine') await this.loadBeats();
-      else await this.loadShared();
+      else await this.loadPeople();
     } catch (error) {
       console.warn('[admin]', error);
       this.status('Could not read that just now.');
@@ -398,20 +411,73 @@ export const admin = {
     this.commit([...this.beats, ...added], { save: added }, `Added ${added.length} ${added.length === 1 ? 'beat' : 'beats'} from the file. Only you can play them until you open them to members.`);
   },
 
-  /* ---------- shared songs ---------- */
+  /* ---------- people, and the songs they share ---------- */
 
-  async loadShared() {
-    // (the shared songs are still listed if the shelf cannot be read)
-    const [shared, shelf] = await Promise.all([
+  async loadPeople() {
+    // (the shared songs are still listed if the shelf or the profiles cannot be read)
+    const [shared, shelf, profiles] = await Promise.all([
       cloud.listShared(),
       cloud.listCommunity({ max: SHELF_MAX }).catch((error) => {
         console.warn('[admin] could not read the shelf', error);
         return [];
       }),
+      cloud.listProfiles().catch((error) => {
+        console.warn('[admin] could not read the profiles', error);
+        return [];
+      }),
     ]);
     this.shared = shared.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     this.featured = new Set(shelf.map((entry) => entry.shareId));
+    this.profiles = profiles;
+    this.renderPeople();
+  },
+
+  // People, each with what they share; or every shared song at once.
+  renderPeople() {
+    const { peopleList, sharedList, peopleViews } = this.els;
+    for (const view of peopleViews) view.setAttribute('aria-pressed', String(view.dataset.peopleView === this.peopleView));
+    peopleList.hidden = this.peopleView !== 'people';
+    sharedList.hidden = this.peopleView !== 'shared';
     this.renderShared();
+    peopleList.replaceChildren();
+    const people = peopleFrom(this.profiles || [], this.shared);
+    if (!people.length) {
+      const empty = document.createElement('li');
+      empty.className = 'admin__empty';
+      empty.textContent = 'Nobody is listed yet. Each person appears here the next time they visit signed in.';
+      peopleList.append(empty);
+    }
+    for (const person of people) {
+      const open = this.person === person.uid;
+      const row = document.createElement('li');
+      row.className = 'admin__row';
+      row.dataset.uid = person.uid;
+      const hidden = privateCount(person);
+      const meta = person.profiled
+        ? [person.joinedAt ? `joined ${day(person.joinedAt)}` : null, person.seenAt ? `last visit ${day(person.seenAt)}` : null, `${person.songs} ${person.songs === 1 ? 'song' : 'songs'}, ${person.sharedSongs.length} shared`]
+        : ['not back since profiles began', `${person.sharedSongs.length} shared`];
+      const tools = span('admin__tools');
+      const toggle = button(`Shared songs (${person.sharedSongs.length})`, () => {
+        this.person = open ? null : person.uid;
+        this.renderPeople();
+      }, { pressed: open });
+      toggle.disabled = !person.sharedSongs.length;
+      tools.append(toggle);
+      row.append(span('admin__name', person.name || 'No name'), tools, span('admin__meta', meta.filter(Boolean).join(' · ')));
+      if (open) {
+        const songs = document.createElement('ol');
+        songs.className = 'admin__list admin__sublist';
+        for (const song of person.sharedSongs) songs.append(this.sharedRow(song, { owner: false }));
+        if (hidden) {
+          const note = document.createElement('li');
+          note.className = 'admin__empty';
+          note.textContent = `and ${hidden} private ${hidden === 1 ? 'song' : 'songs'}, which only ${person.name || 'they'} can see`;
+          songs.append(note);
+        }
+        row.append(songs);
+      }
+      peopleList.append(row);
+    }
   },
 
   renderShared() {
@@ -423,29 +489,26 @@ export const admin = {
       empty.textContent = 'Nobody is sharing a song at the moment.';
       list.append(empty);
     }
-    for (const song of this.shared) {
-      const row = document.createElement('li');
-      row.className = 'admin__row';
-      row.dataset.id = song.id;
-      const name = document.createElement('span');
-      name.className = 'admin__name';
-      name.textContent = song.title;
-      const meta = document.createElement('span');
-      meta.className = 'admin__meta';
-      const featured = Boolean(song.shareId) && this.featured.has(song.shareId);
-      meta.textContent = [song.ownerName ? `shared by ${song.ownerName}` : null, song.updatedAt ? `changed ${new Date(song.updatedAt).toLocaleDateString()}` : null, featured ? 'featured' : null].filter(Boolean).join(' · ');
-      const tools = document.createElement('span');
-      tools.className = 'admin__tools';
-      const open = document.createElement('a');
-      open.className = 'chipbtn';
-      open.textContent = 'Open';
-      open.href = linkToSong(song);
-      open.target = '_blank';
-      open.rel = 'noopener';
-      tools.append(open, this.featureControl(song, featured), confirmButton('Switch sharing off', 'Really switch it off?', () => this.takeDown(song)));
-      row.append(name, tools, meta);
-      list.append(row);
-    }
+    for (const song of this.shared) list.append(this.sharedRow(song));
+  },
+
+  // A shared song: open it by its link, feature it on the shelf, or switch its sharing off.
+  sharedRow(song, { owner = true } = {}) {
+    const row = document.createElement('li');
+    row.className = 'admin__row';
+    row.dataset.id = song.id;
+    const featured = Boolean(song.shareId) && this.featured.has(song.shareId);
+    const meta = [owner && song.ownerName ? `shared by ${song.ownerName}` : null, song.updatedAt ? `changed ${day(song.updatedAt)}` : null, featured ? 'featured' : null];
+    const tools = span('admin__tools');
+    const open = document.createElement('a');
+    open.className = 'chipbtn';
+    open.textContent = 'Open';
+    open.href = linkToSong(song);
+    open.target = '_blank';
+    open.rel = 'noopener';
+    tools.append(open, this.featureControl(song, featured), confirmButton('Switch sharing off', 'Really switch it off?', () => this.takeDown(song)));
+    row.append(span('admin__name', song.title), tools, span('admin__meta', meta.filter(Boolean).join(' · ')));
+    return row;
   },
 
   // Feature or Unfeature, for a song its owner offered to the community shelf. One that is
@@ -485,7 +548,7 @@ export const admin = {
     } finally {
       this.busy = false;
     }
-    this.renderShared();
+    this.renderPeople();
   },
 
   // The shelf keeps only songs that are still shared, offered and not switched off: an
@@ -514,6 +577,6 @@ export const admin = {
       console.warn('[admin] could not switch sharing off', error);
       this.status('That did not work. The song is still shared.');
     }
-    this.renderShared();
+    this.renderPeople();
   },
 };

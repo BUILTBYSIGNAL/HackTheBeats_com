@@ -1645,6 +1645,14 @@ body > .consent {
   gap: 6px;
   padding-top: 6px;
 }
+.admin__list[hidden] {
+  display: none;
+}
+/* a person's shared songs, under them */
+.admin__sublist {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+}
 .admin__offer {
   align-self: center;
   padding: 0 6px;

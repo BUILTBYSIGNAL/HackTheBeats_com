@@ -907,7 +907,8 @@ try {
   const sharedRow = (id) => boss.locator(`#admin-shared .admin__row[data-id="${id}"]`);
   const openShared = async () => {
     await boss.click('[data-admin-tab="beats"]');
-    await boss.click('[data-admin-tab="shared"]');
+    await boss.click('[data-admin-tab="people"]');
+    await boss.click('[data-people-view="shared"]');
     await boss.waitForFunction((id) => document.querySelector(`#admin-shared .admin__row[data-id="${id}"]`), first, { timeout: 15000 });
   };
   // the owner ticks or unticks "Let the site feature this" in the share sheet, opened from the song list
@@ -941,6 +942,67 @@ try {
     return fb.setDoc(fb.doc(fb.getFirestore(), 'community', shareId), { title: 'New song', featuredAt: 1 }).then(() => 'allowed', (error) => error.code);
   }, shelfShare);
   check('rules: the admin cannot feature a song before its owner offers it, and the sheet says "not offered"', denied(tooSoon) && unoffered === 'not offered', `${tooSoon} / ${unoffered}`);
+
+  /* ---------- people: a profile per account, and only what they share ---------- */
+
+  // the owner's profile, as the database holds it (read past the rules), and as they see their songs
+  const ownerSays = await owner.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    // one song kept private, at least
+    if (h.songs.list().every((song) => song.shared)) h.songs.createBlank();
+    await h.songs.flush();
+    const mine = h.songs.list();
+    return { uid: h.cloud.user.uid, songs: mine.length, shared: mine.filter((song) => song.shared).length, secret: mine.find((song) => !song.shared)?.id };
+  });
+  await owner.waitForFunction(async ({ songs, shared }) => {
+    const profile = await window.hackingTheBeats.cloud.getProfile();
+    return profile?.songs === songs && profile?.shared === shared;
+  }, ownerSays, { timeout: 15000, polling: 500 });
+  const profileDoc = (await (await rest(`users/${ownerSays.uid}`)).json()).fields;
+  check('a person keeps a profile: their name, when they joined, and how many songs they have and share', profileDoc.name.stringValue === 'One Tester' && Number(profileDoc.songs.integerValue) === ownerSays.songs && Number(profileDoc.shared.integerValue) === ownerSays.shared && Object.keys(profileDoc).sort().join() === 'joinedAt,name,seenAt,shared,songs', JSON.stringify(profileDoc));
+  await boss.click('[data-admin-tab="beats"]');
+  await boss.click('[data-admin-tab="people"]');
+  await boss.click('[data-people-view="people"]');
+  const person = boss.locator(`#admin-people > .admin__row[data-uid="${ownerSays.uid}"]`);
+  await person.waitFor({ timeout: 15000 });
+  await person.getByRole('button', { name: /^Shared songs/ }).click();
+  const hidden = ownerSays.songs - ownerSays.shared;
+  const listed = await person.evaluate((row) => ({
+    meta: row.querySelector(':scope > .admin__meta').textContent,
+    songs: [...row.querySelectorAll('.admin__sublist .admin__row')].map((song) => song.dataset.id),
+    note: row.querySelector('.admin__sublist .admin__empty')?.textContent || '',
+  }));
+  check("the admin's People list shows a person's shared songs and only a count of the private ones", listed.meta.includes(`${ownerSays.songs} songs, ${ownerSays.shared} shared`) && listed.songs.includes(first) && !listed.songs.includes(ownerSays.secret) && listed.note.startsWith(`and ${hidden} private`), JSON.stringify({ listed, ownerSays }));
+  const privacy = await boss.evaluate(async ({ uid, secret, shared }) => {
+    const fb = await import('/vendor/firebase.bundle.js');
+    const db = fb.getFirestore();
+    const attempt = (action) => action().then(() => 'allowed', (error) => error.code || String(error));
+    return {
+      privateSong: await attempt(() => fb.getDoc(fb.doc(db, 'users', uid, 'songs', secret))),
+      sharedSong: await attempt(() => fb.getDoc(fb.doc(db, 'users', uid, 'songs', shared))),
+      everySong: await attempt(() => fb.getDocs(fb.collectionGroup(db, 'songs'))),
+      profiles: await attempt(() => fb.getDocs(fb.collection(db, 'users'))),
+      writeProfile: await attempt(() => fb.setDoc(fb.doc(db, 'users', uid), { name: 'Renamed', joinedAt: 1, seenAt: 1, songs: 0, shared: 0 })),
+    };
+  }, { uid: ownerSays.uid, secret: ownerSays.secret, shared: first });
+  check("rules: the admin reads shared songs and profiles, never a private song, nor anyone's profile to write", Boolean(ownerSays.secret) && denied(privacy.privateSong) && privacy.sharedSong === 'allowed' && denied(privacy.everySong) && privacy.profiles === 'allowed' && denied(privacy.writeProfile), JSON.stringify(privacy));
+  const ownRules = await owner.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const fb = await import('/vendor/firebase.bundle.js');
+    const db = fb.getFirestore();
+    const mine = fb.doc(db, 'users', h.cloud.user.uid);
+    const attempt = (action) => action().then(() => 'allowed', (error) => error.code || String(error));
+    const current = (await fb.getDoc(mine)).data();
+    return {
+      list: await attempt(() => fb.getDocs(fb.collection(db, 'users'))),
+      rejoin: await attempt(() => fb.setDoc(mine, { ...current, joinedAt: current.joinedAt + 1 })),
+      extra: await attempt(() => fb.setDoc(mine, { ...current, email: 'one@example.com' })),
+      tooMany: await attempt(() => fb.setDoc(mine, { ...current, shared: current.songs + 1 })),
+      fine: await attempt(() => fb.setDoc(mine, current)),
+    };
+  });
+  check('rules: a person writes only their own profile, as it is meant to be, and cannot list anyone\'s', denied(ownRules.list) && denied(ownRules.rejoin) && denied(ownRules.extra) && denied(ownRules.tooMany) && ownRules.fine === 'allowed', JSON.stringify(ownRules));
+  await openShared();
 
   const offered = await offer(true);
   check(
@@ -1070,7 +1132,8 @@ try {
     return { id: song.id, shareId: h.songs.get(song.id).shareId };
   });
   await boss.click('[data-admin-tab="beats"]');
-  await boss.click('[data-admin-tab="shared"]');
+  await boss.click('[data-admin-tab="people"]');
+    await boss.click('[data-people-view="shared"]');
   await boss.waitForFunction((id) => document.querySelector(`#admin-shared .admin__row[data-id="${id}"]`), spare.id, { timeout: 15000 });
   await sharedRow(spare.id).getByRole('button', { name: 'Feature', exact: true }).click();
   await status('"Spare Lantern" is featured');
@@ -1115,7 +1178,8 @@ try {
   check('it can be offered and featured again', reoffered.now && reoffered.remote && Boolean(await shelfDoc(shelfShare)));
 
   // the admin takes a shared song down
-  await boss.click('[data-admin-tab="shared"]');
+  await boss.click('[data-admin-tab="people"]');
+    await boss.click('[data-people-view="shared"]');
   await boss.waitForFunction((id) => document.querySelector(`#admin-shared .admin__row[data-id="${id}"]`), first, { timeout: 15000 });
   const takeDown = boss.locator(`#admin-shared .admin__row[data-id="${first}"]`).locator('button.chipbtn--danger');
   await takeDown.click();

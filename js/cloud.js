@@ -3,8 +3,11 @@
 // stay in the browser. The SDK is only loaded when accounts are configured.
 //
 // Layout in Firestore (see firestore.rules for who may read and write what):
+//   users/{uid}                  the account's profile (profiles-core.js): a name, two dates,
+//       how many songs and how many shared. Its owner writes it; an admin reads it
 //   users/{uid}/songs/{songId}   { code, title, createdAt, updatedAt, shared, mixer, ownerName, blocked?, shareId?, from?, featurable? }
-//       private to its owner unless `shared`; an admin can switch sharing off (`blocked`)
+//       private to its owner unless `shared`, the admin included; an admin can switch
+//       sharing off (`blocked`)
 //   users/{uid}/snapshots/{id}   a channel snapshot's record (snapshots-core.js), its owner's alone
 //       …/chunks/{n}             { n, data }: the snapshot's WAV, in pieces under a megabyte
 //   shares/{uuid}                what a share link points at: { owner, song }
@@ -15,6 +18,7 @@
 import { config, site } from './config.js';
 import { cleanFrom } from './songs-core.js';
 import { SHELF_MAX, shelfEntry } from './community-core.js';
+import { cleanProfile } from './profiles-core.js';
 
 let fb = null;
 let auth = null;
@@ -162,6 +166,23 @@ export const cloud = {
     });
   },
 
+  /* ---------- the profile ---------- */
+
+  // The signed-in person's profile as the database holds it, or null if there is none yet.
+  async getProfile() {
+    try {
+      const snapshot = await fb.getDoc(fb.doc(db, 'users', this.user.uid));
+      return snapshot.exists() ? cleanProfile(this.user.uid, snapshot.data()) : null;
+    } catch (error) {
+      if (refused(error)) return null;
+      throw error;
+    }
+  },
+
+  async saveProfile({ name, joinedAt, seenAt, songs, shared }) {
+    await fb.setDoc(fb.doc(db, 'users', this.user.uid), { name, joinedAt, seenAt, songs, shared });
+  },
+
   /* ---------- channel snapshots ---------- */
 
   // A snapshot is a record (snapshots-core.js) and its recording, a WAV, in chunks of under a
@@ -287,7 +308,12 @@ export const cloud = {
     await batch.commit();
   },
 
-  /* ---------- admin: what people have shared ---------- */
+  /* ---------- admin: the people, and what they have shared ---------- */
+
+  async listProfiles() {
+    const snapshot = await fb.getDocs(fb.collection(db, 'users'));
+    return snapshot.docs.map((entry) => cleanProfile(entry.id, entry.data()));
+  },
 
   async listShared() {
     const snapshot = await fb.getDocs(fb.query(fb.collectionGroup(db, 'songs'), fb.where('shared', '==', true)));

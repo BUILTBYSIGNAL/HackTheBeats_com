@@ -2,13 +2,18 @@ rules_version = '2';
 
 // Who may read and write what.
 //
+//   users/{uid}                  a person's profile: name, when they joined and last
+//                                visited, how many songs they have and how many are shared
+//     - Only the owner writes it, and cannot change when they joined. An admin can read
+//       and list profiles (the admin sheet's People list).
 //   users/{uid}/songs/{songId}   a person's own songs
 //     - Only the owner can list, create, change or delete their songs.
 //     - A song can be read by anyone holding its link, but only while its owner has
 //       switched sharing on (shared == true). Nobody else can list a person's songs,
 //       so a private song's id cannot be discovered.
-//     - An admin can see every song and switch a shared one off (shared: false,
-//       blocked: true). The owner cannot share a blocked song again.
+//     - An admin can list the songs that are shared, everyone's at once, and switch one
+//       off (shared: false, blocked: true). The owner cannot share a blocked song again.
+//       A private song is private from the admin too.
 //     - A copy can say where it came from (from: title, credit, link or page of the
 //       original), never whose account it was in.
 //     - The owner can offer a shared song to the community shelf (featurable: true).
@@ -20,7 +25,7 @@ rules_version = '2';
 //     - A link is a UUID. Anyone holding it can read whose song it names, nothing more;
 //       nobody can list them. Only the owner creates one, for themselves.
 //   beats/{id}                   the site's beats
-//     - Anyone can read the featured beat. Signed-in people can also read a beat the
+//     - Anyone can read a featured beat (there can be several). Signed-in people can also read a beat the
 //       admin has opened to members (members == true). Every other beat is the admin's
 //       own. Only an admin can write.
 //   catalog/public               titles and descriptions of the beats, without their code
@@ -88,8 +93,31 @@ service cloud.firestore {
       return song.get('blocked', false);
     }
 
+    // What the admin's People list says about an account (js/profiles-core.js): a name,
+    // when they joined and last visited, and how many songs they have and share.
+    function validProfile(profile) {
+      return profile.keys().hasOnly(['name', 'joinedAt', 'seenAt', 'songs', 'shared'])
+        && profile.keys().hasAll(['name', 'joinedAt', 'seenAt', 'songs', 'shared'])
+        && profile.name is string && profile.name.size() <= 200
+        && profile.joinedAt is number
+        && profile.seenAt is number
+        && profile.songs is int && profile.songs >= 0 && profile.songs <= 100000
+        && profile.shared is int && profile.shared >= 0 && profile.shared <= profile.songs;
+    }
+
+    match /users/{uid} {
+      allow get: if signedInAs(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if signedInAs(uid) && validProfile(request.resource.data);
+      // when they joined stays as it was
+      allow update: if signedInAs(uid) && validProfile(request.resource.data) && request.resource.data.joinedAt == resource.data.joinedAt;
+      allow delete: if signedInAs(uid);
+    }
+
+    // Private to its owner unless shared, the admin included: the admin sees a count of
+    // someone's private songs (their profile), never the songs.
     match /users/{uid}/songs/{songId} {
-      allow get: if signedInAs(uid) || resource.data.shared == true || isAdmin();
+      allow get: if signedInAs(uid) || resource.data.shared == true;
       allow list: if signedInAs(uid);
       allow create: if signedInAs(uid) && validSong(request.resource.data) && !blocked(request.resource.data);
       // the owner cannot lift a block, or share a song while it is blocked
@@ -154,9 +182,9 @@ service cloud.firestore {
       allow delete: if (signedIn() && resource.data.owner == request.auth.uid) || isAdmin();
     }
 
-    // every person's songs at once: the admin's list of what is shared
+    // every person's shared songs at once: the admin's list of what is shared
     match /{path=**}/songs/{songId} {
-      allow list: if isAdmin();
+      allow list: if isAdmin() && resource.data.shared == true;
     }
 
     function validBeat(beat) {

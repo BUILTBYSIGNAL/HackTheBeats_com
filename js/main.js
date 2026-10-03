@@ -19,6 +19,7 @@ import { midi } from './midi.js';
 import { thumbs } from './thumbs.js';
 import { register, registry } from './controls.js';
 import { admin } from './admin.js';
+import { profiles } from './profiles.js';
 import { analytics } from './analytics.js';
 import { isApple, keyLabels, localizeKeys } from './keys-core.js';
 import { explainError } from './errors-core.js';
@@ -1735,6 +1736,8 @@ async function boot() {
       file: $('admin-file'),
       seed: $('admin-seed'),
       sharedList: $('admin-shared'),
+      peopleList: $('admin-people'),
+      peopleViews: [...document.querySelectorAll('[data-people-view]')],
     },
     {
       // what the admin changed is what everybody is offered: read it back
@@ -1751,6 +1754,7 @@ async function boot() {
     admin.open();
   });
   cloud.onUser(onAccountChange);
+  profiles.start();
   renderAccount();
   // who is here decides which beats they are given, so start-up waits to be told
   const ready = cloud.init().catch((error) => console.warn('[account] accounts are unavailable', error));
