@@ -831,7 +831,16 @@ try {
   const said = JSON.stringify(entry);
   check(
     'the admin features it: one public entry, with its title and who shared it, and no code, account or song id',
-    entry?.title?.stringValue === 'New song' && entry?.ownerName?.stringValue === 'One Tester' && Boolean(entry?.featuredAt) && !('code' in entry) && !said.includes('setcps') && !said.includes(links.uid) && !said.includes(first),
+    entry?.title?.stringValue === 'New song' &&
+      entry?.ownerName?.stringValue === 'One Tester' &&
+      entry?.bpm?.integerValue === '132' &&
+      Number(entry?.trackCount?.integerValue) > 0 &&
+      Boolean(entry?.blurb?.stringValue) &&
+      Boolean(entry?.featuredAt) &&
+      !('code' in entry) &&
+      !said.includes('setcps') &&
+      !said.includes(links.uid) &&
+      !said.includes(first),
     said,
   );
 
@@ -846,6 +855,12 @@ try {
         adminWithCode: await attempt(() => fb.setDoc(fb.doc(db, 'community', shareId), { ...good, code: 's("bd")' })),
         adminWithOwner: await attempt(() => fb.setDoc(fb.doc(db, 'community', shareId), { ...good, owner: 'someone' })),
       };
+    }, shelfShare)),
+    // the owner offers; only the site's editors pick
+    ...(await owner.evaluate(async (shareId) => {
+      const fb = await import('/vendor/firebase.bundle.js');
+      const attempt = (action) => action().then(() => 'allowed', (error) => error.code || String(error));
+      return { ownerFeatures: await attempt(() => fb.setDoc(fb.doc(fb.getFirestore(), 'community', shareId), { title: 'New song', ownerName: 'One Tester', featuredAt: 4 })) };
     }, shelfShare)),
     ...(await passerby.evaluate(async (shareId) => {
       const fb = await import('/vendor/firebase.bundle.js');
@@ -867,6 +882,7 @@ try {
   };
   check('rules: an entry carrying code or an owner field is refused', denied(shelfRules.adminWithCode) && denied(shelfRules.adminWithOwner), JSON.stringify(shelfRules));
   check('rules: a standard user cannot write or delete community entries', denied(shelfRules.userWrite) && denied(shelfRules.userWriteNew) && denied(shelfRules.userDelete), JSON.stringify(shelfRules));
+  check('rules: an owner cannot put their own song on the shelf', denied(shelfRules.ownerFeatures), JSON.stringify(shelfRules));
   check('rules: the shelf can be read, and listed only with a limit of at most 48', shelfRules.read === 'allowed' && denied(shelfRules.listAll) && shelfRules.listSome === 'allowed' && denied(shelfRules.listTooMany), JSON.stringify(shelfRules));
   check('rules: featurable must be true or false', denied(shelfRules.featurableNotBool) && shelfRules.featurableBool === 'allowed', JSON.stringify(shelfRules));
 
@@ -876,11 +892,11 @@ try {
   const shelf = await shelfVisitor.evaluate((shareId) => {
     const row = document.querySelector(`#community-list .beat[data-share="${shareId}"]`);
     const sections = [...document.querySelectorAll('#crate .drawer__heading')].map((el) => el.textContent);
-    return { title: row?.querySelector('.beat__title').textContent, meta: row?.querySelector('.beat__meta').textContent, glyph: Boolean(row?.querySelector('.beat__glyph svg rect')), sections };
+    return { title: row?.querySelector('.beat__title').textContent, meta: row?.querySelector('.beat__meta').textContent, blurb: row?.querySelector('.beat__blurb').textContent, glyph: Boolean(row?.querySelector('.beat__glyph svg rect')), sections };
   }, shelfShare);
   check(
     'signed out, the song list shows From the community, between My songs and Beats',
-    shelf.title === 'New song' && /^shared by One Tester · 132 bpm/.test(shelf.meta || '') && shelf.glyph && shelf.sections.join() === 'My songs,From the community,Beats',
+    shelf.title === 'New song' && /^shared by One Tester · 132 bpm/.test(shelf.meta || '') && shelf.blurb === entry?.blurb?.stringValue && shelf.glyph && shelf.sections.join() === 'My songs,From the community,Beats',
     JSON.stringify(shelf),
   );
   await shelfVisitor.evaluate((shareId) => {
@@ -942,6 +958,25 @@ try {
   }, spare.id);
   const tidied = await boss.evaluate(() => window.hackingTheBeats.admin.syncCommunity());
   check('an entry whose song is no longer offered is taken off the shelf by the admin\'s visit', featuredSpare && tidied === 1 && (await shelfDoc(spare.shareId)) === null, `${featuredSpare} / ${tidied}`);
+
+  // offered and featured once more, then its owner switches sharing off: that withdraws it too
+  await owner.evaluate(async (id) => {
+    const h = window.hackingTheBeats;
+    h.songs.setFeaturable(id, false);
+    h.songs.setFeaturable(id, true);
+    await h.songs.flush();
+  }, spare.id);
+  await openShared();
+  await sharedRow(spare.id).getByRole('button', { name: 'Feature', exact: true }).click();
+  await status('"Spare Lantern" is featured');
+  const refeatured = Boolean(await shelfDoc(spare.shareId));
+  await owner.evaluate((id) => window.hackingTheBeats.songs.setShared(id, false), spare.id);
+  let unshared = 'still there';
+  for (let i = 0; i < 40 && unshared; i++) {
+    await settle(owner, 250);
+    unshared = await shelfDoc(spare.shareId);
+  }
+  check('switching sharing off takes a song off the shelf', refeatured && unshared === null, `${refeatured} / ${JSON.stringify(unshared)}`);
   await owner.evaluate(async (id) => {
     window.hackingTheBeats.songs.remove(id);
     await new Promise((r) => setTimeout(r, 800));

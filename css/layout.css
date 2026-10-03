@@ -708,6 +708,13 @@ dialog::backdrop {
   content: '';
   width: 28px;
 }
+/* on a phone the punchcard shrinks, so a title and its credit have room beside the deck buttons */
+@media (max-width: 560px) {
+  .beat__main {
+    grid-template-columns: 18px 60px minmax(0, 1fr);
+    gap: 10px;
+  }
+}
 .beat.is-loaded .beat__index,
 .beat.is-loaded .beat__glyph {
   color: var(--hb-accent);

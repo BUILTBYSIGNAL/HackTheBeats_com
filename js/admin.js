@@ -284,7 +284,14 @@ export const admin = {
   /* ---------- shared songs ---------- */
 
   async loadShared() {
-    const [shared, shelf] = await Promise.all([cloud.listShared(), cloud.listCommunity({ max: SHELF_MAX })]);
+    // (the shared songs are still listed if the shelf cannot be read)
+    const [shared, shelf] = await Promise.all([
+      cloud.listShared(),
+      cloud.listCommunity({ max: SHELF_MAX }).catch((error) => {
+        console.warn('[admin] could not read the shelf', error);
+        return [];
+      }),
+    ]);
     this.shared = shared.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     this.featured = new Set(shelf.map((entry) => entry.shareId));
     this.renderShared();
@@ -324,9 +331,10 @@ export const admin = {
     }
   },
 
-  // Feature or Unfeature, for a song its owner offered to the community shelf.
+  // Feature or Unfeature, for a song its owner offered to the community shelf. One that is
+  // featured can always be taken off, even after its owner has withdrawn it.
   featureControl(song, featured) {
-    if (!eligibleForShelf(song)) {
+    if (!featured && !eligibleForShelf(song)) {
       const note = document.createElement('span');
       note.className = 'admin__offer';
       note.textContent = 'not offered';

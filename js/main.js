@@ -944,7 +944,7 @@ function shareInput(target) {
   };
   if (song.source === 'mine') {
     const host = new URL(site.split ? config.shareOrigin : location.origin).host;
-    return { ...base, kind: 'own', accounts: cloud.accounts, shared: song.shared, blocked: song.blocked, synced: song.synced, link: songs.shareLink(song.id), host, sharer: cloud.user?.displayName || '', featurable: song.featurable };
+    return { ...base, kind: 'own', accounts: cloud.accounts, shared: song.shared, blocked: song.blocked, synced: song.synced, link: songs.shareLink(song.id), host, sharer: cloud.user?.displayName || '', featurable: song.featurable, oldLink: song.shared && !song.shareId };
   }
   if (song.source === 'beats' && player) return { ...base, kind: 'beat', accounts: cloud.accounts && app.access === 'full', audience: song.audience ?? (song.featured ? 'everyone' : 'members'), link: mixLink(player, song) };
   if (song.source === 'shared') return { ...base, kind: 'theirs', ownerName: song.ownerName, link: linkToSong(song) };

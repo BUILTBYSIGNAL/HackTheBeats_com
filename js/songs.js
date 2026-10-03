@@ -73,9 +73,10 @@ async function adoptBlock(id) {
 }
 
 // Close a song's link. Its entry on the community shelf goes first: the owner's right to
-// remove that comes from the link's own record (firestore.rules).
+// remove that comes from the link's own record (firestore.rules). It is tried even when this
+// browser does not know the song was offered: another device may have offered it since.
 function closeLink(record) {
-  const withdrawn = record.featurable ? cloud.unfeature(record.shareId).catch((error) => console.warn('[songs] could not withdraw it from the shelf', error)) : Promise.resolve();
+  const withdrawn = cloud.unfeature(record.shareId).catch((error) => record.featurable && console.warn('[songs] could not withdraw it from the shelf', error));
   return withdrawn.then(() => cloud.deleteShare(record.shareId));
 }
 

@@ -143,8 +143,15 @@ export const shareSheet = {
   async setFeaturable(on) {
     const id = this.input?.songId;
     if (!id || !this.hooks.setFeaturable) return;
-    await this.hooks.setFeaturable(id, on);
-    this.render();
+    // one change at a time: a second click could reach the account before the first
+    this.els.feature.disabled = true;
+    try {
+      await this.hooks.setFeaturable(id, on);
+    } finally {
+      this.render();
+    }
+    // say what happened, which is not always what was asked
+    if (Boolean(this.view?.feature?.on) !== on) return this.announce('That did not change. Try again in a moment.');
     this.announce(on ? 'Offered to the site. If its editors pick it, it appears under From the community.' : 'Withdrawn: the site will not feature it.');
   },
 

@@ -9,6 +9,8 @@
 //   accounts   sharing one's own songs is possible here (a hosted site with accounts)
 //   shared, blocked, synced   the song's own state (own songs)
 //   featurable the owner has offered the song to the site's community shelf
+//   oldLink    it is shared by an owner~id link from before links were UUIDs, which the
+//              community shelf cannot name
 //   busy       the link is being made
 //   link       the address to share, once there is one
 //   audience   who can play a built-in beat: 'everyone', 'members' or 'admin'
@@ -37,7 +39,8 @@ export function sheetState(s) {
     if (!s.busy && s.link && !s.synced) out.link.note = 'Your account could not be reached just now: the link will work once the song has been saved there.';
     const by = s.sharer ? `, shared by ${s.sharer}` : '';
     out.recipient = `They will find "${s.title}" on ${s.host}${by}, with its knobs, channels and pads to play with. They can't change your song, but they can keep a copy of their own that credits you.`;
-    // offering it to the community shelf, while it is shared
+    // offering it to the community shelf, while it is shared by a link of its own
+    if (s.oldLink) return out;
     out.feature = {
       on: Boolean(s.featurable),
       disabled: Boolean(s.busy),

@@ -275,7 +275,8 @@ first, at most 48. It is only on the main site, and hidden while it is empty.
   the same "run this?" question as any shared song (headed *From the community*), because its owner can change
   the code after it was featured.
 - **Withdrawing.** Unticking the offer, switching sharing off or deleting the song takes it off the shelf at once.
-  The admin's own visits also take off any entry whose song is no longer shared and offered.
+  The admin's own visits also take off any entry whose song is no longer shared and offered. Unticking leaves the
+  link itself working for whoever has it; only switching sharing off closes it.
 
 ## Accounts and roles
 

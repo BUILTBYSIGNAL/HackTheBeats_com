@@ -97,6 +97,11 @@ test('my own song, while shared, can be offered to the community shelf', () => {
   assert.equal(sheetState({ ...own, shared: false, featurable: true }).feature, null);
   assert.equal(sheetState({ ...own, shared: false, blocked: true, featurable: true }).feature, null);
   assert.equal(sheetState({ ...own, accounts: false, shared: true }).feature, null);
+  // a link from before links were UUIDs has no entry the shelf could name: the sharing switch stays
+  const old = sheetState({ ...own, shared: true, link: 'x', oldLink: true });
+  assert.equal(old.feature, null);
+  assert.equal(old.toggle.on, true);
+  assert.equal(old.link.text, 'x');
   assert.equal(sheetState({ kind: 'beat', title: 'Amber', accounts: true, link: 'x', audience: 'everyone' }).feature, null);
   assert.equal(sheetState({ kind: 'theirs', link: 'y', ownerName: 'Ana' }).feature, null);
 });
