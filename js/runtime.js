@@ -205,6 +205,49 @@ export const steadyTimers = {
   },
 };
 
+/* ---------- playing through an iPhone's Silent mode ---------- */
+
+// iOS treats Web Audio as ambient sound, which Silent mode (the ring/silent switch) mutes
+// however loud the volume is. Declaring the page a music player keeps it audible, as a
+// music app would be. Safari 17 and later can say so directly (navigator.audioSession);
+// older iPhones switch over while an <audio> element is playing, so a silent one loops.
+// Either has to happen inside the tap that starts the sound.
+let silentLoop = null;
+function silentWav(seconds = 1, rate = 8000) {
+  const bytes = new Uint8Array(44 + seconds * rate * 2);
+  const view = new DataView(bytes.buffer);
+  const text = (at, s) => [...s].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)));
+  text(0, 'RIFF');
+  view.setUint32(4, bytes.length - 8, true);
+  text(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  text(36, 'data');
+  view.setUint32(40, bytes.length - 44, true);
+  return URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
+}
+function holdPlaybackSession() {
+  const session = typeof navigator !== 'undefined' ? navigator.audioSession : null;
+  if (session) {
+    if (session.type !== 'playback') session.type = 'playback';
+    return;
+  }
+  // only iOS needs the silent loop; elsewhere it would just be an idle media element
+  const iOS = /iP(hone|ad|od)/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!iOS || typeof Audio === 'undefined') return;
+  if (!silentLoop) {
+    silentLoop = new Audio(silentWav());
+    silentLoop.loop = true;
+    silentLoop.setAttribute('x-webkit-airplay', 'deny');
+  }
+  if (silentLoop.paused) silentLoop.play().catch(() => {});
+}
+
 /* ---------- public API ---------- */
 
 let audioInit = null;
@@ -241,6 +284,11 @@ export const runtime = {
   // Must be called synchronously from a click or key handler: resume() is requested before
   // anything is awaited so the browser still counts it as part of the user's gesture.
   async ensureAudio() {
+    try {
+      holdPlaybackSession();
+    } catch (error) {
+      console.warn('[runtime] could not claim the playback audio session', error);
+    }
     const context = webaudio.getAudioContext();
     const resumed = context.state === 'running' ? null : context.resume();
     if (!audioInit) audioInit = webaudio.initAudio();
