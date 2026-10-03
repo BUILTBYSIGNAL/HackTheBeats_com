@@ -5,6 +5,8 @@
 // Layout in Firestore (see firestore.rules for who may read and write what):
 //   users/{uid}/songs/{songId}   { code, title, createdAt, updatedAt, shared, mixer, ownerName, blocked?, shareId?, from?, featurable? }
 //       private to its owner unless `shared`; an admin can switch sharing off (`blocked`)
+//   users/{uid}/snapshots/{id}   a channel snapshot's record (snapshots-core.js), its owner's alone
+//       …/chunks/{n}             { n, data }: the snapshot's WAV, in pieces under a megabyte
 //   shares/{uuid}                what a share link points at: { owner, song }
 //   community/{uuid}             a shared song the site features (community-core.js), no code
 //   beats/{id}                   the site's beats (beats-core.js)
@@ -157,6 +159,45 @@ export const cloud = {
       // offered to the community shelf (only while shared)
       ...(song.featurable ? { featurable: true } : {}),
     });
+  },
+
+  /* ---------- channel snapshots ---------- */
+
+  // A snapshot is a record (snapshots-core.js) and its recording, a WAV, in chunks of under a
+  // megabyte each: users/{uid}/snapshots/{id} and users/{uid}/snapshots/{id}/chunks/{n}.
+  snapshotDoc(id) {
+    return fb.doc(db, 'users', this.user.uid, 'snapshots', id);
+  },
+
+  async listSnapshots() {
+    const snapshot = await fb.getDocs(fb.collection(db, 'users', this.user.uid, 'snapshots'));
+    return snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id }));
+  },
+
+  // The recording goes first and the record last, so a record always has its chunks.
+  async saveSnapshot(record, chunks) {
+    if (chunks) {
+      const batch = fb.writeBatch(db);
+      chunks.forEach((bytes, n) => batch.set(fb.doc(db, 'users', this.user.uid, 'snapshots', record.id, 'chunks', String(n)), { n, data: fb.Bytes.fromUint8Array(bytes) }));
+      await batch.commit();
+    }
+    await fb.setDoc(this.snapshotDoc(record.id), record);
+  },
+
+  async readSnapshotChunks(id, count) {
+    const docs = await Promise.all(Array.from({ length: count }, (_, n) => fb.getDoc(fb.doc(db, 'users', this.user.uid, 'snapshots', id, 'chunks', String(n)))));
+    return docs.map((entry) => {
+      if (!entry.exists()) throw new Error(`snapshot ${id} is missing part ${entry.id}`);
+      return entry.data().data.toUint8Array();
+    });
+  },
+
+  // The record first: without it the chunks are never read.
+  async deleteSnapshot(id, count) {
+    await fb.deleteDoc(this.snapshotDoc(id));
+    const batch = fb.writeBatch(db);
+    for (let n = 0; n < count; n++) batch.delete(fb.doc(db, 'users', this.user.uid, 'snapshots', id, 'chunks', String(n)));
+    await batch.commit();
   },
 
   /* ---------- share links ---------- */

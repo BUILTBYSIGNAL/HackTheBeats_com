@@ -348,6 +348,88 @@ try {
     `${rules.writeOwnWithFrom} / ${rules.writeOwnFromWithOwner} / ${rules.writeOwnFromHuge} / ${rules.writeOwnFromNotAMap}`,
   );
 
+  /* ---------- channel snapshots follow the account ---------- */
+  const captured = await one.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const A = h.players.A;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!A.started) await A.play();
+    for (let i = 0; i < 100 && !A.started; i++) await sleep(100);
+    const index = A.mixer.tracks.findIndex((track) => track.name === 'EXTRA');
+    h.snapshots.arm(A, index, 1);
+    for (let i = 0; i < 150 && !h.snapshots.slots[0]; i++) await sleep(100);
+    const record = h.snapshots.at(0);
+    if (!record) return { kept: false };
+    let remote = [];
+    for (let i = 0; i < 100 && !remote.length; i++) {
+      remote = await h.cloud.listSnapshots();
+      if (!remote.length) await sleep(100);
+    }
+    const chunks = await h.cloud.readSnapshotChunks(record.id, record.chunks);
+    return {
+      kept: true,
+      id: record.id,
+      name: record.name,
+      frames: record.frames,
+      expected: Math.round((1 / record.cps) * record.sampleRate),
+      size: record.wav.size,
+      remote: remote.map((snap) => snap.id),
+      stored: chunks.reduce((sum, chunk) => sum + chunk.length, 0),
+    };
+  });
+  check('a channel captured into a snapshot is one bar long, exactly', captured.kept && Math.abs(captured.frames - captured.expected) <= 1 && captured.name === 'EXTRA', JSON.stringify(captured));
+  check('the snapshot is kept in the account, recording and all', captured.remote?.length === 1 && captured.remote[0] === captured.id && captured.stored === captured.size, JSON.stringify(captured));
+
+  // the same person in a browser that has never seen it
+  const elsewhere = await visitor();
+  await elsewhere.evaluate(() => window.hackingTheBeats.cloud.signInForTest({ sub: 'one', email: 'one@example.com', name: 'One Tester' }));
+  await elsewhere.waitForFunction(() => window.hackingTheBeats.snapshots.at(0)?.wav, null, { timeout: 15000 }).catch(() => {});
+  const arrived = await elsewhere.evaluate(() => {
+    const record = window.hackingTheBeats.snapshots.at(0);
+    return record ? { id: record.id, size: record.wav?.size, pad: document.querySelector('.snap .snap__name').textContent } : null;
+  });
+  check('signing in on another browser brings the snapshot to its pad', arrived?.id === captured.id && arrived.size === captured.size && arrived.pad === 'EXTRA', JSON.stringify(arrived));
+  await elsewhere.context().close();
+
+  const snapRules = await two.evaluate(async ({ uid, id }) => {
+    const fb = await import('/vendor/firebase.bundle.js');
+    const db = fb.getFirestore();
+    const me = fb.getAuth().currentUser.uid;
+    const attempt = async (action) => {
+      try {
+        await action();
+        return 'allowed';
+      } catch (error) {
+        return error.code || String(error);
+      }
+    };
+    const snap = (overrides = {}) => ({ id: 'a0a0a0a0a0', name: 'Mine', bars: 1, cps: 0.5, sampleRate: 48000, frames: 96000, slot: 0, pinned: null, createdAt: 1, updatedAt: 1, chunks: 1, ...overrides });
+    const bytes = (n) => fb.Bytes.fromUint8Array(new Uint8Array(n));
+    return {
+      readOthers: await attempt(() => fb.getDoc(fb.doc(db, 'users', uid, 'snapshots', id))),
+      readOthersChunk: await attempt(() => fb.getDoc(fb.doc(db, 'users', uid, 'snapshots', id, 'chunks', '0'))),
+      listOthers: await attempt(() => fb.getDocs(fb.collection(db, 'users', uid, 'snapshots'))),
+      writeOthers: await attempt(() => fb.setDoc(fb.doc(db, 'users', uid, 'snapshots', 'b0b0b0b0b0'), snap({ id: 'b0b0b0b0b0' }))),
+      deleteOthers: await attempt(() => fb.deleteDoc(fb.doc(db, 'users', uid, 'snapshots', id))),
+      writeOwn: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'snapshots', 'a0a0a0a0a0'), snap())),
+      writeOwnChunk: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'snapshots', 'a0a0a0a0a0', 'chunks', '0'), { n: 0, data: bytes(1000) })),
+      writeOwnOddBars: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'snapshots', 'c0c0c0c0c0'), snap({ id: 'c0c0c0c0c0', bars: 3 }))),
+      writeOwnWrongId: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'snapshots', 'd0d0d0d0d0'), snap())),
+      writeOwnHugeChunk: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'snapshots', 'a0a0a0a0a0', 'chunks', '1'), { n: 1, data: bytes(900001) })),
+      writeOwnNinthChunk: await attempt(() => fb.setDoc(fb.doc(db, 'users', me, 'snapshots', 'a0a0a0a0a0', 'chunks', '8'), { n: 8, data: bytes(10) })),
+    };
+  }, { uid: links.uid, id: captured.id });
+  check(
+    "rules: nobody else can read, list, write or delete a person's snapshots",
+    denied(snapRules.readOthers) && denied(snapRules.readOthersChunk) && denied(snapRules.listOthers) && denied(snapRules.writeOthers) && denied(snapRules.deleteOthers),
+    JSON.stringify(snapRules),
+  );
+  check(
+    'rules: a person can keep their own snapshots, in their own shape and size',
+    snapRules.writeOwn === 'allowed' && snapRules.writeOwnChunk === 'allowed' && denied(snapRules.writeOwnOddBars) && denied(snapRules.writeOwnWrongId) && denied(snapRules.writeOwnHugeChunk) && denied(snapRules.writeOwnNinthChunk),
+    JSON.stringify(snapRules),
+  );
+
   // keeping a copy of the shared song
   await two.click('#save-copy');
   await settle(two);
@@ -384,6 +466,19 @@ try {
   await settle(one);
   const out = await one.evaluate(() => ({ mine: window.hackingTheBeats.songs.list().length, stored: JSON.parse(localStorage.getItem('hacking-the-beats:songs') || '[]').length, path: location.pathname }));
   check("signing out removes the account's songs from the browser", out.mine === 0 && out.stored === 0, JSON.stringify(out));
+  const snapsOut = await one.evaluate(async () => {
+    const h = window.hackingTheBeats;
+    const db = await new Promise((resolve) => {
+      const request = indexedDB.open('hacking-the-beats', 1);
+      request.onsuccess = () => resolve(request.result);
+    });
+    const kept = await new Promise((resolve) => {
+      const request = db.transaction('snapshots').objectStore('snapshots').count();
+      request.onsuccess = () => resolve(request.result);
+    });
+    return { pads: h.snapshots.slots.filter(Boolean).length, kept };
+  });
+  check("and its snapshots, pads and stored recordings alike", snapsOut.pads === 0 && snapsOut.kept === 0, JSON.stringify(snapsOut));
   check('signing out goes back to the featured beat, with its controls but no second deck', (await shown(one, 'intro')) && (await shown(one, 'deck')) && !(await shown(one, 'chip-b')) && !(await shown(one, 'record')) && out.path === '/');
   await one.evaluate(() => window.hackingTheBeats.cloud.signInForTest({ sub: 'one', email: 'one@example.com', name: 'One Tester' }));
   await one.waitForFunction((count) => window.hackingTheBeats.songs.list().length === count, links.count, { timeout: 15000 });

@@ -28,4 +28,5 @@ export {
   orderBy,
   limit,
   writeBatch,
+  Bytes,
 } from 'firebase/firestore/lite';

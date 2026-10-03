@@ -12,6 +12,10 @@ rules_version = '2';
 //     - A copy can say where it came from (from: title, credit, link or page of the
 //       original), never whose account it was in.
 //     - The owner can offer a shared song to the community shelf (featurable: true).
+//   users/{uid}/snapshots/{id}   a person's channel snapshots (a few bars of one channel's sound)
+//     - Only the owner can read, list, write or delete them; nobody else, admins included.
+//     - The record says how long the recording is and how many chunks/{n} it is stored in;
+//       each chunk is raw bytes under a megabyte, at most eight of them.
 //   shares/{uuid}                what a share link points at
 //     - A link is a UUID. Anyone holding it can read whose song it names, nothing more;
 //       nobody can list them. Only the owner creates one, for themselves.
@@ -99,6 +103,41 @@ service cloud.firestore {
           && request.resource.data.blocked == true
           && isAdmin());
       allow delete: if signedInAs(uid);
+    }
+
+    // A channel snapshot's record (js/snapshots-core.js cleanSnapshot), and one piece of its WAV.
+    function validSnapshot(snap, id) {
+      return snap.keys().hasOnly(['id', 'name', 'track', 'songTitle', 'bars', 'cps', 'sampleRate', 'frames', 'slot', 'pinned', 'createdAt', 'updatedAt', 'chunks'])
+        && snap.keys().hasAll(['id', 'name', 'bars', 'cps', 'sampleRate', 'frames', 'createdAt', 'updatedAt', 'chunks'])
+        && snap.id == id && id.matches('^[0-9a-f]{8,40}$')
+        && snap.name is string && snap.name.size() <= 60
+        && (!('track' in snap) || (snap.track is string && snap.track.size() <= 60))
+        && (!('songTitle' in snap) || (snap.songTitle is string && snap.songTitle.size() <= 200))
+        && snap.bars in [1, 2, 4, 8]
+        && snap.cps is number && snap.cps > 0 && snap.cps <= 10
+        && snap.sampleRate is int && snap.sampleRate >= 8000 && snap.sampleRate <= 192000
+        && snap.frames is int && snap.frames > 0 && snap.frames <= snap.sampleRate * 31
+        && (!('slot' in snap) || snap.slot == null || (snap.slot is int && snap.slot >= 0 && snap.slot < 8))
+        && (!('pinned' in snap) || snap.pinned == null || snap.pinned in ['A', 'B'])
+        && snap.createdAt is number
+        && snap.updatedAt is number
+        && snap.chunks is int && snap.chunks >= 1 && snap.chunks <= 8;
+    }
+
+    match /users/{uid}/snapshots/{snapId} {
+      allow read, delete: if signedInAs(uid);
+      allow create, update: if signedInAs(uid) && validSnapshot(request.resource.data, snapId);
+
+      match /chunks/{n} {
+        allow read, delete: if signedInAs(uid);
+        allow create, update: if signedInAs(uid)
+          && n in ['0', '1', '2', '3', '4', '5', '6', '7']
+          && request.resource.data.keys().hasOnly(['n', 'data'])
+          && request.resource.data.n is int
+          && string(request.resource.data.n) == n
+          && request.resource.data.data is bytes
+          && request.resource.data.data.size() <= 900000;
+      }
     }
 
     // What a share link points at. The link is a UUID, so it cannot be guessed, and these

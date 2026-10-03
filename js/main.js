@@ -28,6 +28,8 @@ import { onboarding } from './onboarding.js';
 import { shareSheet } from './share-sheet.js';
 import { songMap } from './outline.js';
 import { clip } from './clip.js';
+import { snapshots } from './snapshots.js';
+import { SLOT_KEYS } from './snapshots-core.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -343,6 +345,7 @@ function setAccess(access) {
   if (app.split) setSplit(false);
   if (app.gallery) setGallery(false);
   if (recorder.active) finishRecording();
+  snapshots.cancel();
   if (midi.learning) midi.setLearning(false);
   deck.crossfader?.set(0);
   master.setCrossfade(0);
@@ -854,6 +857,7 @@ async function onAccountChange(user) {
   setAccess(walled() ? 'preview' : 'full');
   if (!site.guest && cloud.accounts) persist.set('signedIn', Boolean(user));
   const synced = songs.setUser(user).then(renderAccount);
+  snapshots.setUser(user);
   app.synced = synced;
   if (user) {
     onboarding.done('signin');
@@ -1245,6 +1249,19 @@ async function boot() {
       stripsEmpty: $('strips-empty'),
       pads: $('pads'),
       latch: $('pads-latch'),
+      snaps: $('snaps'),
+      padbank: $('padbank'),
+      padTabs: [...document.querySelectorAll('#pad-tabs button')],
+      capLength: $('cap-length'),
+      snapSheet: $('snap-sheet'),
+      snapTitle: $('snap-title'),
+      snapRename: $('snap-rename'),
+      snapName: $('snap-name'),
+      snapAbout: $('snap-about'),
+      snapPin: $('snap-pin'),
+      snapDownload: $('snap-download'),
+      snapClear: $('snap-clear'),
+      snapClose: $('snap-close'),
       latchNote: document.querySelector('.panel__note--hold'),
       master: $('master'),
       crossfader: $('crossfader'),
@@ -1273,8 +1290,15 @@ async function boot() {
         renderMixButton();
         master.setTempo((audible().started ? audible() : other(audible())).cps);
       },
+      // ● on a channel strip: a snapshot needs an account, like recording the mix
+      capture: (player, index, bars) => {
+        if (needsAccount('capture snapshots')) return;
+        if (!recorder.supported) return setStatus('This browser cannot capture audio here');
+        snapshots.arm(player, index, bars);
+      },
     },
   );
+  snapshots.init({ players, focused, status: setStatus });
   crate.init(
     { dialog: $('crate'), mine: $('mine-list'), beats: $('crate-list'), close: $('crate-close'), heading: $('crate-title'), note: $('mine-note'), community: $('community-list'), communitySection: $('community-section') },
     {
@@ -1774,6 +1798,7 @@ async function boot() {
     const interactive = event.target.closest?.('button, a, input, [role="slider"]');
     const pad = deck.pads.get(key);
     const channel = channelKeys.indexOf(key);
+    const slot = SLOT_KEYS.indexOf(key);
     // Without an account (and on the shared-song player): play, the list, the next beat,
     // help, the pads, channels and views. The second deck, mixing and recording need one.
     if (app.access === 'preview') {
@@ -1781,8 +1806,9 @@ async function boot() {
       if (!['Escape', ' ', 'ArrowLeft', 'ArrowRight', 'b', '?'].includes(key) && !mixing) return;
     }
 
-    // Esc throws away a video clip being recorded
+    // Esc throws away a video clip being recorded, and lets a snapshot capture go
     if (key === 'Escape' && clip.active) return void clip.cancel();
+    if (key === 'Escape' && snapshots.cancel('The capture was let go.')) return;
     if (key === 'Escape') {
       if (midi.learning) toggleLearn();
       else if (app.gallery) setGallery(false);
@@ -1795,6 +1821,8 @@ async function boot() {
       focused().toggle();
     } else if (pad) {
       if (!event.repeat) pad.press(true, event.shiftKey || deck.latch);
+    } else if (slot >= 0) {
+      if (!event.repeat) snapshots.press(slot, { once: event.shiftKey });
     } else if (key === 'ArrowRight' && !interactive) step(1);
     else if (key === 'ArrowLeft' && !interactive) step(-1);
     else if (channel >= 0 && focused().mixer.tracks[channel]) focused().mixer.setMute(channel);
@@ -1918,7 +1946,7 @@ async function boot() {
 }
 
 // A handle for tests and for poking around in the console.
-window.hackingTheBeats = { app, players: byId, master, deck, recorder, midi, visuals, runtime, registry, crate, thumbs, songs, cloud, config, site, admin, analytics, tries, onboarding, finishRecording, VERSION };
+window.hackingTheBeats = { app, players: byId, master, deck, recorder, snapshots, midi, visuals, runtime, registry, crate, thumbs, songs, cloud, config, site, admin, analytics, tries, onboarding, finishRecording, VERSION };
 window.hackingTheBeats.songMap = songMap;
 window.hackingTheBeats.clip = clip;
 

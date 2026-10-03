@@ -1,5 +1,7 @@
-// Records what comes out of the master bus to a WAV file. Samples are captured on the audio
-// thread by a small worklet and kept as 16-bit PCM, so a recording costs about 10 MB a minute.
+// Records audio to a WAV file. Samples are captured on the audio thread by a small worklet
+// and kept as 16-bit PCM, so a recording costs about 10 MB a minute. The master recorder
+// takes everything from the moment it starts; a channel snapshot (snapshots.js) takes an
+// exact window of frames, from one bar line to another.
 
 const WORKLET = `
 class HbRecorder extends AudioWorkletProcessor {
@@ -10,27 +12,59 @@ class HbRecorder extends AudioWorkletProcessor {
     this.right = new Float32Array(this.size);
     this.filled = 0;
     this.active = true;
-    this.port.onmessage = () => (this.active = false);
+    // a window of frames on the audio clock: [from, to), or everything
+    this.from = -Infinity;
+    this.to = Infinity;
+    this.port.onmessage = ({ data }) => {
+      if (data === 'stop') this.active = false;
+      else if (data && typeof data === 'object') {
+        this.from = data.from;
+        this.to = data.to;
+      }
+    };
+  }
+  flush() {
+    if (!this.filled) return;
+    this.port.postMessage({ left: this.left.slice(0, this.filled), right: this.right.slice(0, this.filled) });
+    this.filled = 0;
   }
   process(inputs) {
     if (!this.active) return false;
     const input = inputs[0];
-    if (!input || !input[0]) return true;
-    const l = input[0];
-    const r = input[1] || input[0];
-    for (let i = 0; i < l.length; i++) {
-      this.left[this.filled] = l[i];
-      this.right[this.filled] = r[i];
-      if (++this.filled === this.size) {
-        this.port.postMessage({ left: this.left.slice(), right: this.right.slice() });
-        this.filled = 0;
+    const l = input && input[0];
+    const r = (input && input[1]) || l;
+    // the master recorder skips what has no signal at all, as it always has
+    if (!l && this.from === -Infinity) return true;
+    const length = l ? l.length : 128;
+    for (let i = 0; i < length; i++) {
+      const frame = currentFrame + i;
+      if (frame < this.from) continue;
+      if (frame >= this.to) {
+        this.flush();
+        this.port.postMessage({ done: true });
+        this.active = false;
+        return false;
       }
+      // silence counts too: a window keeps its exact length
+      this.left[this.filled] = l ? l[i] : 0;
+      this.right[this.filled] = r ? r[i] : 0;
+      if (++this.filled === this.size) this.flush();
     }
     return true;
   }
 }
 registerProcessor('hb-recorder', HbRecorder);
 `;
+
+const loaded = new WeakSet();
+// Safe to call again; resolves once the worklet can be used on this context.
+export async function loadWorklet(context) {
+  if (loaded.has(context)) return;
+  const url = URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' }));
+  await context.audioWorklet.addModule(url);
+  URL.revokeObjectURL(url);
+  loaded.add(context);
+}
 
 const MAX_SECONDS = 20 * 60;
 
@@ -72,7 +106,6 @@ export const recorder = {
   node: null,
   chunks: [],
   frames: 0,
-  moduleFor: null,
   onAutoStop: null,
 
   get supported() {
@@ -86,17 +119,13 @@ export const recorder = {
   async start(source) {
     if (this.active || !source) return false;
     const context = source.context;
-    if (this.moduleFor !== context) {
-      const url = URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' }));
-      await context.audioWorklet.addModule(url);
-      URL.revokeObjectURL(url);
-      this.moduleFor = context;
-    }
+    await loadWorklet(context);
     this.chunks = [];
     this.frames = 0;
     this.sampleRate = context.sampleRate;
     this.node = new AudioWorkletNode(context, 'hb-recorder', { numberOfInputs: 1, numberOfOutputs: 0, channelCount: 2, channelCountMode: 'explicit' });
     this.node.port.onmessage = ({ data }) => {
+      if (!data.left) return;
       this.chunks.push(interleave16(data.left, data.right));
       this.frames += data.left.length;
       if (this.frames / this.sampleRate >= MAX_SECONDS) this.onAutoStop?.();
@@ -125,6 +154,55 @@ export const recorder = {
     return chunks.length ? encodeWav(chunks, this.sampleRate) : null;
   },
 };
+
+// Records `source` from audio frame `from` up to (not including) frame `to`, and resolves
+// to the WAV, or to null if it was cancelled first. Nothing is heard: the worklet has no
+// output. Returns { done, cancel() }.
+export function recordWindow(source, from, to) {
+  const context = source.context;
+  let node = null;
+  let cancelled = false;
+  let finish;
+  const done = new Promise((resolve) => (finish = resolve));
+  const close = () => {
+    if (!node) return;
+    node.port.onmessage = null;
+    node.port.postMessage('stop');
+    try {
+      source.disconnect(node);
+    } catch {
+      /* already gone */
+    }
+    node = null;
+  };
+  loadWorklet(context).then(
+    () => {
+      if (cancelled) return;
+      const chunks = [];
+      node = new AudioWorkletNode(context, 'hb-recorder', { numberOfInputs: 1, numberOfOutputs: 0, channelCount: 2, channelCountMode: 'explicit' });
+      node.port.onmessage = ({ data }) => {
+        if (data.left) chunks.push(interleave16(data.left, data.right));
+        if (!data.done) return;
+        close();
+        finish(chunks.length ? encodeWav(chunks, context.sampleRate) : null);
+      };
+      node.port.postMessage({ from, to });
+      source.connect(node);
+    },
+    (error) => {
+      console.warn('[recorder] the worklet could not load', error);
+      finish(null);
+    },
+  );
+  return {
+    done,
+    cancel() {
+      cancelled = true;
+      close();
+      finish(null);
+    },
+  };
+}
 
 // Hand a blob to the browser as a download.
 export function saveBlob(blob, filename) {

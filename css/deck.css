@@ -125,6 +125,12 @@
   flex: none;
   padding-top: 2px;
 }
+.strip__top {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 16px;
+}
 .strip__led {
   width: 6px;
   height: 6px;
@@ -212,6 +218,88 @@
   text-underline-offset: 3px;
 }
 
+/* ● captures the channel into a snapshot; on a snapshot's own strip, × stops it */
+.strip__action {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 16px;
+  font: 600 9px/1 var(--hb-mono);
+  color: var(--hb-ink-4);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+.strip__action:hover {
+  color: var(--hb-accent);
+  border-color: var(--hb-line);
+}
+/* waiting for the next bar line */
+.strip__action[data-state='armed'] {
+  color: var(--hb-accent);
+  border-color: var(--hb-accent);
+  animation: hb-blink 0.5s steps(2, jump-none) infinite;
+}
+/* recording: the bars still to go */
+.strip__action[data-state='recording'] {
+  color: var(--hb-accent-ink);
+  background: var(--hb-accent);
+  border-color: var(--hb-accent);
+}
+.strip--snap .strip__action {
+  font-size: 12px;
+}
+.strip--snap .strip__action:hover {
+  color: var(--hb-ink);
+}
+/* a snapshot's channel: set apart from the song's own */
+.strip--snap {
+  position: relative;
+  margin-left: 6px;
+}
+.strip--snap::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 -5px;
+  border-left: 1px dashed var(--hb-line);
+}
+.strip--snap .strip__name {
+  color: var(--hb-accent);
+}
+
+/* how many bars ● takes */
+.caplen {
+  display: flex;
+  flex: none;
+  gap: 1px;
+  margin-left: auto;
+}
+.caplen button {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font: 500 10px/1 var(--hb-mono);
+  color: var(--hb-ink-4);
+  border-radius: 3px;
+  transition: color 0.12s, background 0.12s;
+}
+.caplen button:hover {
+  color: var(--hb-ink);
+}
+.caplen button[aria-pressed='true'] {
+  color: var(--hb-bg-deep);
+  background: var(--hb-ink-3);
+}
+.panel--mixer .panel__head {
+  gap: 10px;
+  min-width: 0;
+}
+/* the hint gives way first when the mixer is narrow */
+.panel--mixer .panel__note {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 /* ---------- pads ---------- */
 
 .pads {
@@ -220,6 +308,130 @@
   grid-auto-rows: 56px;
   gap: 6px;
   align-content: start;
+}
+/* the effect pads, then the eight snapshot pads: side by side where the deck is wide
+   enough to keep the mixer roomy, otherwise one bank at a time */
+.padtabs {
+  display: none;
+  gap: 1px;
+}
+.padtabs button {
+  padding: 3px 6px;
+  font: 500 10px/1 var(--hb-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hb-ink-4);
+  border-radius: 3px;
+}
+.padtabs button:hover {
+  color: var(--hb-ink);
+}
+.padtabs button[aria-pressed='true'] {
+  color: var(--hb-bg-deep);
+  background: var(--hb-ink-3);
+}
+@media (max-width: 1599px) and (min-width: 861px) and (min-height: 541px) {
+  .padtabs {
+    display: flex;
+  }
+  .padbank[data-bank='fx'] .snaps,
+  .padbank[data-bank='snaps'] .pads {
+    display: none;
+  }
+  .padbank .snaps {
+    grid-template-columns: repeat(4, 52px);
+    padding-left: 0;
+    border-left: 0;
+  }
+  /* the switch is the panel's title; Latch is for the effect pads */
+  .panel--pads :is(.panel__title, .panel__note--hold) {
+    display: none;
+  }
+  .panel--pads .pads__latch {
+    margin-left: auto;
+  }
+  .panel--pads:has(.padbank[data-bank='snaps']) .pads__latch {
+    visibility: hidden;
+  }
+}
+.padbank {
+  display: flex;
+  gap: 14px;
+  min-height: 0;
+}
+.snaps {
+  display: grid;
+  grid-template-columns: repeat(4, 54px);
+  grid-auto-rows: 56px;
+  gap: 6px;
+  align-content: start;
+  padding-left: 14px;
+  border-left: 1px solid var(--hb-line-soft);
+}
+.snap {
+  grid-template-rows: 1fr auto;
+  place-items: end center;
+  padding: 0 3px 6px;
+}
+.snap__name {
+  max-width: 100%;
+  font: 500 9.5px/1.15 var(--hb-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.snap__bars {
+  font: 400 8.5px/1 var(--hb-mono);
+  color: var(--hb-ink-4);
+}
+.snap[aria-pressed='true'] .snap__bars {
+  color: inherit;
+  opacity: 0.7;
+}
+.snap.is-empty {
+  border-style: dashed;
+  background: transparent;
+}
+.snap.is-loading {
+  opacity: 0.55;
+}
+/* pinned to a deck's mixer */
+.snap.is-pinned::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--hb-accent);
+}
+.snap.is-pinned[aria-pressed='true']::after {
+  background: var(--hb-accent-ink);
+}
+/* a new capture is waiting for a slot: any pad takes it */
+.snaps.is-waiting .snap {
+  border-color: var(--hb-accent);
+  animation: hb-blink 0.8s steps(2, jump-none) infinite;
+}
+
+/* the snapshot menu */
+.snapsheet__rename {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.snapsheet__rename input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  font: 400 13px/1.2 var(--hb-sans);
+  color: var(--hb-ink);
+  background: var(--hb-bg);
+  border: 1px solid var(--hb-line);
+  border-radius: 4px;
 }
 
 /* ---------- master ---------- */
@@ -316,6 +528,12 @@
     grid-auto-rows: 46px;
     gap: 5px;
   }
+  /* three across, so the mixer keeps its room */
+  .padbank .snaps {
+    grid-template-columns: repeat(3, 44px);
+    grid-auto-rows: 46px;
+    gap: 5px;
+  }
 }
 
 @media (max-width: 860px), (max-height: 540px) {
@@ -379,6 +597,21 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-auto-rows: 64px;
     gap: 8px;
+  }
+  /* one panel at a time: the snapshot pads go under the effect pads */
+  .padbank {
+    flex-direction: column;
+  }
+  .snaps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: 56px;
+    gap: 8px;
+    padding: 12px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--hb-line-soft);
+  }
+  .panel--mixer .panel__note {
+    display: none;
   }
   .master__knobs {
     justify-content: space-between;

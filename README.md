@@ -176,6 +176,7 @@ the check refuses it, and the dev server will not serve it.
 | **Song knobs** | One per `slider()` in the code. Turning a knob rewrites the number in the code as you go. |
 | **Channels** | One per labelled pattern. Level with a real meter, mute, solo. |
 | **Pads** | Hold to engage, Shift-click to latch (or switch **Latch** on: tap on, tap off): echo throw, filter drop, reverb wash, half-time, stutter, no drums. |
+| **Snapshots** | Eight pads of captured loops. Press **●** on a channel (1, 2, 4 or 8 bars, chosen beside the Channels title) and it records that channel alone, as it sounds now, from the next bar line; the rest of the mix is not in it and nothing you hear changes. Tap a snapshot pad to bring it in on the next bar and again to stop it, Shift-tap to play it once. While it plays it is a channel of its own on that deck (level, mute, solo), and **Pin** keeps it there, looping in time and muted until you bring it in. It follows the deck's tempo like a record (pitch and all). Right-click or long-press a pad to rename, pin, download as WAV or clear it. Kept in the browser and, signed in, in the account; with an account, like recording. |
 | **Master** | Filter, tempo-synced echo, reverb, tempo, volume, and the crossfader. A limiter keeps the output under full scale; the meter turns orange while it is working. |
 | **Sync / Mix** | With Sync on, a deck started while the other plays comes in on its bar line at its tempo. **Mix** starts the other deck that way and fades across over eight bars. |
 | **Arrangement** | Which tracks play in each of 32 bars. Click a bar to jump there; open it for track names. |
@@ -202,7 +203,7 @@ Positions are remembered per song in the browser; **Reset** returns a song to wh
   X      switch deck        [ ]     jump four bars         A S D   half · stutter · no drums
   M      mix to the other   1 … =   mute channels 1–12     F G     follow · gallery
   R      record             B  ?    song list · help       Esc     leave the code
-  V      video clip
+  V      video clip                                        T Y U I H J K L   snapshot pads 1–8
 
   Ctrl+Enter   run the edited code        Ctrl+S   save        Ctrl+.   stop
 ```
@@ -452,6 +453,7 @@ the accounts test suite exercises against the Firestore emulator.
 ```text
   users/{uid}/songs/{id}   its owner reads and writes · anyone reads it while it is shared
                            an admin can do one thing to it: switch its sharing off
+  users/{uid}/snapshots/   its owner only, nobody else at all · the recording in chunks under a megabyte, eight at most
   shares/{uuid}            a link holder learns which song it names · nobody can list them
   beats/{id}               featured: anyone · members: signed in · the rest: admin only
   catalog/public           titles and descriptions, no code: anyone reads, admin writes
@@ -552,6 +554,7 @@ and the offline cache name in `sw.js` together.
     deck.js ............. the controls section               controls.js knob, fader, pad
     visuals.js .......... scope, spectrum, arrangement ribbon   arrangement.js computes it
     recorder.js ......... WAV recording    share.js mix links    midi.js controller bindings
+    snapshots.js ........ channel snapshots: capture, slots, browser and account storage
     clip.js ............. video clips: the code drawn again, recorded with the mix
     library.js .......... the built-in beats   crate.js the song picker   thumbs.js
     songs.js ............ My songs: browser storage and account sync

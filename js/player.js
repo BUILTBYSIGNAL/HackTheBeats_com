@@ -8,6 +8,7 @@ import { master, BUS_OFFSET } from './master.js';
 import { analyze, applySaved, sliderText, shapeOf } from './analyze.js';
 import { computeArrangement } from './arrangement.js';
 import { persist } from './persist.js';
+import { nextBar, loopPhase, sounds } from './snapshots-core.js';
 
 const { core, draw, webaudio, codemirror, transpilerPkg } = S;
 
@@ -73,6 +74,9 @@ export class Player {
     this.fx = { half: null, stutter: null, killDrums: false };
     this.basePattern = null;
     this.liveCache = { key: null, pattern: null };
+    // channel snapshots looping on this deck, by id: { snap, sound, start, stopAt, pinned, track }
+    this.snaps = new Map();
+    this.snapVersion = 0;
     // () => another playing deck this one should start in time with, or null
     this.partner = null;
 
@@ -140,7 +144,8 @@ export class Player {
 
     this.mixer.onChange((reason) => {
       this.stage.setFlags(this.trackFlags());
-      if (reason !== 'configure' && reason !== 'missing') this.save();
+      // a snapshot's channel is not part of the song
+      if (!['configure', 'missing', 'snap', 'snaps'].includes(reason)) this.save();
       this.emit('mixer', reason);
     });
   }
@@ -234,7 +239,7 @@ export class Player {
   livePattern() {
     const { half, stutter } = this.fx;
     const shift = this.offset + this.nudge;
-    const key = `${shift}|${half ?? ''}|${stutter ? `${stutter.at}:${stutter.length}` : ''}`;
+    const key = `${shift}|${half ?? ''}|${stutter ? `${stutter.at}:${stutter.length}` : ''}|${this.snapVersion}`;
     if (key !== this.liveCache.key) {
       let pattern = this.basePattern;
       if (shift) pattern = pattern.early(shift);
@@ -242,9 +247,111 @@ export class Player {
       if (half !== null) pattern = pattern.early(half).slow(2).late(half);
       // stutter: loop the slice of time the pad was pressed in
       if (stutter) pattern = pattern.ribbon(stutter.at, stutter.length);
+      // snapshots keep to the scheduler's own bars, whatever the song is doing
+      if (this.snaps.size) pattern = core.stack(pattern, ...[...this.snaps.values()].map((entry) => this.snapPattern(entry)));
       this.liveCache = { key, pattern };
     }
     return this.liveCache.pattern;
+  }
+
+  /* ---------- channel snapshots ---------- */
+
+  // A snapshot as it loops: its recording cut into bars, stretched to the tempo (so its pitch
+  // follows the tempo, like a record), its first bar on the bar it started at. When it plays
+  // and stops is read at query time, so stopping it needs no new pattern.
+  snapPattern(entry) {
+    const { bars } = entry.snap;
+    let pattern = core
+      .pure({ s: entry.sound })
+      .loopAt(bars)
+      .chop(bars)
+      .late(loopPhase(entry.start, bars))
+      .filterHaps((hap) => Boolean(hap.whole) && sounds(hap.whole.begin.valueOf(), entry))
+      .withHap((hap) => hap.setContext({ ...hap.context, snap: entry.snap.id }));
+    pattern = this.mixer.gate(entry.track, pattern);
+    return this.busOffset ? pattern.withValue((value) => moveToBus(value, this.busOffset)) : pattern;
+  }
+
+  // The bar line this deck has not played up to yet (0 while stopped).
+  nextBar() {
+    return this.started ? nextBar(this.scheduler.lastEnd) : 0;
+  }
+
+  // What snapshots.js needs to find a bar line on the audio clock (see barTime there).
+  barClock() {
+    const { scheduler } = this;
+    if (!this.started || !Number.isFinite(scheduler.seconds_at_cps_change)) return null;
+    return { cps: scheduler.cps, cyclesAtChange: scheduler.num_cycles_at_cps_change, secondsAtChange: scheduler.seconds_at_cps_change, latency: scheduler.latency };
+  }
+
+  // Bring a snapshot in on the next bar. `sound` is the name it is registered under.
+  // `pinned`: it stays in this deck's mixer, looping, until unpinned (it comes in muted).
+  // `once`: it plays through once and leaves.
+  addSnap(snap, sound, { pinned = false, once = false } = {}) {
+    const existing = this.snaps.get(snap.id);
+    if (existing && existing.stopAt === null) {
+      existing.pinned = existing.pinned || pinned;
+      return existing;
+    }
+    const start = this.nextBar();
+    const entry = {
+      snap,
+      sound,
+      start,
+      stopAt: once ? start + snap.bars : null,
+      pinned,
+      track: this.mixer.addSnap(snap, { muted: pinned && !existing }),
+    };
+    this.snaps.set(snap.id, entry);
+    this.snapVersion++;
+    this.emit('snaps');
+    return entry;
+  }
+
+  // Stop a snapshot at the next bar (or straight away), and take it out of the mixer.
+  removeSnap(id, { now = false } = {}) {
+    const entry = this.snaps.get(id);
+    if (!entry) return;
+    if (now || !this.started) {
+      this.snaps.delete(id);
+      this.mixer.removeSnap(id);
+      this.snapVersion++;
+    } else {
+      entry.stopAt = this.nextBar();
+      entry.pinned = false;
+    }
+    this.emit('snaps');
+  }
+
+  // A snapshot's record changed (its name, say): the channel shows the new one.
+  renameSnap(snap) {
+    const entry = this.snaps.get(snap.id);
+    if (!entry) return;
+    entry.snap = snap;
+    entry.track.name = snap.name;
+    this.emit('snaps');
+  }
+
+  // Whether a snapshot is sounding (or about to) on this deck.
+  snapPlaying(id) {
+    const entry = this.snaps.get(id);
+    return Boolean(entry) && entry.stopAt === null && this.mixer.audible(id);
+  }
+
+  // Snapshots that have played out leave the mixer.
+  pruneSnaps() {
+    if (!this.snaps.size) return;
+    const now = this.now();
+    let gone = false;
+    for (const [id, entry] of this.snaps) {
+      if (entry.stopAt === null || now < entry.stopAt) continue;
+      this.snaps.delete(id);
+      this.mixer.removeSnap(id);
+      gone = true;
+    }
+    if (!gone) return;
+    this.snapVersion++;
+    this.emit('snaps');
   }
 
   // name: 'half' | 'stutter' | 'killDrums'
@@ -545,6 +652,19 @@ export class Player {
     this.nudge = 0;
     this.fx.half = null;
     this.fx.stutter = null;
+    // Snapshots go with the music, except pinned ones: they wait in the mixer, ready to
+    // loop from the first bar.
+    if (this.snaps.size) {
+      for (const [id, entry] of this.snaps) {
+        if (entry.pinned) Object.assign(entry, { start: 0, stopAt: null });
+        else {
+          this.snaps.delete(id);
+          this.mixer.removeSnap(id);
+        }
+      }
+      this.snapVersion++;
+      this.emit('snaps');
+    }
     if (!this.busy) this.setTransport('idle');
   }
 
@@ -564,6 +684,7 @@ export class Player {
   }
 
   frame(haps) {
+    this.pruneSnaps();
     this.stage.highlight(haps);
     this.mixer.updateLevels(haps);
     this.mixer.readMeters();

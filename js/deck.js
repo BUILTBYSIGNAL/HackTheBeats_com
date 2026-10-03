@@ -1,8 +1,12 @@
 // The controls section. Song knobs (one per slider() in the code) and channel strips (one
-// per track) follow the deck in focus; pads, crossfader and master act on the whole mix.
+// per track, then one per snapshot playing on the deck) follow the deck in focus; pads,
+// snapshot pads, crossfader and master act on the whole mix.
 import { createKnob, createFader, createCrossfader, createPad, register } from './controls.js';
 import { sliderReadout } from './analyze.js';
 import { master } from './master.js';
+import { persist } from './persist.js';
+import { snapshots } from './snapshots.js';
+import { SLOTS, BAR_CHOICES, DEFAULT_BARS, barsLabel } from './snapshots-core.js';
 
 const percent = (v) => `${Math.round(v * 100)}%`;
 
@@ -13,18 +17,35 @@ export const deck = {
   knobs: [],
   switchKnobs: [],
   strips: [],
+  snapStrips: [],
+  snapPads: [],
+  // how many bars ● captures
+  captureBars: DEFAULT_BARS,
+  // the snapshot the menu is open for
+  menuFor: null,
   masterKnobs: {},
   pads: new Map(),
   // pads stay on until pressed again
   latch: false,
   crossfader: null,
 
-  // app: { players, setTempo(multiplier), tempoTarget(), setSync(on), mix(), saveMaster() }
+  // app: { players, setTempo(multiplier), tempoTarget(), setSync(on), mix(), saveMaster(), capture(player, index, bars) }
   init(els, app) {
     this.els = els;
     this.app = app;
     this.buildMaster();
     this.buildPads();
+    this.buildSnapPads();
+    this.buildCaptureLength();
+    this.buildSnapMenu();
+    els.padTabs.forEach((tab) => tab.addEventListener('click', () => this.showBank(tab.dataset.bank)));
+    snapshots.on((reason) => {
+      this.syncSnapPads();
+      // a new snapshot, or one waiting for a slot: show where it goes
+      if (reason === 'kept' || (reason === 'pending' && snapshots.pending)) this.showBank('snaps');
+      if (reason === 'capture') this.syncCapture();
+      if (reason === 'change' && this.menuFor && !snapshots.get(this.menuFor)) this.els.snapSheet.close();
+    });
 
     els.tabs.forEach((tab) => tab.addEventListener('click', () => this.showTab(tab.dataset.tab)));
     els.latch.addEventListener('click', () => this.setLatch(!this.latch));
@@ -36,6 +57,10 @@ export const deck = {
       // the code was edited and re-evaluated: its knobs and channels may have changed
       player.on('structure', mine(() => this.rebuild()));
       player.on('mixer', mine(() => this.syncMixer()));
+      // a snapshot came in or left: its channel strip, and every deck's pads
+      player.on('snaps', mine(() => this.buildStrips()));
+      player.on('snaps', () => this.syncSnapPads());
+      player.on('mixer', () => this.syncSnapPads());
       player.on('slider', mine((k) => this.knobs[k]?.set(player.sliders[k].value)));
       player.on('switch', mine((j) => this.switchKnobs[j]?.set(player.switches[j].value)));
       player.on('pick-slider', mine((k) => this.focusKnob(this.knobs[k])));
@@ -133,6 +158,12 @@ export const deck = {
     knob.el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   },
 
+  // Where the deck is not wide enough for both, the effect pads or the snapshot pads.
+  showBank(name) {
+    this.els.padbank.dataset.bank = name;
+    this.els.padTabs.forEach((tab) => tab.setAttribute('aria-pressed', String(tab.dataset.bank === name)));
+  },
+
   showTab(name) {
     this.els.deck.dataset.tab = name;
     this.els.tabs.forEach((tab) => tab.setAttribute('aria-pressed', String(tab.dataset.tab === name)));
@@ -145,67 +176,133 @@ export const deck = {
     const { mixer, stage } = player;
     const host = this.els.strips;
     host.replaceChildren();
-    this.els.stripsEmpty.hidden = mixer.tracks.length > 0 || !player.song;
+    this.els.stripsEmpty.hidden = mixer.tracks.length + mixer.snaps.length > 0 || !player.song;
 
     this.strips = mixer.tracks.map((track) => {
-      const el = document.createElement('div');
-      el.className = 'strip';
-      el.innerHTML = `
-        <span class="strip__led" aria-hidden="true"></span>
-        <div class="strip__slot"><span class="strip__meter" aria-hidden="true"><span></span></span></div>
-        <div class="strip__buttons">
-          <button type="button" class="strip__btn strip__btn--mute" aria-pressed="false">M</button>
-          <button type="button" class="strip__btn strip__btn--solo" aria-pressed="false">S</button>
-        </div>
-        <button type="button" class="strip__name" aria-pressed="false"></button>`;
-      const [mute, solo] = el.querySelectorAll('.strip__btn');
-      const name = el.querySelector('.strip__name');
-      name.textContent = track.name;
-      name.setAttribute('aria-label', `Focus on ${track.name} in the code`);
-      mute.setAttribute('aria-label', `Mute ${track.name}`);
-      solo.setAttribute('aria-label', `Solo ${track.name}`);
-      mute.addEventListener('click', () => mixer.setMute(track.index));
-      solo.addEventListener('click', () => mixer.setSolo(track.index));
-      name.addEventListener('click', () => {
+      const strip = this.makeStrip(track, track.index, `ch:${track.index}`);
+      strip.name.setAttribute('aria-label', `Focus on ${track.name} in the code`);
+      strip.name.addEventListener('click', () => {
         stage.setFocus(track.index);
         this.syncFocus();
       });
-      register(`ch:${track.index}:mute`, mute, { press: (down) => down && mixer.setMute(track.index) });
-      register(`ch:${track.index}:solo`, solo, { press: (down) => down && mixer.setSolo(track.index) });
-
-      const fader = createFader({
-        id: `ch:${track.index}:level`,
-        label: `${track.name} level`,
-        min: 0,
-        max: 1.25,
-        value: track.gain,
-        defaultValue: 1,
-        format: percent,
-        onInput: (value) => mixer.setGain(track.index, value),
+      strip.action.textContent = '●';
+      strip.action.addEventListener('click', () => this.app.capture?.(player, track.index, this.captureBars));
+      return strip;
+    });
+    // snapshots playing on this deck, after the song's own channels
+    this.snapStrips = mixer.snaps.map((track) => {
+      const strip = this.makeStrip(track, track.id, `snap:${track.id}`);
+      strip.el.classList.add('strip--snap');
+      strip.name.setAttribute('aria-label', `${track.name}: rename, pin or clear this snapshot`);
+      strip.name.addEventListener('click', () => this.openSnapMenu(track.id));
+      strip.action.textContent = '×';
+      strip.action.addEventListener('click', () => {
+        const entry = player.snaps.get(track.id);
+        if (entry?.pinned) snapshots.pin(track.id, null);
+        else player.removeSnap(track.id);
       });
-      el.querySelector('.strip__slot').append(fader.el);
-      host.append(el);
-      return { el, mute, solo, fader, name };
+      return strip;
     });
     this.syncMixer();
     this.syncFocus();
+    this.syncCapture();
+  },
+
+  // One channel strip. `key` is what the mixer knows the channel by: a code track's
+  // position, or a snapshot's id.
+  makeStrip(track, key, id) {
+    const { mixer } = this.player;
+    const el = document.createElement('div');
+    el.className = 'strip';
+    el.innerHTML = `
+      <div class="strip__top">
+        <span class="strip__led" aria-hidden="true"></span>
+        <button type="button" class="strip__action"></button>
+      </div>
+      <div class="strip__slot"><span class="strip__meter" aria-hidden="true"><span></span></span></div>
+      <div class="strip__buttons">
+        <button type="button" class="strip__btn strip__btn--mute" aria-pressed="false">M</button>
+        <button type="button" class="strip__btn strip__btn--solo" aria-pressed="false">S</button>
+      </div>
+      <button type="button" class="strip__name" aria-pressed="false"></button>`;
+    const [mute, solo] = el.querySelectorAll('.strip__btn');
+    const name = el.querySelector('.strip__name');
+    const action = el.querySelector('.strip__action');
+    name.textContent = track.name;
+    mute.setAttribute('aria-label', `Mute ${track.name}`);
+    solo.setAttribute('aria-label', `Solo ${track.name}`);
+    mute.addEventListener('click', () => mixer.setMute(key));
+    solo.addEventListener('click', () => mixer.setSolo(key));
+    register(`${id}:mute`, mute, { press: (down) => down && mixer.setMute(key) });
+    register(`${id}:solo`, solo, { press: (down) => down && mixer.setSolo(key) });
+
+    const fader = createFader({
+      id: `${id}:level`,
+      label: `${track.name} level`,
+      min: 0,
+      max: 1.25,
+      value: track.gain,
+      defaultValue: 1,
+      format: percent,
+      onInput: (value) => mixer.setGain(key, value),
+    });
+    el.querySelector('.strip__slot').append(fader.el);
+    this.els.strips.append(el);
+    return { el, mute, solo, fader, name, action, track };
+  },
+
+  // every strip on the deck, with the channel each one is for
+  allStrips() {
+    const { mixer } = this.player;
+    return [...mixer.tracks.map((track, i) => [track, this.strips[i]]), ...mixer.snaps.map((track, i) => [track, this.snapStrips[i]])].filter(([track, strip]) => strip?.track === track);
   },
 
   syncMixer() {
     const { mixer } = this.player;
-    mixer.tracks.forEach((track, i) => {
-      const strip = this.strips[i];
-      if (!strip) return;
+    for (const [track, strip] of this.allStrips()) {
       strip.mute.setAttribute('aria-pressed', String(track.mute));
       strip.solo.setAttribute('aria-pressed', String(track.solo));
-      strip.el.classList.toggle('is-silent', !mixer.audible(track.index));
+      strip.el.classList.toggle('is-silent', !mixer.audible(track.isSnap ? track.id : track.index));
       strip.el.classList.toggle('is-missing', track.missingSounds.length > 0);
       strip.el.title = track.missingSounds.length
         ? `Not available from the sample packs, so it stays silent: ${track.missingSounds.join(', ')}`
         : track.disabled
           ? 'Switched off in the code — unmute to bring it in'
-          : '';
+          : track.isSnap
+            ? 'A snapshot playing on this deck'
+            : '';
       strip.fader.set(track.gain);
+    }
+    if (this.snapStrips.length) {
+      for (const strip of this.snapStrips) {
+        const pinned = this.player.snaps.get(strip.track.id)?.pinned;
+        strip.action.setAttribute('aria-label', pinned ? `Unpin ${strip.track.name} from this deck` : `Stop ${strip.track.name}`);
+        strip.action.dataset.tip = pinned ? 'Unpin' : 'Stop at the next bar';
+      }
+    }
+  },
+
+  // The ● on each strip: ready, armed for the next bar line, or counting down the bars.
+  syncCapture() {
+    const capture = snapshots.capture;
+    const progress = capture?.player === this.player ? snapshots.progress() : null;
+    this.strips.forEach((strip, i) => {
+      const mine = progress && capture.index === i;
+      const state = mine ? progress.state : '';
+      const text = mine ? String(progress.barsLeft) : '●';
+      if (strip.capState === `${state}${text}`) return;
+      strip.capState = `${state}${text}`;
+      strip.action.dataset.state = state;
+      strip.action.textContent = text;
+      strip.action.setAttribute('aria-pressed', String(Boolean(mine)));
+      strip.action.setAttribute(
+        'aria-label',
+        mine
+          ? state === 'armed'
+            ? `Capturing ${strip.track.name} from the next bar. Press again to let it go.`
+            : `Capturing ${strip.track.name}: ${barsLabel(progress.barsLeft)} to go. Press again to let it go.`
+          : `Capture ${barsLabel(this.captureBars)} of ${strip.track.name} into a snapshot pad`,
+      );
     });
   },
 
@@ -219,9 +316,8 @@ export const deck = {
 
   // Called every frame while the deck in focus plays.
   setLevels() {
-    this.player.mixer.tracks.forEach((track, i) => {
-      const strip = this.strips[i];
-      if (!strip) return;
+    if (snapshots.capture) this.syncCapture();
+    for (const [track, strip] of this.allStrips()) {
       const level = Math.round(track.level * 20) / 20;
       // the meter is drawn on a square-root scale so quiet parts still register
       const meter = Math.round(Math.sqrt(track.meter) * 40) / 40;
@@ -233,7 +329,7 @@ export const deck = {
         strip.meter = meter;
         strip.el.style.setProperty('--m', String(meter));
       }
-    });
+    }
   },
 
   /* ---------- pads ---------- */
@@ -254,6 +350,132 @@ export const deck = {
       this.els.pads.append(pad.el);
       this.pads.set(key.toLowerCase(), pad);
     }
+  },
+
+  /* ---------- snapshots ---------- */
+
+  // Eight pads, one per slot. A tap brings the snapshot in on the next bar (or stops it at
+  // the next bar), Shift-tap plays it once, and a right-click or long press opens its menu.
+  buildSnapPads() {
+    const host = this.els.snaps;
+    this.snapPads = Array.from({ length: SLOTS }, (_, slot) => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'pad snap';
+      el.setAttribute('aria-pressed', 'false');
+      el.innerHTML = '<kbd class="pad__key"></kbd><span class="snap__name"></span><span class="snap__bars"></span>';
+      el.querySelector('.pad__key').textContent = snapshots.keyFor(slot);
+      let held = null;
+      let menuShown = false;
+      const menu = () => {
+        menuShown = true;
+        const record = snapshots.at(slot);
+        if (record) this.openSnapMenu(record.id);
+      };
+      el.addEventListener('pointerdown', (event) => {
+        menuShown = false;
+        clearTimeout(held);
+        if (event.pointerType !== 'mouse') held = setTimeout(menu, 550);
+      });
+      const letGo = () => clearTimeout(held);
+      el.addEventListener('pointerup', letGo);
+      el.addEventListener('pointercancel', letGo);
+      el.addEventListener('pointerleave', letGo);
+      el.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        if (!menuShown) menu();
+      });
+      el.addEventListener('click', (event) => {
+        if (menuShown) return;
+        snapshots.press(slot, { once: event.shiftKey });
+      });
+      register(`snap:${slot}`, el, { press: (down) => down && snapshots.press(slot) });
+      host.append(el);
+      return el;
+    });
+    this.syncSnapPads();
+  },
+
+  syncSnapPads() {
+    const waiting = Boolean(snapshots.pending);
+    this.els.snaps.classList.toggle('is-waiting', waiting);
+    this.snapPads.forEach((el, slot) => {
+      const record = snapshots.at(slot);
+      const key = snapshots.keyFor(slot);
+      el.classList.toggle('is-empty', !record);
+      el.classList.toggle('is-pinned', Boolean(record?.pinned));
+      el.classList.toggle('is-loading', Boolean(record) && !record.wav);
+      el.setAttribute('aria-pressed', String(snapshots.lit(slot)));
+      el.querySelector('.snap__name').textContent = record ? record.name : '';
+      el.querySelector('.snap__bars').textContent = record ? barsLabel(record.bars) : '';
+      el.title = waiting
+        ? `Put the new snapshot in slot ${slot + 1}${record ? `, in place of ${snapshots.describe(record)}` : ''}`
+        : record
+          ? `${snapshots.describe(record)}${record.songTitle ? `, from ${record.songTitle}` : ''}${record.pinned ? ` · pinned to deck ${record.pinned}` : ''} · tap to bring it in or stop it, Shift-tap to play it once (${key}) · right-click for more`
+          : `Empty: capture a channel into it with ● in the Mixer (${key})`;
+      el.setAttribute('aria-label', record ? `Snapshot ${slot + 1}: ${snapshots.describe(record)}` : `Snapshot ${slot + 1}: empty`);
+    });
+  },
+
+  buildCaptureLength() {
+    const buttons = [...this.els.capLength.querySelectorAll('button')];
+    const set = (bars) => {
+      this.captureBars = BAR_CHOICES.includes(bars) ? bars : DEFAULT_BARS;
+      buttons.forEach((button) => button.setAttribute('aria-pressed', String(Number(button.dataset.bars) === this.captureBars)));
+      this.strips.forEach((strip) => (strip.capState = null));
+      this.syncCapture();
+    };
+    buttons.forEach((button) =>
+      button.addEventListener('click', () => {
+        set(Number(button.dataset.bars));
+        persist.set('captureBars', this.captureBars);
+      }),
+    );
+    set(persist.get('captureBars', DEFAULT_BARS));
+  },
+
+  // The menu for one snapshot: rename, pin to the deck in focus, download, clear.
+  buildSnapMenu() {
+    const { snapSheet, snapRename, snapName, snapPin, snapDownload, snapClear, snapClose } = this.els;
+    snapRename.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (this.menuFor) snapshots.rename(this.menuFor, snapName.value);
+      this.renderSnapMenu();
+    });
+    snapPin.addEventListener('click', () => {
+      const record = snapshots.get(this.menuFor);
+      if (!record) return;
+      snapshots.pin(record.id, record.pinned === this.player.id ? null : this.player.id);
+      this.renderSnapMenu();
+    });
+    snapDownload.addEventListener('click', () => snapshots.download(this.menuFor));
+    snapClear.addEventListener('click', () => {
+      const id = this.menuFor;
+      snapSheet.close();
+      snapshots.remove(id);
+    });
+    snapClose.addEventListener('click', () => snapSheet.close());
+    snapSheet.addEventListener('close', () => (this.menuFor = null));
+  },
+
+  openSnapMenu(id) {
+    if (!snapshots.get(id)) return;
+    this.menuFor = id;
+    this.renderSnapMenu();
+    if (!this.els.snapSheet.open) this.els.snapSheet.showModal();
+  },
+
+  renderSnapMenu() {
+    const record = snapshots.get(this.menuFor);
+    if (!record) return;
+    const { snapName, snapAbout, snapPin, snapTitle } = this.els;
+    const here = this.player.id;
+    snapTitle.textContent = `Snapshot ${record.slot + 1}`;
+    snapName.value = record.name;
+    const seconds = record.frames / record.sampleRate;
+    snapAbout.textContent = `${barsLabel(record.bars)} of ${record.track || record.name}${record.songTitle ? ` from ${record.songTitle}` : ''}, captured at ${Math.round(record.cps * 240)} bpm (${seconds.toFixed(1)} s). It follows the deck's tempo, and its pitch moves with it.`;
+    snapPin.setAttribute('aria-pressed', String(record.pinned === here));
+    snapPin.textContent = record.pinned === here ? `Unpin from deck ${here}` : record.pinned ? `Pin to deck ${here} instead of ${record.pinned}` : `Pin to deck ${here}'s mixer`;
   },
 
   // With latch off again, any pad left on is let go.

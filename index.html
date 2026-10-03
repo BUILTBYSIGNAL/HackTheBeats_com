@@ -295,7 +295,13 @@
       <div class="panel panel--mixer" data-panel="mixer">
         <header class="panel__head">
           <h2 class="panel__title">Channels <span class="panel__deck"></span></h2>
-          <span class="panel__note">M mute · S solo · name focuses</span>
+          <span class="panel__note">M mute · S solo · ● capture</span>
+          <div class="caplen" id="cap-length" role="group" aria-label="Bars a capture takes" title="How many bars ● captures, from the next bar line">
+            <button type="button" data-bars="1" aria-pressed="false">1</button>
+            <button type="button" data-bars="2" aria-pressed="false">2</button>
+            <button type="button" data-bars="4" aria-pressed="true">4</button>
+            <button type="button" data-bars="8" aria-pressed="false">8</button>
+          </div>
         </header>
         <div class="strips" id="strips"></div>
         <p class="panel__empty" id="strips-empty" hidden>This beat is a single pattern, so there are no separate channels.</p>
@@ -304,10 +310,17 @@
       <div class="panel panel--pads" data-panel="pads">
         <header class="panel__head">
           <h2 class="panel__title">Pads</h2>
+          <div class="padtabs" id="pad-tabs" role="group" aria-label="Which pads to show">
+            <button type="button" data-bank="fx" aria-pressed="true">FX</button>
+            <button type="button" data-bank="snaps" aria-pressed="false">Snaps</button>
+          </div>
           <span class="panel__note panel__note--hold">hold</span>
           <button type="button" class="textbtn pads__latch" id="pads-latch" aria-pressed="false" title="Tap a pad to switch it on, and again to switch it off">Latch</button>
         </header>
-        <div class="pads" id="pads"></div>
+        <div class="padbank" id="padbank" data-bank="fx">
+          <div class="pads" id="pads"></div>
+          <div class="snaps" id="snaps" role="group" aria-label="Snapshots: tap to bring one in on the next bar, Shift-tap to play it once, right-click or long-press for more"></div>
+        </div>
       </div>
 
       <div class="panel panel--master" data-panel="master">
@@ -433,6 +446,28 @@
           </div>
           <p class="sheet__fine">Signing out removes your account's songs from this browser. They stay in your account.</p>
         </div>
+      </div>
+    </dialog>
+
+    <dialog class="sheet sheet--narrow" id="snap-sheet" aria-labelledby="snap-title">
+      <header class="sheet__head">
+        <h2 class="sheet__title" id="snap-title">Snapshot</h2>
+        <button type="button" class="iconbtn" id="snap-close" aria-label="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+      </header>
+      <div class="sheet__body">
+        <form class="snapsheet__rename" id="snap-rename">
+          <input type="text" id="snap-name" maxlength="60" aria-label="Name" autocomplete="off" spellcheck="false" />
+          <button type="submit" class="chipbtn">Rename</button>
+        </form>
+        <p class="sheet__fine" id="snap-about"></p>
+        <div class="sheet__row">
+          <button type="button" class="pillbtn" id="snap-pin" aria-pressed="false">Pin to deck A's mixer</button>
+          <button type="button" class="pillbtn" id="snap-download">Download WAV</button>
+          <button type="button" class="pillbtn" id="snap-clear">Clear the slot</button>
+        </div>
+        <p class="sheet__fine">A pinned snapshot loops in time on that deck as a channel of its own, muted until you bring it in with its pad or its M.</p>
       </div>
     </dialog>
 
@@ -609,6 +644,7 @@
           <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous or next beat</dd></div>
           <div><dt><kbd>1</kbd>–<kbd>9</kbd> <kbd>0</kbd> <kbd>-</kbd> <kbd>=</kbd></dt><dd>Mute channels 1 to 12</dd></div>
           <div><dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></dt><dd>Hold a pad: echo, drop, wash, half, stutter, no drums. With <kbd>Shift</kbd> it stays on.</dd></div>
+          <div><dt><kbd>T</kbd> <kbd>Y</kbd> <kbd>U</kbd> <kbd>I</kbd> <kbd>H</kbd> <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd></dt><dd>Snapshot pads 1 to 8: bring one in on the next bar, or stop it. With <kbd>Shift</kbd> it plays once. Capture one with ● on a channel in the Mixer (<kbd>Esc</kbd> lets a capture go).</dd></div>
           <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Jump back or forward four bars</dd></div>
           <div><dt><kbd>F</kbd> <kbd>G</kbd></dt><dd>Follow the music with the code; gallery (full-screen) view</dd></div>
           <div><dt><kbd>R</kbd> <kbd>B</kbd></dt><dd>Record the mix to a WAV file; open the beats list</dd></div>
