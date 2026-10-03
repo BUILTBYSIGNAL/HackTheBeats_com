@@ -1,0 +1,243 @@
+<article data-title="Remix" data-description="Change a song while it plays: edit the code live, swap sounds, cut and rearrange its bars, capture loops from one song into another, keep versions, and take someone else's song as your own." data-kicker="Knowledge base" data-group="Knowledge base">
+  <p class="lede">
+    A song here is code, and the code is yours to change while it plays. This page is about making a song your own:
+    editing it live without stopping the music, the small edits with the biggest effect, cutting and rearranging its
+    bars, borrowing a loop from one song for another, keeping the versions you like, and what happens when the song
+    you are changing was shared by someone else.
+  </p>
+
+  <h2 id="edit-live">Edit the code while it plays</h2>
+  <p>
+    Click anywhere in the code and type. That is the whole trick. On a touch screen a tap is for the music, so there
+    editing starts with <strong>Edit</strong> in the stage bar; it is there on a desktop too, before anything has played.
+    While you are in the code the button reads <strong>Done</strong>, and <strong>Done</strong> or <kbd>Esc</kbd> leaves
+    the code without changing anything else. The single-key shortcuts are off while you type, so the letters go into the
+    song and not to the pads.
+  </p>
+  <figure data-shot="stagebar-editing" data-alt="The stage bar while the code is being edited, with Done and Update"><figcaption>The stage bar while you are in the code: Done leaves it, Update runs what you have typed.</figcaption></figure>
+  <p>
+    Nothing happens to the sound until you ask. <strong><a data-term="update">Update</a></strong>, or
+    <kbd data-mod>Ctrl</kbd>+<kbd>Enter</kbd>, runs the change without stopping the music: the deck carries on, in time,
+    and the new code takes over. The knobs and <a data-term="channel">channels</a> follow the new code, so a
+    <code>slider()</code> you have just typed is a <a data-term="knob">knob</a> the moment it runs, and a part you have
+    renamed is a channel with the new name. The <a data-term="tempo">tempo</a> is left alone unless the code itself
+    calls <code>setcps</code> or <code>setcpm</code>.
+  </p>
+  <p>
+    A mistake is not a disaster. If the new code cannot run, the last good version keeps playing and a notice says so
+    in plain words: <em>That edit did not run — the last version is still playing</em>, or <em>Syntax error</em> and a
+    hint with the line it is on. Open <strong>What the browser said</strong> for the raw message if the plain one is not
+    enough. Fix the line and press <strong>Update</strong> again. If the code runs but names a sound that no loaded
+    sample pack has, the song plays anyway and the status says <em>Not in the loaded sample packs</em>, with the names of
+    the <a data-term="missing-sound">missing sounds</a>. Those parts stay silent until the sound exists.
+  </p>
+  <figure data-shot="notice-error" data-alt="The error notice over the stage, with the plain explanation and the line number"><figcaption>An edit that could not run is explained with its line; the last good version is still playing underneath.</figcaption></figure>
+  <p>
+    The site keeps track of what you have changed. Lines that differ from the saved song are marked orange down the
+    side of the code, the stage bar says <strong>Unsaved changes</strong>, and the deck chip's title gets a dot, so you
+    can see at a glance that what is playing is not what is saved. The marks stay until you <a data-term="save">save</a>
+    or <a data-term="revert">revert</a>.
+  </p>
+  <figure data-shot="code-changed-lines" data-alt="The code with two <a data-term="changed-lines">changed lines</a> marked orange down the left side"><figcaption>Changed lines are marked until the song is saved or reverted.</figcaption></figure>
+  <figure data-shot="stagebar-unsaved" data-alt="The stage bar reading Unsaved changes, with Save, Save as new and Revert"><figcaption>Unsaved changes in the stage bar, with the ways to keep or drop them.</figcaption></figure>
+  <p>
+    Experimenting is never destructive. The saved song is untouched until you press <strong>Save</strong>, and a
+    <a data-term="beat">beat</a> is never changed at all: your version of it becomes a song of your own. So try things.
+    Break the song, watch the notice, fix it, and if it all goes wrong press <strong>Revert</strong> and you are back where
+    you started.
+  </p>
+  <figure data-shot="phone-edit" data-alt="The player on a phone with the code open for editing and the keyboard up"><figcaption>On a phone, Edit opens the code for typing; a tap on the code is otherwise for the music.</figcaption></figure>
+  <aside class="note" data-kind="note"><p>Editing needs a free account. Signed out, the code is yours to read and the knobs, channels, <a data-term="pad">pads</a> and suggestions are yours to play, but typing waits for a sign-in. Read <a href="start#free-and-account">what is free, and what needs an account</a>.</p></aside>
+
+  <h2 id="change-sounds">The smallest edits with the biggest effect</h2>
+  <p>
+    You do not need to understand a whole song to change how it feels. A few kinds of one-word edits do most of the work,
+    and every one of them is a safe first step.
+  </p>
+  <ul>
+    <li><strong>Swap the kit.</strong> <code>.bank("RolandTR909")</code> becomes <code>.bank("RolandTR808")</code> and the whole drum part changes character while the pattern stays the same. The <a data-term="bank">bank</a> is a drum machine; the words inside the pattern (<code>bd</code>, <code>cp</code>, <code>hh</code>) are the drums it plays.</li>
+    <li><strong>Swap the synth.</strong> <code>.s("sawtooth")</code> is buzzy, <code>.s("triangle")</code> is round, <code>.s("square")</code> is hollow, <code>.s("sine")</code> is a pure sub. One word, a different instrument.</li>
+    <li><strong>Change a sample word.</strong> In <code>s("bd*4, [~ cp]*2, hh*8")</code>, turn <code>cp</code> into <code>sd</code> and the clap is a snare; turn <code>hh</code> into <code>oh</code> and the hats open up.</li>
+    <li><strong>Change a subdivision.</strong> <code>hh*8</code> is eight hats a bar; <code>hh*16</code> is sixteen. <code>[~ cp]*2</code> puts a clap on two and four; <code>[~ cp]*3</code> puts three in the bar and the groove leans. Read how the notation works in <a href="build#strudel-basics">Build</a>.</li>
+    <li><strong>Move an octave.</strong> <code>note("&lt;a1 a1 c2 g1&gt;")</code> is a bass line; the same with <code>a2 a2 c3 g2</code> is the same line an octave up.</li>
+  </ul>
+  <p>
+    The easiest first edit of all is one the song suggests. The <strong>Try</strong> row, top left over the code,
+    lists up to four changes the song's author wrote for exactly this purpose. Tap one and the line changes and the
+    music with it; tap it again and it is put back. A <a data-term="try">try</a> is an unsaved edit like any other:
+    the changed line is marked, and if you like it, <strong>Save as new</strong> keeps it. Open the code after tapping
+    one and you can see what it did, which is a good way to learn what each word is for.
+  </p>
+  <figure data-shot="tries-on" data-alt="The Try row over the stage with one suggestion switched on and its line marked"><figcaption>A suggestion switched on: the line it changed is marked, and tapping it again puts the code back.</figcaption></figure>
+  <p>Here is a song written to be edited this way. Each of its four suggestions makes one of the edits above.</p>
+  <pre class="code" data-example="try-lines" data-open data-title="Spare Change"></pre>
+  <p>Two of the same edits by hand, as they would look in the code:</p>
+  <pre class="code" data-title="Before">DRUMS: s("bd*4, [~ cp]*2, hh*8")
+  .bank("RolandTR909")</pre>
+  <pre class="code" data-title="After: an 808 kit, open hats, and three claps in the bar">DRUMS: s("bd*4, [~ cp]*3, oh*8")
+  .bank("RolandTR808")</pre>
+  <aside class="note" data-kind="tip"><p>Turning a knob is also an edit: it rewrites the number in the code as you go, without re-running the song. A knob's position on a beat is remembered in your browser, and <strong>Reset</strong> on the deck puts every knob, <a data-term="switch">switch</a>, channel and the tempo back to what the code says.</p></aside>
+
+  <h2 id="arrangement">Cut, keep and rearrange the bars</h2>
+  <p>
+    Under the stage, the <a data-term="arrangement-strip">arrangement strip</a> shows which tracks play in each of 32
+    <a data-term="bar">bars</a>, one row per channel, with the playing bar lit. One bar is one Strudel cycle, so what
+    you see is what you hear. You do not need to touch the code to change a song's shape: everything on the strip is
+    done by pointing at bars.
+  </p>
+  <figure data-shot="arrangement" data-alt="The arrangement strip under the stage, 32 bars wide, with the playing bar lit"><figcaption>The strip: 32 bars, one row per track, the current bar lit.</figcaption></figure>
+  <p>
+    <strong>Jump.</strong> Click a bar and the song jumps there. While the deck is stopped, clicking a
+    bar sets where it will start. <kbd>[</kbd> and <kbd>]</kbd> jump four bars back or forward. Jumping is free and
+    needs no account.
+  </p>
+  <p>
+    <strong>Pick bars.</strong> Drag across the strip, <kbd>Shift</kbd>-click a bar to pick one, or type the first and
+    last bar numbers into the two boxes that appear over the strip. A bar of buttons comes with the selection:
+  </p>
+  <dl class="keys">
+    <div><dt><a data-term="cut"><strong>Cut</strong></a></dt><dd>Takes those bars out. What follows closes the gap. <kbd>Delete</kbd> does the same.</dd></div>
+    <div><dt><a data-term="keep-only"><strong>Keep only</strong></a></dt><dd>Throws away everything except those bars.</dd></div>
+    <div><dt><a data-term="move-bars"><strong>‹</strong></a> <strong>›</strong></dt><dd>Moves the picked bars a bar earlier or later. <kbd>←</kbd> and <kbd>→</kbd> do the same.</dd></div>
+    <div><dt><a data-term="copy-paste"><strong>Copy</strong></a>, <strong>Paste</strong>, <strong>Paste over</strong></dt><dd>Copies the picked bars; then pick where they go and <strong>Paste</strong> puts them in after those bars, or <strong>Paste over</strong> replaces them. <kbd data-mod>Ctrl</kbd>+<kbd>C</kbd> and <kbd data-mod>Ctrl</kbd>+<kbd>V</kbd> work too, within the same song.</dd></div>
+    <div><dt><strong>×</strong> or <kbd>Esc</kbd></dt><dd>Lets the selection go.</dd></div>
+  </dl>
+  <figure data-shot="arrangement-trimbar" data-alt="Bars 9 to 16 picked on the strip, with the Cut, Keep only, Copy and Paste buttons above them"><figcaption>Bars picked on the strip, with the bar numbers to type and the buttons for what to do with them.</figcaption></figure>
+  <p>
+    <strong>Silence one track.</strong> Press <strong>Arrangement</strong> to open the strip so the track names and bar
+    numbers show, then drag along one track's row. That gives you <a data-term="silence"><strong>Silence</strong></a> for the bars you crossed, or
+    <a data-term="bring-back"><strong>Bring back</strong></a> if they are already silent there. This is how you take the bass out of the first eight
+    bars, or give the lead a break in the middle, without cutting anything for the other tracks.
+  </p>
+  <figure data-shot="arrangement-open" data-alt="The arrangement strip opened, with track names on the left and bar numbers along the top"><figcaption>The strip opened: track names, bar numbers, and rows you can drag along.</figcaption></figure>
+  <figure data-shot="arrangement-silence" data-alt="A stretch of one track's row picked on the open strip, with the Silence button"><figcaption>Dragging along one row picks a stretch of that track alone; Silence takes it out of those bars.</figcaption></figure>
+  <p>
+    <strong>Undo.</strong> After each trim the bar over the strip offers <a data-term="undo"><strong>Undo</strong></a> for fifteen seconds,
+    as long as the code has not changed in between. After that, <strong>Revert</strong> in the stage bar still puts the
+    whole song back to its saved form.
+  </p>
+  <h3 id="arrangement-code">Every visual edit is written as code</h3>
+  <p>
+    This is the idea that makes the strip more than a toy. When you cut bars, the site does not keep a private note of
+    what you did: it writes one line of plain Strudel at the top of the song, before the first part, and runs it.
+  </p>
+  <pre class="code" data-title="A cut, as the site writes it">all(x => arrange([8, x.ribbon(0, 8)], [20, x.ribbon(12, 20)])) // bars kept, in order (trimmed on the deck)</pre>
+  <p>
+    Read it as a list of what was kept: eight bars starting from bar 1, then twenty bars starting from bar 13, in that
+    order. Bars 9 to 12 are gone. Another trim rewrites the same line rather than adding a second one, and when every
+    bar is back the line is removed. A silenced stretch is written on the track itself, as a mask at the end of its
+    chain: a 1 for each bar it plays and a 0 for each bar it does not.
+  </p>
+  <pre class="code" data-title="A silenced stretch, on the track it belongs to">BASS: note("<f1 f1 ab1 c2>*2")
+  .s("sawtooth")
+  .lpf(900)
+  .mask("<1!8 0!4 1!20>")</pre>
+  <figure data-shot="arrangement-cut-code" data-alt="The arrange line at the top of the code after a cut, marked as a changed line"><figcaption>After a cut, the trim line sits at the top of the code and is marked as an unsaved change like any other edit.</figcaption></figure>
+  <p>
+    Because it is code, the result plays anywhere Strudel plays, and anyone who opens your song can read exactly what
+    you did. A trimmed song loops within the kept bars, and the strip marks where the loop now ends. The trim is an
+    edit like any other: the changed lines are marked, <strong>Save</strong> keeps it, <strong>Revert</strong> undoes
+    it, and <strong>Save as new</strong> keeps the trimmed version as a song of its own while the original stays as it
+    was. If a trim cannot run for some reason, the code is put back and the last good version keeps playing.
+  </p>
+  <p>Here is a song whose shape is built from masks, so the strip shows its form from the start. Try cutting its middle, or silencing the lead.</p>
+  <pre class="code" data-example="form" data-open data-title="Thirty-Two"></pre>
+  <aside class="note" data-kind="note"><p>The strip sees the first 32 bars of a song. A longer form plays fine, but only those bars are shown and trimmed, and a paste cannot push past bar 32. Trimming needs an account; jumping does not. A song with no labelled parts has no rows to trim. If you write songs, <a href="build#form-32-bars">Build</a> explains how to give one a 32-bar form.</p></aside>
+
+  <h2 id="capture-loops">Capture loops from one song into another</h2>
+  <p>
+    A <a data-term="snapshot">snapshot</a> is a recording of one channel alone, exactly as it sounds right now with the
+    knobs where they are, for 1, 2, 4 or 8 bars from the next bar line. It lands on one of eight pads and comes back in
+    on a bar line when you tap it, following the deck's tempo like a record. The mechanics, from the <strong>●</strong>
+    button on a channel to the snapshot pads, are in <a href="perform#snapshots">Perform</a>. Here is why a remixer
+    cares.
+  </p>
+  <p>
+    Snapshots are remix material. <a data-term="capture">Capture</a> a riff from one song, load a second song on the
+    same deck, and the riff is still on its pad: tap it and it plays over the new song, in time. Capture a fill, a
+    vocal chop or a drum break and you have a loop that belongs to you, not to the song it came from. Choose the
+    length to match the idea: one bar for a drum pattern, four or eight for a riff that takes a few bars to say itself.
+  </p>
+  <p>
+    To keep a loop around, right-click a snapshot pad (or press and hold it on a touch screen) for its sheet: rename
+    it, download it as a WAV, clear the slot, or <strong><a data-term="pin">Pin</a></strong> it to a deck's mixer.
+    Pinned, it becomes a looping channel of its own on that deck, with a level, mute and solo, starting muted until you
+    bring it in. That is how you lay a riff from one song under the other deck's song and mix the two as if they were
+    one.
+  </p>
+  <figure data-shot="snapshot-sheet" data-alt="The snapshot sheet with Rename, Pin to deck A's mixer, Download WAV and Clear the slot"><figcaption>A snapshot's sheet: rename it, pin it to a deck's mixer as a channel of its own, download it or clear the slot.</figcaption></figure>
+  <p>
+    The best snapshots come from parts that stand on their own. This song is written around one: solo <strong>HOOK</strong>,
+    press <strong>●</strong> on it, and you have a riff to carry anywhere.
+  </p>
+  <pre class="code" data-example="hook" data-open data-title="Loose Riff"></pre>
+  <aside class="note" data-kind="note"><p>Capturing needs an account. Snapshots are kept in your browser and, signed in, in your account, up to eight at a time and thirty seconds each. A snapshot is audio, not code: it is not written into the song, and a song shared by link does not carry it.</p></aside>
+
+  <h2 id="save-and-versions">Save, and keep versions</h2>
+  <p>
+    Nothing you type is kept until you say so. The stage bar offers the ways to keep it, and which ones you see depends
+    on whose song is on the deck.
+  </p>
+  <dl class="keys">
+    <div><dt><strong>Save</strong> (<kbd data-mod>Ctrl</kbd>+<kbd>S</kbd>)</dt><dd>Writes over your own song. Only the owner of a song can save over it; on a song that has not changed, <kbd data-mod>Ctrl</kbd>+<kbd>S</kbd> says <em>Nothing to save</em>.</dd></div>
+    <div><dt><strong><a data-term="save-as-new">Save as new</a></strong></dt><dd>On your own song, keeps the version on the deck as another song of yours and leaves the original as it was.</dd></div>
+    <div><dt><strong><a data-term="save-as-my-song">Save as my song</a></strong></dt><dd>On a beat or on someone else's shared song you have changed, keeps your version as a song of your own. The original is never touched.</dd></div>
+    <div><dt><strong><a data-term="save-a-copy">Save a copy</a></strong></dt><dd>Takes a beat or an example from this guide as it is, unchanged, into My songs, so you can work on it later.</dd></div>
+    <div><dt><strong>Revert</strong></dt><dd>Throws your changes away and restarts the saved version.</dd></div>
+  </dl>
+  <p>
+    There is no version history. A song is its latest saved code, and <strong>Save</strong> replaces what was there.
+    So the way to keep a stage you like is <strong>Save as new</strong>: a song of yours called, say, "Harbour Lights
+    (sparse)" next to "Harbour Lights". Do that before a big experiment and both versions stay yours. The song list's
+    <strong>Duplicate</strong> does the same for a song that is not on the deck.
+  </p>
+  <p>
+    If you choose another song, sign out or close the page with unsaved changes, the site asks first:
+    <strong>Save</strong>, <strong>Save as new</strong> (or <strong>Save as my song</strong> when the song is not
+    yours), <strong>Discard</strong>, or <strong>Cancel</strong> to stay where you are.
+  </p>
+  <figure data-shot="unsaved-dialog" data-alt="The Unsaved changes dialog with Save, Save as new, Discard and Cancel"><figcaption>Switching songs with unsaved changes asks what to do with them first.</figcaption></figure>
+  <p>
+    Your songs live in the song list under <strong>My songs</strong>, each with when it was last saved and whether it is
+    shared. Every one has a <strong>⋯</strong> menu: <strong>Rename</strong>, <strong>Duplicate</strong>,
+    <strong>Share…</strong> and <strong>Delete</strong>, which asks <em>Really delete?</em> before it goes.
+  </p>
+  <figure data-shot="crate-song-menu" data-alt="A song's ⋯ menu in the song list: Rename, Duplicate, Share…, Delete"><figcaption>Each of your songs has a menu to rename, duplicate, share or delete it.</figcaption></figure>
+  <p>
+    A copy remembers where it came from. A song you made from a beat, or from a song someone shared, says
+    <em><a data-term="remix-of">Remix of</a> "Low Tide"</em> (and by whom, for a shared song) in the song list and on
+    the curtain before it plays. It credits the song, never the account behind it, and the credit stays with the copy
+    when you share it on.
+  </p>
+  <aside class="note" data-kind="tip"><p>Signed in, your songs are kept in your account and follow you between devices. Knob positions on your own songs are saved on their own a moment after you stop turning; the code is only saved when you ask. Read <a href="share#share-links">Share</a> for how a saved song becomes a link.</p></aside>
+
+  <h2 id="someone-elses-song">Someone else's song</h2>
+  <p>
+    A song shared by link opens on the shared-song player: a page of its own that says who shared it and shows the
+    code on the stage. Anyone with the link can press play and work the song's knobs, channels and pads, with no
+    account and nothing to install. Nothing done there is kept, and nothing there is yours, so the suggestions and the
+    editor are not offered: it is a place to listen and play, not to change.
+  </p>
+  <figure data-shot="curtain-shared-by" data-alt="The curtain of a shared song, with its title and who shared it"><figcaption>A shared song opens on its own player, with the credit of whoever shared it.</figcaption></figure>
+  <p>
+    To change it, press <strong>Edit a copy</strong>. That takes the song over to the main site, where you sign in (free,
+    one click with Google) and meet a question: <strong>Run and keep a copy</strong>, or <strong>Read the code
+    first</strong>. One click runs the song and makes a copy of it in My songs, credited <em>Remix of</em> the original.
+    From there it is your song: edit it, trim it, save it, share it on.
+  </p>
+  <figure data-shot="gate-shared" data-alt="The question before a shared song runs: Run and keep a copy, or Read the code first"><figcaption>On the main site, someone else's song asks before it runs; reading the code first is always an option.</figcaption></figure>
+  <p>
+    The question is there for a reason. A song is code, and running code on the main site lets it act as you: it could
+    read your songs, change them or share them. The shared-song player is a separate address where nobody is signed in,
+    so a stranger's song can run there freely. On the main site, where you are signed in, someone else's code never
+    runs as you until you say so, and <strong>Read the code first</strong> lets you look before you decide. The same
+    question appears for any song that arrives from outside, which is why it does not go away once you have answered
+    it for one.
+  </p>
+  <p>
+    Your copy carries the credit with it. Change it as much as you like and share it on: whoever opens it sees that
+    it is a remix of the original and who shared that. The person who shared the original never sees your copy, and
+    their song is never touched.
+  </p>
+  <aside class="note" data-kind="note"><p>A shared link always plays the latest saved version of the song. If its owner switches sharing off, the link stops working for good and a page says so. Read <a href="share#share-links">Share</a> for the other side of this: sharing your own songs.</p></aside>
+</article>

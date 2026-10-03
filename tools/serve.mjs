@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { basename, dirname, extname, join, normalize, relative, resolve, sep } from 'node:path';
 import { listBeats } from './beats.mjs';
 import { readSiteConfig, siteConfigScript } from './site-config.mjs';
+import { buildLearn } from './learn.mjs';
 
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const root = resolve(project, process.env.SERVE || '.');
@@ -37,7 +38,13 @@ const named = (host = '') => {
 // private/ folder, the site's own settings, and the logs the Firebase emulators leave behind.
 const withheld = (path) => {
   const parts = relative(root, path).split(sep);
-  return parts.some((part) => part.startsWith('.')) || parts[0].toLowerCase() === 'private' || /^config\.site\.json$|-debug\.log$/i.test(basename(path));
+  return (
+    parts.some((part) => part.startsWith('.')) ||
+    parts[0].toLowerCase() === 'private' ||
+    /^config\.site\.json$|-debug\.log$/i.test(basename(path)) ||
+    // the Learn guide's sources (tools/learn.mjs makes the pages from them)
+    (parts[0] === 'learn' && /\.html$/i.test(basename(path)))
+  );
 };
 
 const TYPES = {
@@ -58,6 +65,9 @@ const TYPES = {
   '.str': 'text/plain; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8',
 };
+
+// what the Learn guide last said needed fixing, so it is said once
+let learnProblems = null;
 
 const send = (res, status, body, type = 'text/plain; charset=utf-8') => {
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' });
@@ -84,6 +94,30 @@ function answer(req, res) {
       console.error(error.message);
       return send(res, 500, `console.error(${JSON.stringify(error.message)});`, TYPES['.js']);
     }
+  }
+  // The Learn guide, assembled from its sources on every request (tools/learn.mjs), so a
+  // change to learn/ shows on reload. The built site has these as files.
+  const learnPage = /^\/learn(?:\/([a-z-]+))?\/?$/.exec(pathname);
+  if (root === project && (learnPage || pathname === '/learn/search.json')) {
+    let learn;
+    try {
+      learn = buildLearn(project);
+    } catch (error) {
+      console.error(error.message);
+      return send(res, 500, `The Learn guide could not be built: ${error.message}`);
+    }
+    const said = learn.problems.join('\n');
+    if (said !== learnProblems) {
+      learnProblems = said;
+      if (said) console.log(`Learn guide:\n${learn.problems.map((problem) => `  ✗ ${problem}`).join('\n')}`);
+      else console.log('Learn guide: nothing to fix');
+    }
+    if (pathname === '/learn/search.json') return send(res, 200, JSON.stringify(learn.search), TYPES['.json']);
+    const wanted = learnPage[1] ? `/learn/${learnPage[1]}` : '/learn';
+    const page = learn.pages.find((entry) => entry.path === wanted);
+    if (page) return send(res, 200, page.html, TYPES['.html']);
+    // no such area: the not-found page (the guide's source files are never served as pages)
+    return send(res, 404, readFileSync(join(root, '404.html')), TYPES['.html']);
   }
   // Clean addresses, as the hosted site has them: /about is about.html, and a beat's own
   // address (/beats/<slug>) is the player, which reads the address to pick the song.

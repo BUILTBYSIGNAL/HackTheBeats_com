@@ -4,6 +4,7 @@
 //
 //   kind       'own' (one of my songs), 'beat' (a built-in beat), 'theirs' (someone
 //              else's shared song, on the main site), 'loose' (a song no longer in My songs)
+//   example    the song is one of the guide's examples (kind 'loose'), not anyone's yet
 //   edited     the code on the deck differs from the saved song
 //   dismissed  the person chose to share without their changes
 //   accounts   sharing one's own songs is possible here (a hosted site with accounts)
@@ -75,6 +76,12 @@ export function sheetState(s) {
   if (s.kind === 'theirs') {
     if (s.edited) out.warning = warn("This link plays their song, without your changes.", { label: 'Save as my song and share', action: 'save-new-share' }, { label: 'Share their song', action: 'dismiss' });
     out.link = { text: s.link, note: `This is ${s.ownerName || 'someone else'}'s song: the link stops working if they switch sharing off.` };
+    return out;
+  }
+
+  // an example from the guide (learn/examples), opened on a deck: not a song of anyone's yet
+  if (s.example) {
+    out.note = 'This is an example from the guide. Keep it as a song of your own first (Save a copy), then it can be shared.';
     return out;
   }
 

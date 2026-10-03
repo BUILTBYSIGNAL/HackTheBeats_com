@@ -1,0 +1,318 @@
+/* The Learn guide's words (headings and labels take the signal colour, so a page scans at a glance): headings, code, pictures, callouts, terms and tables. Scoped to
+   .learn-content, which the guide's own pages give their article and the player gives the
+   lightbox it shows an article in (js/pages.js), so the two look the same. */
+
+.learn-content {
+  color: var(--hb-ink-2);
+  font-size: 15px;
+  line-height: 1.65;
+}
+.learn-content .kicker {
+  margin: 0 0 10px;
+  font: 500 11px/1 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-accent);
+}
+.learn-content h1 {
+  margin: 0 0 14px;
+  font: 200 40px/1.05 var(--hb-sans);
+  letter-spacing: -0.03em;
+  color: var(--hb-ink);
+}
+.learn-content h2 {
+  margin: 48px 0 12px;
+  padding-top: 24px;
+  border-top: 1px solid var(--hb-line-soft);
+  font: 300 24px/1.2 var(--hb-sans);
+  letter-spacing: -0.02em;
+  color: var(--hb-accent);
+}
+.learn-content h3 {
+  margin: 30px 0 8px;
+  font: 500 11px/1.3 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-accent);
+}
+.learn-content h4 {
+  margin: 20px 0 6px;
+  font: 500 14px/1.4 var(--hb-sans);
+  color: var(--hb-ink);
+}
+.learn-content h2[id],
+.learn-content h3[id],
+.learn-content .entry {
+  scroll-margin-top: calc(var(--hb-topbar) + 16px);
+}
+.learn-content p,
+.learn-content ul,
+.learn-content ol {
+  margin: 0 0 12px;
+}
+.learn-content ul,
+.learn-content ol {
+  padding-left: 22px;
+}
+.learn-content ol {
+  list-style: decimal;
+}
+.learn-content li {
+  margin-bottom: 5px;
+}
+.learn-content .lede {
+  margin-bottom: 20px;
+  font-size: 17px;
+  color: var(--hb-ink);
+}
+.learn-content strong {
+  font-weight: 600;
+  color: var(--hb-ink);
+}
+.learn-content code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--hb-bg-deep);
+  color: var(--hb-ink);
+  font-size: 0.9em;
+}
+.learn-content a {
+  color: var(--hb-ink);
+}
+
+/* a glossary term in the text: dotted, and the drawer opens on it */
+.learn-content .term {
+  color: var(--hb-ink);
+  text-decoration: underline dotted;
+  text-decoration-color: var(--hb-ink-4);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.learn-content .term:hover {
+  text-decoration-color: var(--hb-ink);
+}
+
+/* code blocks, inked the way the stage inks the code: greys, the mini-notation brightest */
+.learn-content .code {
+  margin: 14px 0 20px;
+  border: 1px solid var(--hb-line-soft);
+  border-radius: 8px;
+  background: var(--hb-bg-deep);
+  overflow: hidden;
+}
+.learn-content .code__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--hb-line-soft);
+}
+.learn-content .code__title {
+  font: 500 10.5px/1 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-accent);
+}
+.learn-content .code__open {
+  display: inline-block;
+  padding: 5px 11px;
+  border: 1px solid var(--hb-line);
+  border-radius: 999px;
+  font: 500 11px/1 var(--hb-sans);
+  color: var(--hb-ink);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.learn-content .code__open:hover {
+  background: var(--hb-raise);
+  border-color: var(--hb-ink-4);
+}
+.learn-content .code pre {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font: 400 13px/1.7 var(--hb-mono);
+  font-variant-ligatures: none;
+  white-space: pre;
+  color: var(--hb-ink-2);
+  -webkit-overflow-scrolling: touch;
+}
+.learn-content .code code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  color: inherit;
+}
+.learn-content .tok-comment {
+  color: var(--hb-ink-4);
+  font-style: italic;
+}
+.learn-content .tok-string {
+  color: var(--hb-ink);
+}
+.learn-content .tok-number {
+  color: var(--hb-ink-2);
+}
+.learn-content .tok-keyword {
+  color: var(--hb-ink-3);
+}
+.learn-content .tok-label {
+  color: var(--hb-ink);
+  font-weight: 600;
+}
+.learn-content .tok-name {
+  color: var(--hb-ink-2);
+}
+.learn-content .tok-property {
+  color: var(--hb-ink-3);
+}
+.learn-content .tok-punct {
+  color: var(--hb-ink-4);
+}
+
+/* pictures */
+.learn-content {
+  counter-reset: figure;
+}
+.learn-content .shot {
+  margin: 18px 0 26px;
+  counter-increment: figure;
+}
+.learn-content .shot img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--hb-line);
+  border-radius: 8px;
+  background: var(--hb-bg-deep);
+}
+.learn-content .shot figcaption {
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--hb-ink-4);
+}
+.learn-content .shot figcaption::before {
+  content: 'Fig. ' counter(figure) ' · ';
+  font: 500 10.5px/1 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-accent);
+}
+
+/* callouts */
+.learn-content .note {
+  margin: 18px 0;
+  padding: 12px 16px 12px 18px;
+  border-left: 2px solid var(--hb-ink-4);
+  border-radius: 0 8px 8px 0;
+  background: var(--hb-panel);
+}
+.learn-content .note::before {
+  content: attr(data-kind);
+  display: block;
+  margin-bottom: 6px;
+  font: 500 10.5px/1 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-accent);
+}
+.learn-content .note[data-kind='caution'] {
+  border-left-color: var(--hb-ink);
+}
+.learn-content .note > :last-child {
+  margin-bottom: 0;
+}
+
+/* tables and keys */
+.learn-content .ref {
+  width: 100%;
+  margin: 12px 0 20px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.learn-content .ref th {
+  padding: 8px 10px 8px 0;
+  border-bottom: 1px solid var(--hb-line);
+  text-align: left;
+  font: 500 10.5px/1 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-accent);
+}
+.learn-content .ref td {
+  padding: 8px 10px 8px 0;
+  border-bottom: 1px solid var(--hb-line-soft);
+  vertical-align: top;
+}
+.learn-content .ref td:first-child {
+  color: var(--hb-ink);
+  white-space: nowrap;
+}
+.learn-content .keys {
+  display: grid;
+  gap: 8px 16px;
+  margin: 10px 0 20px;
+}
+.learn-content .keys > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 170px) 1fr;
+  gap: 12px;
+  align-items: baseline;
+}
+.learn-content .keys dt {
+  color: var(--hb-ink);
+  font-weight: 500;
+}
+.learn-content .keys dd {
+  margin: 0;
+}
+
+/* the glossary */
+.learn-content .glossary {
+  margin: 0;
+}
+.learn-content .entry {
+  padding: 16px 0;
+  border-top: 1px solid var(--hb-line-soft);
+}
+.learn-content .entry dt {
+  margin-bottom: 4px;
+  font: 500 16px/1.3 var(--hb-sans);
+  color: var(--hb-accent);
+}
+.learn-content .entry dd {
+  margin: 0;
+}
+.learn-content .entry__more {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.learn-content .entry__more a {
+  color: var(--hb-ink-3);
+}
+.learn-content .entry__more a:hover {
+  color: var(--hb-ink);
+}
+
+@media (max-width: 560px) {
+  .learn-content h1 {
+    font-size: 32px;
+  }
+  .learn-content h2 {
+    font-size: 21px;
+  }
+  .learn-content .code pre {
+    font-size: 12.5px;
+  }
+  .learn-content .keys > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .learn-content .ref td:first-child {
+    white-space: normal;
+  }
+}

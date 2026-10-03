@@ -1,0 +1,40 @@
+/*
+  @title Ballast
+  A long straight build at 134: the kick is there from the first bar, the rest climbs on over thirty-two.
+  "pressure" opens the bass and the pad together. ACID waits, muted, for the second half.
+  @try 808 kick: `RolandTR909` -> `RolandTR808` in KICK
+  @try Sixteenth hats: `[~ hh]*4` -> `hh*16`
+*/
+setcps(134/60/4)
+
+const pressure = slider(900, 200, 4000)
+
+KICK: s("bd*4").bank("RolandTR909").gain(0.9)
+  ._punchcard()
+
+HATS: s("[~ hh]*4, ~ ~ oh ~").bank("RolandTR909").gain(0.4)
+  .mask("<0!4 1!28>")
+
+PERC: s("rim(5,8), ~ ~ ~ [~ cp]").bank("RolandTR909").gain(0.4)
+  .mask("<0!8 1!24>")
+
+BASS: note("<e1 e1 e1 g1>*2")
+  .struct("x ~ x x ~ x x ~")
+  .s("sawtooth")
+  .lpf(pressure)
+  .decay(0.15).sustain(0.05)
+  .gain(0.5)
+  ._scope()
+
+_ACID: note("e2 [~ e2] g2 e2 ~ e3 d2 e2")
+  .s("sawtooth")
+  .lpf(sine.range(300, 2800).slow(8)).lpq(14)
+  .decay(0.12).sustain(0)
+  .gain(0.3)
+
+ATMOS: note("<[e3,b3] [e3,b3] [g3,d4] [d3,a3]>")
+  .s("gm_pad_sweep")
+  .attack(0.5).release(2)
+  .lpf(pressure)
+  .gain(0.25)
+  .mask("<0!16 1!16>")

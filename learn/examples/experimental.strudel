@@ -1,0 +1,39 @@
+/*
+  @title Loose Teeth
+  Nothing lines up on purpose: kicks in threes over eight, hats in fives, a bass that is seven bars long.
+  "chaos" drops notes at random; "texture" adds grit. Short, odd, and good for a snapshot.
+  texture: 0 bare, 1 grit
+*/
+setcps(112/60/4)
+
+const texture = 0
+const chaos = slider(0.2, 0, 0.8)
+
+KICK: s("bd(3,8)").bank("RolandTR808").gain(0.85)
+  ._punchcard()
+
+HATS: s("hh(5,8), ~ ~ ~ oh").bank("RolandTR808")
+  .degradeBy(chaos)
+  .gain(0.4)
+
+BASS: note("<c2 c2 eb2 c2 g1 c2 f2>")
+  .s("square")
+  .lpf(500)
+  .decay(0.2).sustain(0.1)
+  .gain(0.5)
+  ._spiral()
+
+GRIT: s(["pink", "white"][texture])
+  .struct("~ x ~ ~ ~ x ~ ~")
+  .decay(0.08).sustain(0)
+  .hpf(3000)
+  .gain([0.05, 0.12][texture])
+
+BELLS: n("<0 3 7 10 7>")
+  .scale("C5:minor")
+  .s("triangle")
+  .sometimesBy(0.3, (x) => x.add(12))
+  .degradeBy(chaos)
+  .delay(0.4)
+  .gain(0.2)
+  ._pitchwheel()

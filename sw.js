@@ -3,7 +3,7 @@
 //   this site's own files   network first, falling back to the last copy seen
 //   sample audio            cache first (those files do not change)
 //   sample pack listings    served from cache at once, refreshed in the background
-const VERSION = 'v0.14.0';
+const VERSION = 'v0.15.0';
 const SHELL = `hb-shell-${VERSION}`;
 // sample audio outlives a release: it is kept under a name that does not change
 const SOUNDS = 'hb-sounds-1';

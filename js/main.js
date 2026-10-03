@@ -10,7 +10,7 @@ import { songs, linkToSong, linkToShare } from './songs.js';
 import { withTitle, STARTERS, fromOf, isLive } from './songs-core.js';
 import { cloud } from './cloud.js';
 import { config, site } from './config.js';
-import { SITE_NAME, HOME_TITLE, HOME_DESCRIPTION, beatPath, slugFromPath, songTitle, songDescription, creditLine, remixLine, songLinkIn, sharePath } from './routes-core.js';
+import { SITE_NAME, HOME_TITLE, HOME_DESCRIPTION, beatPath, slugFromPath, songTitle, songDescription, creditLine, remixLine, songLinkIn, sharePath, startFromHash } from './routes-core.js';
 import { VERSION } from './version.js';
 import { persist } from './persist.js';
 import { recorder, saveBlob } from './recorder.js';
@@ -108,6 +108,8 @@ const app = {
   pendingMix: null,
   // the share of a song that came over from the player to be kept ("Edit a copy")
   copyIntent: null,
+  // what to say about an example from the guide once it is playing (openExample)
+  exampleNote: null,
   booted: false,
   gatePeek: false,
   focusId: 'A',
@@ -501,6 +503,39 @@ function step(direction) {
   const index = current ? list.findIndex((song) => song.id === current.id) : -1;
   const next = list[(index + direction + list.length) % list.length];
   loadSong(next.id, player.id);
+}
+
+// An example song from the guide (learn/examples/<id>.strudel), put on deck A to play with.
+// It is nobody's song yet: Save a copy keeps it. Resolves to true once it is on the deck.
+async function openExample(id, { autoplay = false } = {}) {
+  if (!/^[a-z0-9-]+$/.test(id || '')) return false;
+  let code;
+  try {
+    const response = await fetch(`learn/examples/${id}.strudel`);
+    if (!response.ok) throw new Error(`${response.status}`);
+    code = await response.text();
+  } catch {
+    setStatus('That example is not here.');
+    return false;
+  }
+  const song = describeSong({ id: `example:${id}`, code }, 'example');
+  // changes on deck A that have not been saved: ask before they are replaced
+  if (!(await settleEdits(A))) return false;
+  if (app.lockedSong) {
+    app.lockedSong = null;
+    renderLocked();
+  }
+  showGone(null);
+  const note = `"${song.title}" is an example from the guide. Press play, and Save a copy keeps it as a song of your own.`;
+  // said once the song is in (a sample pack's loading messages would otherwise talk over it)
+  const loaded = A.load(song, { autoplay });
+  if (autoplay) app.exampleNote = note;
+  else loaded.then(() => A.song === song && setStatus(note, { hold: 9000 }));
+  setFocus('A');
+  navigate(song, { replace: true });
+  renderHead();
+  analytics.event('example_open', { example: id });
+  return true;
 }
 
 /* ---------- editing and my songs ---------- */
@@ -996,6 +1031,7 @@ function shareInput(target) {
   }
   if (song.source === 'beats' && player) return { ...base, kind: 'beat', accounts: cloud.accounts && app.access === 'full', audience: song.audience ?? (song.featured ? 'everyone' : 'members'), link: mixLink(player, song) };
   if (song.source === 'shared') return { ...base, kind: 'theirs', ownerName: song.ownerName, link: linkToSong(song) };
+  if (song.source === 'example') return { ...base, kind: 'loose', example: true };
   return { ...base, kind: 'loose' };
 }
 
@@ -1489,7 +1525,8 @@ async function boot() {
       await loadSong(song.id, deckId);
       setEditing(true, byId[deckId]);
     });
-    starters.append(button);
+    // (the link to the guide's starting points stays last)
+    starters.insertBefore(button, starters.querySelector('.learnlink'));
   }
   $('song-new').addEventListener('click', () => {
     if (needsAccount('start a song')) return;
@@ -1517,6 +1554,7 @@ async function boot() {
     player.on('song', () => {
       // the built site shows a song's code in plain HTML until the editor takes over
       if (player === A) $('prerender')?.remove();
+      if (player === A) app.exampleNote = null;
       if (player === A) renderHead();
       renderChip(player);
       $(`pane-${id}`).classList.toggle('has-song', Boolean(player.song));
@@ -1586,6 +1624,10 @@ async function boot() {
     player.on('toggle', (started) => {
       document.body.classList.toggle('is-playing', A.started || B.started);
       if (started) watchAudioClock(player);
+      if (started && player === A && app.exampleNote) {
+        setStatus(app.exampleNote, { hold: 9000 });
+        app.exampleNote = null;
+      }
       if (started) analytics.event('play', { song: player.song?.slug || player.song?.source || '' });
       if (started && !other(player).started) app.leader = player;
       // The deck left playing keeps the tempo the pair was at, rather than snapping back
@@ -1670,8 +1712,9 @@ async function boot() {
   $('load-b').addEventListener('click', () => crate.open('B'));
   $('open-about').addEventListener('click', () => els.about.showModal());
   $('about-close').addEventListener('click', () => els.about.close());
-  // About and Privacy open over the player
-  pages.init($('page-sheet'));
+  // About, Privacy and the guide open over the player; "Open in the player" in the guide
+  // puts an example on deck A
+  pages.init($('page-sheet'), { openExample });
   // Donate glides down to the shirt; the arrow at the end back up to the top
   $('about-donate').addEventListener('click', () => $('support').scrollIntoView({ behavior: 'smooth', block: 'start' }));
   $('about-top').addEventListener('click', () => els.about.querySelector('.sheet__body').scrollTo({ top: 0, behavior: 'smooth' }));
@@ -1978,20 +2021,26 @@ async function boot() {
   const featured = featuredBeat();
   const remembered = app.access === 'full' ? findSong(persist.get('lastSong')) : null;
   const wanted = sharedSong || addressed || remembered || featured;
-  // a beat this visitor may not play yet is described over the featured one
-  const opener = isLocked(wanted) ? featured : wanted;
-  if (!isLocked(opener)) await loadSong(opener.id, 'A', { autoplay: false, shared: sharedSong && opener === sharedSong ? shared : null, route: false });
-  if (isLocked(wanted)) {
-    showLocked(wanted, { route: false });
-    if (sharedSong === wanted) app.pendingMix = shared;
+  // "Open in the player" from the guide (#start=<example>): the example, behind the curtain
+  const example = startFromHash(location.hash);
+  if (example) history.replaceState(null, '', location.pathname + location.search);
+  const opened = example ? await openExample(example) : false;
+  if (!opened) {
+    // a beat this visitor may not play yet is described over the featured one
+    const opener = isLocked(wanted) ? featured : wanted;
+    if (!isLocked(opener)) await loadSong(opener.id, 'A', { autoplay: false, shared: sharedSong && opener === sharedSong ? shared : null, route: false });
+    if (isLocked(wanted)) {
+      showLocked(wanted, { route: false });
+      if (sharedSong === wanted) app.pendingMix = shared;
+    }
+    if (sharedSong) navigate(sharedSong, { replace: true });
   }
-  if (sharedSong) navigate(sharedSong, { replace: true });
   renderHead();
   app.booted = true;
   // someone who arrives already signed in, with no songs yet, gets their starter too
   Promise.resolve(app.synced).then(() => {
     const starter = giveStarter();
-    if (starter && wanted === featured && !songLink) openStarter(starter);
+    if (starter && wanted === featured && !songLink && !opened) openStarter(starter);
   });
   // back and forward move between the beats that were opened
   window.addEventListener('popstate', () => {
@@ -2012,6 +2061,13 @@ async function boot() {
   // A link pasted into the address bar of the open site only changes the part after the
   // #, which does not load the page again by itself.
   window.addEventListener('hashchange', () => {
+    // the guide's "Open in the player", while the player is already open
+    const example = startFromHash(location.hash);
+    if (example) {
+      history.replaceState(null, '', location.pathname + location.search);
+      openExample(example, { autoplay: A.started });
+      return;
+    }
     if (songLinkIn(location) || mixFromHash(location.hash)) location.reload();
   });
 
@@ -2027,5 +2083,8 @@ async function boot() {
 window.hackingTheBeats = { app, players: byId, master, deck, recorder, snapshots, midi, visuals, runtime, registry, crate, thumbs, songs, cloud, config, site, admin, analytics, tries, onboarding, finishRecording, VERSION };
 window.hackingTheBeats.songMap = songMap;
 window.hackingTheBeats.clip = clip;
+window.hackingTheBeats.trim = trim;
+window.hackingTheBeats.openExample = openExample;
+window.hackingTheBeats.setAccess = setAccess;
 
 boot();

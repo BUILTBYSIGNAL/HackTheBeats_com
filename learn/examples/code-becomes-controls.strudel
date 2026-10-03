@@ -1,0 +1,27 @@
+/*
+  @title Night Ferry
+  A slow crossing after dark: a plain beat, a bass that opens as "pressure" turns, and a pad waiting below deck.
+  Mute DRUMS and the bass carries it alone; unmute PAD when the lights come up.
+  @try Rounder bass: `s("sawtooth")` -> `s("triangle")` in BASS
+*/
+setcps(118/60/4)
+
+const pressure = slider(1200, 300, 4000)
+
+DRUMS: s("bd*4, [~ cp]*2, hh*8")
+  .bank("RolandTR909")
+  .gain(0.8)
+  ._punchcard()
+
+BASS: note("<d2 d2 f2 a1>*2")
+  .struct("x ~ x x ~ x ~ x")
+  .s("sawtooth")
+  .lpf(pressure)
+  .gain(0.45)
+  ._scope()
+
+_PAD: note("<[d3,f3,a3] [d3,f3,a3] [f3,a3,c4] [a2,c3,e3]>")
+  .s("gm_pad_halo")
+  .attack(0.3).release(1)
+  .room(0.5)
+  .gain(0.3)

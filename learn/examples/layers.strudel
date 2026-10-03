@@ -1,0 +1,40 @@
+/*
+  @title Four Floors
+  Every part on its own floor: kick, hats, clap and bass each have a channel, so any one can step out.
+  Two more wait with the lights off. Unmute ACID and STAB when the room is ready for them.
+*/
+setcps(124/60/4)
+
+const drive = slider(700, 150, 3000)
+
+KICK: s("bd*4")
+  .bank("RolandTR909")
+  .gain(0.9)
+  ._punchcard()
+
+HATS: s("[~ hh]*4, ~ ~ ~ oh")
+  .bank("RolandTR909")
+  .gain(0.4)
+
+CLAP: s("~ cp ~ cp")
+  .bank("RolandTR909")
+  .gain(0.55)
+
+BASS: note("<g1 g1 bb1 f1>*4")
+  .struct("x ~ x ~ x ~ x x")
+  .s("sawtooth")
+  .lpf(drive)
+  .gain(0.5)
+  ._scope()
+
+_ACID: note("g2 [~ g2] bb2 g2 ~ g3 f2 g2")
+  .s("sawtooth")
+  .lpf(sine.range(400, 2400).slow(4)).lpq(12)
+  .decay(0.15).sustain(0)
+  .gain(0.3)
+
+_STAB: note("<[g3,bb3,d4] [f3,a3,c4]>")
+  .struct("~ x ~ ~ x ~ ~ ~")
+  .s("gm_epiano1")
+  .delay(0.3)
+  .gain(0.4)

@@ -1,0 +1,30 @@
+/*
+  @title Spare Change
+  Four small changes, one idea each: a different kit, twice the hats, the bass an octave up, and chords in threes.
+  Tap one over the stage to hear it; tap again to put it back.
+  @try 808 kit: `RolandTR909` -> `RolandTR808`
+  @try Double hats: `hh*8` -> `hh*16`
+  @try Bass up an octave: `<a1 a1 c2 g1>` -> `<a2 a2 c3 g2>` in BASS
+  @try Chords in threes: `~ x ~ x` -> `[~ x]*3`
+*/
+setcps(126/60/4)
+
+const space = slider(0.3, 0, 0.8)
+
+DRUMS: s("bd*4, [~ cp]*2, hh*8")
+  .bank("RolandTR909")
+  .gain(0.8)
+  ._punchcard()
+
+BASS: note("<a1 a1 c2 g1>*2")
+  .struct("x ~ x x ~ x x ~")
+  .s("sawtooth")
+  .lpf(900)
+  .gain(0.5)
+  ._scope()
+
+CHORDS: note("<[a3,c4,e4] [a3,c4,e4] [c4,e4,g4] [g3,b3,d4]>")
+  .struct("~ x ~ x")
+  .s("triangle")
+  .room(space)
+  .gain(0.3)

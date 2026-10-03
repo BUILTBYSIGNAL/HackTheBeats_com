@@ -1,0 +1,368 @@
+<article data-title="Reference" data-description="Every control on the player by its label: what it does, its key, and whether it needs an account. Then the keys, MIDI, the site's addresses and what is not supported." data-kicker="Reference" data-group="Reference">
+  <p class="lede">
+    Every control on the player, region by region, with what it does, the key that does the same, and whether it needs an
+    account. The sections after that list the keys in one place, what a MIDI controller can drive, the addresses the site
+    answers to, and the limits of what it does.
+  </p>
+
+  <h2 id="screen">The screen</h2>
+  <p>
+    From the top: the <strong>top bar</strong> holds the two <a data-term="deck">decks</a>, the transport and the actions.
+    Below it the <a data-term="stage">stage</a> shows the song's code, lit as it plays, with the <strong>stage bar</strong> of
+    editing and view buttons along its foot. Under the stage runs the <a data-term="arrangement-strip">arrangement strip</a>,
+    32 bars wide. Under that is the deck, in four panels: <strong>Song knobs</strong>, <strong>Channels</strong>,
+    <strong>Pads</strong> and <strong>Master</strong>. The footer carries the links to this guide, the About page and the
+    privacy notice.
+  </p>
+  <figure data-shot="player-overview" data-alt="The whole player: the top bar, the lit code on the stage, the arrangement strip and the four deck panels"><figcaption>The player on a wide window, with every region in view at once.</figcaption></figure>
+  <p>
+    On a phone the same regions stack. The deck shows one panel at a time behind four tabs, <strong>Knobs</strong>,
+    <strong>Mixer</strong>, <strong>Pads</strong> and <strong>Master</strong>, a <strong>Songs</strong> button joins the top
+    bar, and the <a data-term="song-map">song map</a> sits behind <strong>Map</strong> in the stage bar. Windows narrower than
+    860 pixels, or shorter than 540, behave the same way.
+  </p>
+  <figure data-shot="phone-player" data-alt="The player on a phone: the top bar, the code, and the deck with its four tabs"><figcaption>On a phone the deck's panels become tabs and the song map goes behind Map.</figcaption></figure>
+  <p>
+    In every table, <em>Account?</em> says whether the control needs you to be signed in. The <a data-term="featured-beat">featured beats</a>,
+    the knobs, switches, channels, pads and master knobs are free for anyone; editing, saving, sharing, recording, the second
+    deck, snapshots and MIDI need a free account. See <a href="start#free-and-account">What is free, and what needs an account</a>.
+  </p>
+
+  <h2 id="top-bar">Top bar</h2>
+  <figure data-shot="topbar" data-alt="The top bar: the brand, deck chips A and B, previous and next, the bpm and bar readouts, the scope and the action buttons"><figcaption>The top bar, with deck A playing and deck B waiting for a beat.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Hack the Beats</strong> (the brand)</td><td>Opens the list of <a data-term="beat">beats</a> and songs for the deck in focus. The version number sits beside the name.</td><td><kbd>B</kbd></td><td>No</td></tr>
+      <tr><td>Deck chip <strong>A</strong> / <strong>B</strong></td><td>The deck's title and bpm. Click a chip to put that deck in focus: the stage, the panels and the keys act on it. Click the chip already in focus to open the list for that deck. Deck B reads <strong>Load a beat</strong> until it has one.</td><td><kbd>X</kbd> switches focus</td><td>Deck B: Yes</td></tr>
+      <tr><td>Play / stop (on each chip)</td><td>Starts or stops that deck. With <a data-term="sync">Sync</a> on, a deck started while the other plays comes in on the next bar line at the other's tempo.</td><td><kbd>Space</kbd> (deck in focus)</td><td>Deck B: Yes</td></tr>
+      <tr><td>Featured chips</td><td>Signed out, two to six chips beside deck A name the featured beats. Tap one to load it.</td><td>—</td><td>No</td></tr>
+      <tr><td><strong>Previous beat</strong> / <strong>Next beat</strong></td><td>Changes the beat on the deck in focus to the one before or after it in the list.</td><td><kbd>←</kbd> <kbd>→</kbd></td><td>No</td></tr>
+      <tr><td><strong>bpm</strong> readout</td><td>The tempo of the deck in focus, read from the code's <code>setcps()</code> or <code>setcpm()</code> and bent by the <a data-term="tempo">Tempo</a> knob.</td><td>—</td><td>No</td></tr>
+      <tr><td><strong>bar</strong> readout</td><td>The <a data-term="bar">bar</a> the deck in focus is playing, with the beat within it in smaller type.</td><td>—</td><td>No</td></tr>
+      <tr><td>The scope</td><td>A small trace of the sound leaving the master. Hidden on windows narrower than 1180 pixels.</td><td>—</td><td>No</td></tr>
+      <tr><td><strong>Songs</strong> (phone)</td><td>Opens the list of beats and songs; on wider windows the brand does this.</td><td><kbd>B</kbd></td><td>No</td></tr>
+      <tr><td><strong>Record the mix to a file</strong> (the dot)</td><td>Starts and stops a <a data-term="record">recording</a> of the mix as a WAV file. The time runs beside it.</td><td><kbd>R</kbd></td><td>Yes</td></tr>
+      <tr><td><strong>Share this song</strong> (the link icon)</td><td>Opens the share sheet for the song on the deck in focus.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Help and shortcuts</strong></td><td>Opens the help sheet.</td><td><kbd>?</kbd></td><td>No</td></tr>
+      <tr><td><strong>Sign in</strong> / your initial</td><td>Opens the account dialog. Signed in, the button shows your initial.</td><td>—</td><td>No</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="stage-bar">Stage bar</h2>
+  <p>
+    The row at the foot of the code. Which buttons show depends on whose song it is and whether you have changed it.
+  </p>
+  <figure data-shot="stagebar" data-alt="The stage bar while a song is being edited: Update, Done, Unsaved changes, Save, Save as new, Revert, then Map, Follow, Split and Gallery"><figcaption>The stage bar while your own song has unsaved changes.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Update</strong></td><td>Runs the edited code. The music carries on with the change; a mistake is reported in plain words and the last good version keeps playing.</td><td><kbd data-mod>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Yes</td></tr>
+      <tr><td><strong>Edit</strong> / <strong>Done</strong></td><td>Unlocks the code for editing, and locks it again. With a mouse, a click in the code does the same; on a touch screen a tap is for the music, so editing starts here.</td><td><kbd>Esc</kbd> leaves the code</td><td>Yes</td></tr>
+      <tr><td><strong>Save a copy</strong></td><td>On an unedited song that is not yours: keeps it as one of your songs, credited to its author.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Unsaved changes</strong></td><td>Not a button: it shows while the code on the deck differs from the saved song. The deck chip gets a dot too.</td><td>—</td><td>—</td></tr>
+      <tr><td><strong>Save</strong></td><td>Writes over your own song. On an unedited song it says "Nothing to save."</td><td><kbd data-mod>Ctrl</kbd>+<kbd>S</kbd></td><td>Yes</td></tr>
+      <tr><td><strong>Save as new</strong> / <strong>Save as my song</strong></td><td>Keeps this version as a new song of yours. It reads <strong>Save as new</strong> on your own song and <strong>Save as my song</strong> on anyone else's, where the copy is credited as a remix of theirs.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Update the beat</strong></td><td>Replaces the public beat with this version, for everyone.</td><td>—</td><td>Admin</td></tr>
+      <tr><td><strong>Revert</strong></td><td>Throws the changes away and restarts the saved version.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Map</strong></td><td>Opens the song map when it is not docked beside the code.</td><td>—</td><td>No</td></tr>
+      <tr><td><strong>Follow</strong></td><td>The code glides to whichever track comes in, and tours the tracks that are playing. Scrolling by hand pauses it for a few seconds.</td><td><kbd>F</kbd></td><td>No</td></tr>
+      <tr><td><strong>Split</strong></td><td>Shows both decks' code side by side.</td><td>—</td><td>Needs deck B, so Yes</td></tr>
+      <tr><td><strong>Gallery</strong></td><td>Full screen, code only, larger type.</td><td><kbd>G</kbd>; <kbd>Esc</kbd> leaves</td><td>No</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="song-map">Song map</h2>
+  <p>
+    The sections of the code, read from the code itself, in four groups: <strong>Setup</strong> (the header, the tempo and the
+    sample packs), <strong>Knobs and switches</strong>, <strong>Parts</strong> and <strong>Helpers</strong>. It is docked beside
+    the code when the window is wider than 860 pixels and has room; otherwise it opens behind <strong>Map</strong>.
+  </p>
+  <figure data-shot="song-map" data-alt="The song map docked beside the code, with one part's card open"><figcaption>The song map beside the code, with a part's card open under the pointer.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td>An item</td><td>Click to glide the code there. A part's dot pulses with its track and dims when the track is muted.</td><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd> move; <kbd>Esc</kbd> closes</td><td>No</td></tr>
+      <tr><td>The card</td><td>Rest on an item, or tab to it, to read its details: its sounds and effects in plain words, the knobs it uses, a <a data-term="part-note">note</a> its author left beside it, and one line of its code.</td><td>—</td><td>No</td></tr>
+      <tr><td><strong>Edit this part</strong></td><td>Opens the code with the caret at the start of that section. It reads <strong>Edit the header</strong>, <strong>Edit the tempo</strong>, <strong>Edit the sample packs</strong>, <strong>Edit this knob</strong>, <strong>Edit this switch</strong> or <strong>Edit this helper</strong> to match, and <strong>Sign in to edit</strong> when you are signed out.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Close the song map</strong></td><td>When it is open behind <strong>Map</strong>. On a phone, choosing an item closes it too.</td><td><kbd>Esc</kbd></td><td>No</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="arrangement-strip">Arrangement strip</h2>
+  <p>
+    Which tracks play in each of 32 bars, as a row of lit cells under the stage. The playing bar is highlighted, and after a
+    trim a marker shows where the song now loops. The tools at the right end are <strong>Steps</strong>, <strong>MIDI</strong>
+    and <strong>Controls</strong>.
+  </p>
+  <figure data-shot="arrangement-trimbar" data-alt="The arrangement strip open with track names, four bars picked and the trim toolbar above them"><figcaption>Four bars picked on the open strip, with the trim toolbar showing what can be done with them.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Arrangement</strong> (the toggle)</td><td>Opens the strip to show track names and bar numbers, one row per channel. "Show the arrangement with track names".</td><td>—</td><td>No</td></tr>
+      <tr><td>A bar</td><td>Click to jump there. When the deck is stopped it sets the bar play will start from.</td><td><kbd>[</kbd> <kbd>]</kbd> jump four bars</td><td>No</td></tr>
+      <tr><td>Picking bars</td><td>Drag across bars, <kbd>Shift</kbd>-click a second bar, or type the first and last bar into the <strong>bars</strong> fields in the toolbar. Picking opens the trim toolbar.</td><td><kbd>Esc</kbd> lets them go</td><td>No</td></tr>
+      <tr><td><strong>‹</strong> <strong>›</strong></td><td>Move the picked bars a bar earlier or later.</td><td><kbd>←</kbd> <kbd>→</kbd></td><td>Yes</td></tr>
+      <tr><td><strong>Cut</strong></td><td>Takes the picked bars out. The song is the bars that remain, in order.</td><td><kbd>Delete</kbd> or <kbd>Backspace</kbd></td><td>Yes</td></tr>
+      <tr><td><strong>Keep only</strong></td><td>Keeps the picked bars and takes everything else out.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Copy</strong></td><td>Remembers the picked bars. <strong>Paste</strong> and <strong>Paste over</strong> appear once something is copied from the same song.</td><td><kbd data-mod>Ctrl</kbd>+<kbd>C</kbd></td><td>Yes</td></tr>
+      <tr><td><strong>Paste</strong></td><td>Puts the copied bars in after the picked ones. The song cannot grow past 32 bars.</td><td><kbd data-mod>Ctrl</kbd>+<kbd>V</kbd></td><td>Yes</td></tr>
+      <tr><td><strong>Paste over</strong></td><td>Replaces the picked bars with the copied ones.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>×</strong></td><td>Closes the toolbar and lets the picked bars go.</td><td><kbd>Esc</kbd></td><td>No</td></tr>
+      <tr><td><strong>Silence</strong> / <strong>Bring back</strong></td><td>With the strip open, drag along one track's row to pick a stretch of it. <strong>Silence</strong> quietens that track there; on a stretch already silenced the button reads <strong>Bring back</strong>.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Undo</strong></td><td>Offered for fifteen seconds after a trim, as long as the code has not been changed since. Every trim is written into the code and runs at once, so <strong>Save</strong> keeps it and <strong>Revert</strong> throws it away like any other edit.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Steps</strong></td><td>Brings the <a data-term="first-steps">first steps</a> back after you close them.</td><td>—</td><td>No</td></tr>
+      <tr><td><strong>MIDI</strong></td><td>Switches MIDI Learn on: click a control, then move one on your hardware. Hidden on windows narrower than 860 pixels and when you are signed out. "Bind a MIDI controller to the deck".</td><td><kbd>Esc</kbd> leaves Learn</td><td>Yes</td></tr>
+      <tr><td><strong>Controls</strong></td><td>Folds the deck away under the strip, and opens it again.</td><td>—</td><td>No</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="deck-knobs">Deck: Song knobs</h2>
+  <p>
+    One <a data-term="knob">knob</a> for every <code>slider()</code> in the code, and one stepped knob for every
+    <a data-term="switch">switch</a>, in the order they appear. Each shows its name, a sub-label (the parameters it feeds, or
+    its range) and a <a data-term="readout">readout</a>; its tooltip says what it shapes, "Shapes BASS, LEAD".
+  </p>
+  <figure data-shot="deck-knobs" data-alt="The Song knobs panel: a row of knobs with names, sub-labels and readouts, and Reset at the top right"><figcaption>The Song knobs panel for a beat with five sliders and one switch.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Reset</strong></td><td>Puts every knob and switch back to what the code says, unmutes and levels the mixer, and returns the tempo to the song's own.</td><td>—</td><td>No</td></tr>
+      <tr><td>A knob</td><td>Drag, scroll, or use the keys. Turning it rewrites the number in the code as you go, without re-running the song. Positions are remembered in the browser for beats and saved with your own songs.</td><td>Arrows adjust, <kbd>Shift</kbd> fine, <kbd>Home</kbd> <kbd>End</kbd> the ends; <kbd>Enter</kbd> or a double-click resets. See <a href="#keys">Keys</a>.</td><td>No</td></tr>
+      <tr><td>A switch</td><td>A stepped knob whose readout is the chosen option's label; its tooltip lists the options. Turning it changes the number in the code and re-runs the song a moment later.</td><td>The same keys as a knob</td><td>No</td></tr>
+      <tr><td>Inline sliders</td><td>The same knobs, drawn as sliders inside the code at the number they control. Drag one and the knob follows; click a highlighted number to find its knob.</td><td>—</td><td>No</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="deck-mixer">Deck: Channels</h2>
+  <p>
+    One strip for each labelled part of the code, named after its label: a <a data-term="channel">channel</a>. A song with
+    no labels has no strips, since it is a single pattern.
+  </p>
+  <figure data-shot="deck-mixer" data-alt="The Channels panel: six strips with a LED, a meter, a fader, M, S and the capture dot, and the 1 2 4 8 chips in the header"><figcaption>The Channels panel, with the capture length set to four bars.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td>The name</td><td>Focuses on that track: its code and visual are isolated. Click again to release it.</td><td><kbd>Esc</kbd> releases</td><td>No</td></tr>
+      <tr><td>The LED and the meter</td><td>The LED pulses as the track sounds; the meter shows its level. A strip whose sounds are not in the loaded packs is marked, with a tooltip naming them.</td><td>—</td><td>No</td></tr>
+      <tr><td>The fader</td><td>The channel's level, 0 to 125 percent, 100 by default. Levels, mutes and solos carry over an edit for labels that keep their names.</td><td>—</td><td>No</td></tr>
+      <tr><td><strong>M</strong></td><td>Mutes the channel. A label that starts or ends with an underscore comes up muted. Clicking the label in the code does the same.</td><td><kbd>1</kbd>–<kbd>9</kbd> <kbd>0</kbd> <kbd>-</kbd> <kbd>=</kbd> for channels 1 to 12</td><td>No</td></tr>
+      <tr><td><strong>S</strong></td><td>Solos the channel. While any channel is soloed, only the soloed ones sound.</td><td>—</td><td>No</td></tr>
+      <tr><td><strong>1</strong> <strong>2</strong> <strong>4</strong> <strong>8</strong></td><td>How many bars <strong>●</strong> captures, from the next bar line. Four is the default.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>●</strong></td><td><a data-term="capture">Captures</a> that channel alone, as it sounds now, into the next free <a data-term="snapshot">snapshot</a> pad. The dot counts the bars down; press it again to let the capture go. The deck must be playing and the channel audible.</td><td><kbd>Esc</kbd> lets a capture go</td><td>Yes</td></tr>
+      <tr><td><strong>×</strong></td><td>On a snapshot's own strip: stops it at the next bar, or unpins a pinned one.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Knobs</strong> <strong>Mixer</strong> <strong>Pads</strong> <strong>Master</strong> (phone)</td><td>On a phone or a short window the deck shows one panel at a time; these tabs choose which.</td><td>—</td><td>No</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="deck-pads">Deck: Pads</h2>
+  <p>
+    Six held effects, and eight snapshot pads. Hold a <a data-term="pad">pad</a> for as long as you want the effect;
+    <kbd>Shift</kbd>-click it to keep it on. Key hints are hidden on touch screens. Between 861 and 1599 pixels wide the panel
+    shows one bank at a time, behind <strong>FX</strong> and <strong>Snaps</strong> tabs.
+  </p>
+  <figure data-shot="deck-pads" data-alt="The Pads panel: the six effect pads with their keys, Latch at the top right, and the eight snapshot pads"><figcaption>The Pads panel on a wide window, with both banks in view.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Echo</strong></td><td>Throws the whole mix into a tempo-synced echo on the master.</td><td><kbd>Q</kbd></td><td>No</td></tr>
+      <tr><td><strong>Drop</strong></td><td>The master's low-pass filter closes to 140 Hz over about half a beat; let go and everything slams back.</td><td><kbd>W</kbd></td><td>No</td></tr>
+      <tr><td><strong>Wash</strong></td><td>Drowns the mix in the master's reverb.</td><td><kbd>E</kbd></td><td>No</td></tr>
+      <tr><td><strong>Half</strong></td><td>Half time from the moment you press, on both decks, while the deck plays.</td><td><kbd>A</kbd></td><td>No</td></tr>
+      <tr><td><strong>Stutter</strong></td><td>Repeats the eighth of a bar you pressed it in, on both decks, while the deck plays.</td><td><kbd>S</kbd></td><td>No</td></tr>
+      <tr><td><strong>No drums</strong></td><td>Mutes every channel the site takes for drums, by its name or by what it plays, on both decks.</td><td><kbd>D</kbd></td><td>No</td></tr>
+      <tr><td><strong>Latch</strong></td><td>Makes a tap switch a pad on, and another tap switch it off.</td><td><kbd>Shift</kbd>+pad does it for one press</td><td>No</td></tr>
+      <tr><td><strong>FX</strong> / <strong>Snaps</strong></td><td>On mid-size windows: which bank the panel shows.</td><td>—</td><td>No</td></tr>
+      <tr><td>Snapshot pads 1 to 8</td><td>Tap a filled pad to bring that snapshot in on the next bar, and again to stop it at the next bar. <kbd>Shift</kbd>-tap plays it once. When all eight are full, the next pad you tap takes the new capture.</td><td><kbd>T</kbd> <kbd>Y</kbd> <kbd>U</kbd> <kbd>I</kbd> <kbd>H</kbd> <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd>, with <kbd>Shift</kbd> once</td><td>Yes</td></tr>
+      <tr><td>A snapshot pad's menu</td><td>Right-click, or press and hold for half a second, to open the snapshot sheet.</td><td>—</td><td>Yes</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="deck-master">Deck: Master</h2>
+  <p>
+    The <a data-term="master">master</a> section acts on the sum of both decks. Its five knobs are remembered in the browser,
+    apart from Tempo. A fixed <a data-term="limiter">limiter</a> keeps the output under full scale.
+  </p>
+  <figure data-shot="deck-master" data-alt="The Master panel: Filter, Echo, Space, Tempo and Volume knobs, the meter, the spectrum, and the A to B crossfader row with Sync and Mix"><figcaption>The Master panel, with the crossfader row that appears once you are signed in.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Filter</strong></td><td>One knob: left closes a low-pass, down to 90 Hz; right opens a high-pass, up to 7 kHz; centre is open. The readout says <strong>open</strong>, <strong>lp</strong> or <strong>hp</strong>.</td><td>Knob keys</td><td>No</td></tr>
+      <tr><td><strong>Echo</strong></td><td>How much of the mix goes to a dotted-eighth echo locked to the tempo.</td><td>Knob keys</td><td>No</td></tr>
+      <tr><td><strong>Space</strong></td><td>Reverb on the whole mix.</td><td>Knob keys</td><td>No</td></tr>
+      <tr><td><strong>Tempo</strong></td><td>Speeds the song up or down around its own tempo, from three quarters to one and a quarter times. It acts on the deck in focus, or on the leading deck when two are synced; the readout is the resulting bpm.</td><td>Knob keys</td><td>No</td></tr>
+      <tr><td><strong>Volume</strong></td><td>Master volume, 85 percent by default. A recording is taken after this knob; a video clip's sound before it.</td><td>Knob keys</td><td>No</td></tr>
+      <tr><td>The meter and the spectrum</td><td>The meter in the panel header shows the output level and turns orange while the limiter is holding it down by more than 2 dB. The spectrum draws the output by frequency.</td><td>—</td><td>No</td></tr>
+      <tr><td><strong>Sync</strong></td><td>On by default: keeps both decks at one tempo and starts them on the bar. Off, a deck starts at once at its own tempo.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Mix</strong></td><td>Starts the other deck in time and fades across over eight bars, then stops the deck you left and moves focus; press it again to stop the fade. On windows 1100 pixels and wider the stage switches to Split for the fade.</td><td><kbd>M</kbd></td><td>Yes</td></tr>
+      <tr><td>The <a data-term="crossfader">crossfader</a></td><td>Blends deck A into deck B with equal power. The readout says <strong>Deck A</strong>, <strong>Deck B</strong> or the split, "40% A, 60% B". Double-click centres it.</td><td>—</td><td>Yes</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="songs-list">The songs list</h2>
+  <p>
+    Opened by the brand, the <strong>Songs</strong> button, the chip of the deck in focus or <kbd>B</kbd>, and titled
+    <strong>Beats</strong> or <strong>Songs · deck B</strong>. Up to three sections: <a data-term="my-songs">My songs</a>,
+    <strong>From the community</strong> and <strong>Beats</strong>. Each row shows the title, the author, the bpm, the tracks
+    and knobs, and for your own songs whether it is <strong>shared</strong>, what it is <strong>from</strong> and when it was
+    <strong>saved</strong>. There is no search.
+  </p>
+  <figure data-shot="crate" data-alt="The songs list: My songs with New, Import and Export, then From the community, then Beats, each row with A and B buttons"><figcaption>The songs list with all three sections, opened for deck A.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td>A row</td><td>Loads that song on the deck the list was opened for. A beat you cannot play yet reads "sign in to play".</td><td>—</td><td>Featured beats: No</td></tr>
+      <tr><td><strong>A</strong> / <strong>B</strong></td><td>Loads that song on deck A or deck B instead.</td><td>—</td><td>B: Yes</td></tr>
+      <tr><td><strong>New</strong></td><td>Starts a song of your own from a <a data-term="starter">starter</a>: <strong>Drum loop</strong> or <strong>Full song</strong>.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Import</strong></td><td>Brings in songs from files: <code>.json</code>, <code>.js</code>, <code>.strudel</code>, <code>.str</code> or <code>.txt</code>, several at once.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Export</strong></td><td>Downloads all of your songs as one file.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>⋯</strong></td><td>On your own songs: <strong>Rename</strong>, <strong>Duplicate</strong>, <strong>Share…</strong> (or <strong>Shared · link</strong> once it is) and <strong>Delete</strong>, which asks "Really delete?" before it does.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Copy to my songs</strong></td><td>On a beat or a community song: keeps a copy under My songs, credited to its author.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>From the community</strong></td><td>Up to 48 songs that people shared and offered, picked by the site's editors. Hidden while there are none.</td><td>—</td><td>Browsing: No. Playing: Yes</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="share-sheet">Share sheet</h2>
+  <p>
+    Opened by the link icon in the top bar, or from a song's <strong>⋯</strong> menu. Your own song gets a link of its own; a
+    beat is shared as its page with your settings in the link; someone else's song is shared as their link.
+  </p>
+  <figure data-shot="share-sheet" data-alt="The share sheet for your own song: the Share by link toggle, the link with Copy and Share, Let the site feature this, and Record audio and Make a video clip"><figcaption>The share sheet for one of your own songs, with sharing switched on.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Share by link: anyone with the link can listen</strong></td><td>Switches a <a data-term="share-link">link</a> on for your own song. The link always plays the latest saved version. Switching it off closes the link for good; switching it on again makes a new one.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Copy</strong> / <strong>Share…</strong></td><td>Copies the link, or hands it to the device's own share panel where it has one.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Let the site feature this</strong></td><td>Offers a shared song to the <a data-term="community-shelf">community shelf</a>: if the site's editors pick it, its title, your name and its header notes appear under From the community. Untick to withdraw it.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Record audio</strong></td><td>The same as the record dot in the top bar.</td><td><kbd>R</kbd></td><td>Yes</td></tr>
+      <tr><td><strong>Make a video clip</strong></td><td>Opens the clip sheet. There is no other button for it.</td><td><kbd>V</kbd></td><td>Yes</td></tr>
+      <tr><td><strong>Save and share</strong> / <strong>Save as my song and share</strong></td><td>Offered when you have unsaved changes, since a link plays the saved version. The other choice shares the saved version, or theirs, without your changes.</td><td>—</td><td>Yes</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="clip-sheet">Clip sheet</h2>
+  <p>
+    A <a data-term="video-clip">video clip</a> is recorded on your device as the music plays, from the next bar line; nothing
+    is uploaded. The sheet is titled <strong>Video clip</strong>.
+  </p>
+  <figure data-shot="clip-sheet" data-alt="The clip sheet: Vertical 9:16 and Square 1:1, the length chips, the note about recording on this device, and Record clip"><figcaption>The clip sheet before recording, with the shape and the length to choose.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Vertical 9:16</strong> / <strong>Square 1:1</strong></td><td>The shape of the clip. Vertical keeps the code clear of the buttons and captions that short-video apps lay over it.</td><td>—</td><td>Yes</td></tr>
+      <tr><td>Length chips</td><td>4, 8, 16 or 32 bars, written as "8 bars · 20 s", whichever last between 5 and 90 seconds at the song's tempo. The one nearest 20 seconds is chosen to begin with.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Record clip</strong></td><td>Starts the music if it is stopped, counts in, and records from the next bar line.</td><td>—</td><td>Yes</td></tr>
+      <tr><td>The pill on the stage</td><td>Reads "Starting the music…", "Starting in 3", "Bar 5 of 8" and "Finishing…". <strong>Stop</strong> keeps what is recorded once a whole bar is in; <strong>Cancel</strong> throws it away.</td><td><kbd>Esc</kbd> cancels</td><td>Yes</td></tr>
+      <tr><td><strong>Share…</strong> / <strong>Download</strong> / <strong>Make another</strong> / <strong>Discard</strong></td><td>After a clip: hand it to the device's share panel where it can share files; save it, MP4 at 1080p where the browser can write it and otherwise WebM at 720p; go back to the shape and length; or throw it away.</td><td>—</td><td>Yes</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="snapshot-sheet">Snapshot sheet</h2>
+  <p>
+    Opened by a right-click or a long press on a filled snapshot pad, or by the name on a snapshot's strip in the mixer. It
+    says what the snapshot is: its bars, the channel and the song it came from.
+  </p>
+  <figure data-shot="snapshot-sheet" data-alt="The snapshot sheet: the name field with Rename, then Pin to deck A's mixer, Download WAV and Clear the slot"><figcaption>The snapshot sheet for a four-bar capture.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Control</th><th>What it does</th><th>Key</th><th>Account?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Rename</strong></td><td>Gives the snapshot a name of up to 60 characters. It shows on the pad and on its strip.</td><td><kbd>Enter</kbd> in the field</td><td>Yes</td></tr>
+      <tr><td><strong>Pin to deck A's mixer</strong> / <strong>Unpin</strong></td><td><a data-term="pin">Pins</a> the snapshot to the deck as a channel of its own, looping in time and starting muted, so it is there to bring in from the mixer. It names whichever deck is in focus.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Download WAV</strong></td><td>Saves the snapshot as a 16-bit stereo WAV file.</td><td>—</td><td>Yes</td></tr>
+      <tr><td><strong>Clear the slot</strong></td><td>Empties the pad.</td><td>—</td><td>Yes</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="help-sheet">Help sheet</h2>
+  <p>
+    The <kbd>?</kbd> button opens it. From the top: the site's name and version with <strong>Donate</strong>; <strong>Open the
+    guide</strong> and the four ways into it; a card for the song on the deck in focus, with its header notes; <strong>Show the
+    first steps again</strong>; <strong>Keys</strong>, the list repeated below; <strong>Where things are</strong>, a line on each
+    part of the player with a link into this guide; <strong>MIDI controller</strong>, with <strong>Connect</strong>,
+    <strong>Learn</strong> and <strong>Forget bindings</strong>; <strong>Support the site</strong>; and <strong>Credits and
+    source</strong>, with the link to download this version's source.
+  </p>
+  <figure data-shot="help-sheet-keys" data-alt="The help sheet open at its Keys list"><figcaption>The help sheet, scrolled to the keys.</figcaption></figure>
+
+  <h2 id="account-and-admin">Account and Admin</h2>
+  <p>
+    <strong>Sign in with Google</strong> is the only way in; there is no password to make. The site stores your name, your
+    e-mail address and the songs you save. An account adds editing, saving, sharing by link, recording, video clips, the
+    second deck with <strong>Mix</strong> and the crossfader, snapshots and MIDI, and starts with one song,
+    <a data-term="user-demo">User demo</a>. Signed in, the dialog shows your name, how many songs you have,
+    <strong>Sign out</strong>, and for the site's administrator, <strong>Admin</strong>. Signing out removes your account's
+    songs from the browser; they stay in your account.
+  </p>
+  <figure data-shot="account-dialog" data-alt="The account dialog, signed out: what the account adds, Sign in with Google, and the line on what is stored"><figcaption>The account dialog before signing in.</figcaption></figure>
+  <p>
+    The <a data-term="admin">Admin</a> sheet has three tabs. <strong>Beats</strong> lists the site's beats and, for each,
+    who can play it: <strong>Anyone</strong> makes it a featured beat, up to six and never fewer than one;
+    <strong>Members</strong> is everyone signed in; <strong>Only me</strong> is the administrator alone. <strong>Import a
+    strudel.cc file</strong> adds beats from a strudel.cc export, skipping patterns already present. <strong>My songs</strong>
+    lists the administrator's own songs with <strong>Publish as beat</strong>, which adds one to the beats for the administrator
+    alone until it is opened to others, and <strong>Update beat</strong>, which puts a song's latest code on its beat.
+    <strong>People</strong> lists everyone with an account, when they joined and last visited, and how many songs they have;
+    private songs are only counted. Its <strong>All shared songs</strong> view lists every song people share, with
+    <strong>Feature</strong> and <strong>Unfeature</strong> for the community shelf, and a way to switch a song's sharing off,
+    which closes its link for good.
+  </p>
+
+  <h2 id="keys">Keys</h2>
+  <p>The player's own list, as the help sheet shows it; none of these work while a dialog is open, the single keys are off while you are typing, and nothing happens with <kbd>Alt</kbd> held.</p>
+<!--keys-->
+  <p>Some keys only work in one place.</p>
+  <dl class="keys">
+    <div><dt>On a focused knob</dt><dd><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> adjust it, <kbd>Shift</kbd> makes the step fine, <kbd>PageUp</kbd> and <kbd>PageDown</kbd> take larger steps, <kbd>Home</kbd> and <kbd>End</kbd> go to the ends, and <kbd>Enter</kbd>, <kbd>Backspace</kbd> or <kbd>Delete</kbd> reset it.</dd></div>
+    <div><dt>On a focused pad</dt><dd><kbd>Space</kbd> or <kbd>Enter</kbd> presses it.</dd></div>
+    <div><dt>Inside the code</dt><dd><kbd>Alt</kbd>+<kbd>Enter</kbd> runs the edited code and <kbd>Alt</kbd>+<kbd>.</kbd> stops the deck, the same as <kbd data-mod>Ctrl</kbd>+<kbd>Enter</kbd> and <kbd data-mod>Ctrl</kbd>+<kbd>.</kbd>. <kbd>Esc</kbd> leaves the code.</dd></div>
+    <div><dt><kbd>Esc</kbd>, in order</dt><dd>Cancels a clip being recorded, then lets picked bars go, then lets a capture go, then leaves MIDI Learn, then leaves the gallery, then releases a focused track.</dd></div>
+  </dl>
+  <p>On a Mac, <kbd data-mod>Ctrl</kbd> reads ⌘ throughout, and the site shows it that way.</p>
+
+  <h2 id="midi">MIDI</h2>
+  <p>
+    A MIDI controller can drive the deck; the site sends nothing back. Press <strong>MIDI</strong> at the right end of the
+    arrangement strip, or <strong>Learn</strong> in the help sheet, then click a control on screen and move or press one on
+    your hardware. Each hardware control drives one thing: binding it again replaces what it drove before. Press
+    <strong>MIDI</strong> again or <kbd>Esc</kbd> to leave Learn. See <a href="perform#midi">MIDI</a> in Perform.
+  </p>
+  <ul>
+    <li><strong>Bindable:</strong> the song's knobs and switches; every channel's <strong>M</strong>, <strong>S</strong> and fader, snapshot strips included; the six effect pads; the eight snapshot pads; the master knobs; the crossfader; <strong>Mix</strong>; and both play buttons.</li>
+    <li><strong>Not bindable:</strong> <strong>Sync</strong>, <strong>Latch</strong>, <strong>Reset</strong>, <strong>●</strong>, the capture length chips, <strong>Record</strong> and <strong>Update</strong>.</li>
+    <li><strong>Messages:</strong> a control change sets a knob or fader to its value; on a button it presses above half and releases below. A note presses on note-on and releases on note-off, so a pad on your hardware holds a pad on screen.</li>
+    <li><strong>Where bindings live:</strong> in this browser, by the message's number rather than the device, so the same controller on another port keeps them and another browser starts with none. <strong>Forget bindings</strong> in the help sheet clears them all.</li>
+    <li><strong>Browsers:</strong> Web MIDI works in Chrome, Edge and Firefox, not Safari. <strong>Connect</strong> asks the browser for access the first time; Learn needs you to be signed in.</li>
+  </ul>
+
+  <h2 id="addresses">Addresses</h2>
+  <table class="ref">
+    <thead><tr><th>Address</th><th>What it opens</th></tr></thead>
+    <tbody>
+      <tr><td><code>/</code></td><td>The player, with the first featured beat on deck A.</td></tr>
+      <tr><td><code>/beats/&lt;slug&gt;</code></td><td>One of the site's beats on its own page, with a link preview. Each beat has one.</td></tr>
+      <tr><td><code>/beats/&lt;slug&gt;#mix=…</code></td><td>The same beat with a mix in the address: the knob and switch positions, the mixer and the tempo. The share sheet makes these for a beat.</td></tr>
+      <tr><td><code>/s/&lt;uuid&gt;</code></td><td>A song someone shared by link, on a player of its own with a link preview. It plays the latest saved version.</td></tr>
+      <tr><td><code>/#song=&lt;uuid&gt;</code></td><td>The same shared song, opened on the main player. The main player asks before it runs someone else's code.</td></tr>
+      <tr><td><code>/#copy=&lt;uuid&gt;</code></td><td>A shared song, opened to keep a copy: <strong>Edit a copy</strong> on the shared player sends you here.</td></tr>
+      <tr><td><code>/#start=&lt;id&gt;</code></td><td>One of this guide's examples, loaded on deck A: <a data-start="macro">open the Pressure Cooker example</a>, for one.</td></tr>
+      <tr><td><code>/learn</code> and <code>/learn/&lt;area&gt;</code></td><td>This guide, and one of its areas: <a href="start">start</a>, <a href="play">play</a>, <a href="perform">perform</a>, <a href="remix">remix</a>, <a href="build">build</a>, <a href="share">share</a>, <a href="reference">reference</a> or <a href="glossary">glossary</a>.</td></tr>
+      <tr><td><code>/about</code></td><td>The <a href="about">About page</a>: what the site is, the beats, credits, and the site's contact address.</td></tr>
+      <tr><td><code>/privacy</code></td><td>The <a href="privacy">privacy notice</a>.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="not-supported">What is not supported</h2>
+  <p>The site is built for one thing, music made by code in a browser. These are its edges.</p>
+  <ul>
+    <li><strong>No MIDI out, OSC, SuperDirt, Hydra, Csound or serial.</strong> A song that calls for them runs without them. MIDI goes one way, in.</li>
+    <li><strong>No audio input.</strong> The site never asks for the microphone.</li>
+    <li><strong>What the browser must have.</strong> Web Audio for sound at all; AudioWorklet for recording and snapshots; Web MIDI for a controller (Chrome, Edge and Firefox, not Safari); MediaRecorder for video clips; the Fullscreen API for Gallery. The site must be served over http or https, not opened from a file.</li>
+    <li><strong>The arrangement strip edits the first 32 bars.</strong> One cycle is one bar everywhere on the site, and a paste cannot take a song past 32.</li>
+    <li><strong>One runtime for both decks.</strong> The two decks share one Strudel runtime, which is why they keep one tempo and why pads like Half act on both.</li>
+    <li><strong>Limits:</strong> a song's code can be up to 200,000 characters; a snapshot lasts at most 30 seconds; a recording stops itself at 20 minutes.</li>
+    <li><strong>What the code reader needs.</strong> A knob's minimum, maximum and step must be plain positive numbers: <code>slider(0, -12, 12)</code> reads as 0 to 12. See <a href="build#code-becomes-controls">How code becomes controls</a>.</li>
+    <li><strong>No version history.</strong> <strong>Save</strong> writes over your song; keep a version with <strong>Save as new</strong> before you need it.</li>
+    <li><strong>A shared song asks first</strong> on the main site: "Run this song" or "Run and keep a copy", with "Read the code first" beside them. Its own page at <code>/s/&lt;uuid&gt;</code> plays without asking, and without editing.</li>
+    <li><strong>Nothing is kept while storage is blocked.</strong> A browser that refuses storage keeps no positions, snapshots or MIDI bindings between visits.</li>
+  </ul>
+</article>

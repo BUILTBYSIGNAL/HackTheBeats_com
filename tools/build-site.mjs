@@ -40,6 +40,7 @@ import { collect, createLibrary } from '../js/library-core.js';
 import { lockedSong, publicEntries } from '../js/beats-core.js';
 import { renderCards } from './og-images.mjs';
 import { SITE_NAME, HOME_DESCRIPTION, beatPath, songTitle, songDescription } from '../js/routes-core.js';
+import { buildLearn } from './learn.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -202,6 +203,10 @@ function page(template, { title, description, path, data, image }) {
   return html;
 }
 
+// The Learn guide (tools/learn.mjs): its pages, its search index, and anything to fix first.
+const learn = buildLearn(root);
+mustFix.push(...learn.problems);
+
 // The pictures links unfurl with: one for each page, drawn before the pages that name them.
 const cardDetail = (song) => [song.by ? `by ${song.by}` : null, song.bpm ? `${Math.round(song.bpm)} bpm` : null, song.trackCount > 1 ? `${song.trackCount} tracks` : null].filter(Boolean).join(' · ');
 const pictures = new Set(
@@ -210,6 +215,8 @@ const pictures = new Set(
       { file: 'home.png', kicker: 'Live-coded music', title: 'Watch it. Mix it. Change the code.', detail: 'Music made by code, running live in your browser' },
       { file: 'about.png', kicker: 'About', title: 'Music made by code', detail: 'What it is, how to play with it, and who made it' },
       { file: 'privacy.png', kicker: 'Privacy', title: 'What we keep, and what we do not', detail: '' },
+      { file: 'learn.png', kicker: 'Learn', title: 'How to play, mix, remix and write beats', detail: 'The guide, with screenshots, examples and a glossary' },
+      ...learn.areas.map((area) => ({ file: `learn/${area.slug}.png`, kicker: `Learn · ${area.group}`, title: area.title, detail: area.description })),
       ...songs.map((song) => ({ file: `beats/${song.slug}.png`, kicker: 'A live-coded beat', title: song.title, detail: cardDetail(song), seed: song.seed })),
     ],
     join(dist, 'og'),
@@ -289,9 +296,18 @@ for (const song of songs) {
 
 write('about.html', page(replaceOnce(read('about.html'), '<!--beats-->', beatLinks, 'the list of beats'), { path: '/about', image: 'about.png', data: { '@type': 'AboutPage', name: `About ${SITE_NAME}`, url: `${origin}/about`, isPartOf: website } }));
 write('privacy.html', page(read('privacy.html'), { path: '/privacy', image: 'privacy.png' }));
+for (const entry of learn.pages) {
+  const data =
+    entry.kind === 'landing'
+      ? { '@type': 'CollectionPage', name: `Learn ${SITE_NAME}`, url: `${origin}${entry.path}`, isPartOf: website }
+      : { '@type': 'TechArticle', headline: entry.title, description: entry.description, url: `${origin}${entry.path}`, isPartOf: website };
+  write(entry.file, page(entry.html, { path: entry.path, image: entry.kind === 'landing' ? 'learn.png' : `learn/${entry.slug}.png`, data }));
+}
+write('learn/search.json', JSON.stringify(learn.search));
+cpSync(join(root, 'learn/examples'), join(dist, 'learn/examples'), { recursive: true });
 cpSync(join(root, '404.html'), join(dist, '404.html'));
 
-const paths = ['/', '/about', ...songs.map((song) => beatPath(song.slug)), '/privacy'];
+const paths = ['/', '/about', ...learn.pages.map((entry) => entry.path), ...songs.map((song) => beatPath(song.slug)), '/privacy'];
 if (origin) {
   write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${paths.map((path) => `  <url><loc>${esc(origin + path)}</loc></url>`).join('\n')}\n</urlset>\n`);
 }
@@ -368,7 +384,7 @@ if (database && songs.length) {
 }
 
 const megabytes = (path) => `${(statSync(path).size / 1048576).toFixed(1)} MB`;
-console.log(`✓ dist/ — version ${version}, ${songs.length} songs, ${paths.length} pages, source archive ${megabytes(archive)}`);
+console.log(`✓ dist/ — version ${version}, ${songs.length} songs, ${paths.length} pages (${learn.pages.length} of the Learn guide), source archive ${megabytes(archive)}`);
 for (const note of notes) console.log(`  · ${note}`);
 for (const problem of mustFix) console.log(`  ✗ ${problem}`);
 if (mustFix.length && strict) {

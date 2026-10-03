@@ -1,0 +1,39 @@
+/*
+  @title Harbour Lights
+  A note above each part is what the song map shows for it. Open the map and read the song before you hear it.
+  "haze" is the only knob: it sets how far away the keys and the pad sit.
+*/
+setcps(110/60/4)
+
+// how far back the keys and the pad sit
+const haze = slider(0.35, 0, 0.9)
+
+// a dip on every beat, so the chords breathe with the kick
+const duck = "[0.5 1]*4"
+
+// kick on every beat, a clap on two and four, hats on the offbeats
+DRUMS: s("bd*4, ~ cp ~ cp, [~ hh]*4")
+  .bank("RolandTR808")
+  .gain(0.8)
+  ._punchcard()
+
+// a bass line that walks between two chords
+BASS: note("<c2 c2 f2 g2>*2")
+  .struct("x ~ ~ x ~ x ~ ~")
+  .s("square")
+  .lpf(600)
+  .gain(0.45)
+  ._scope()
+
+// electric piano chords, ducked by the helper above
+KEYS: note("<[c4,eb4,g4] [c4,eb4,g4] [f3,ab3,c4] [g3,bb3,d4]>")
+  .s("gm_epiano1")
+  .gain(duck)
+  .room(haze)
+
+// a soft pad under everything, ducked the same way
+PAD: note("<[c3,g3] [c3,g3] [f3,c4] [g3,d4]>")
+  .s("gm_pad_halo")
+  .attack(0.4).release(1)
+  .gain(duck.mul(0.25))
+  .room(haze)

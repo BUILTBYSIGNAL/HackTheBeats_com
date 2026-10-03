@@ -46,6 +46,16 @@ test('serves the site to this machine, by either of its names', async () => {
   assert.equal(await ask('/', { headers: { Host: `localhost:${port}` } }), 200);
 });
 
+test('the Learn guide is built on request: its pages, its search, and nothing else', async () => {
+  assert.equal(await ask('/learn'), 200);
+  assert.equal(await ask('/learn/'), 200);
+  assert.equal(await ask('/learn/start'), 200);
+  assert.equal(await ask('/learn/search.json'), 200);
+  assert.equal(await ask('/learn/examples/macro.strudel'), 200);
+  assert.equal(await ask('/learn/no-such-area'), 404);
+  assert.equal(await ask('/learn/template'), 404);
+});
+
 test("a shared song's own address is the player, as on the hosted site", async () => {
   assert.equal(await ask('/s/0b9c7a1e-4f3d-4c2b-9a8e-1d2c3b4a5f6e'), 200);
   assert.equal(await ask('/s/not-a-link'), 404);

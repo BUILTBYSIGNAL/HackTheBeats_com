@@ -92,3 +92,6 @@ export function songDescription(song) {
   const close = 'Play it, mix it and edit the code in your browser.';
   return [lead, clip(said, 130), close].filter(Boolean).join(' ');
 }
+
+// An example from the guide, opened on the player: /#start=<id> (learn/examples/<id>.strudel).
+export const startFromHash = (hash) => /[#&]start=([a-z0-9-]+)/.exec(hash || '')?.[1] ?? null;

@@ -1,0 +1,38 @@
+/*
+  @title Paper Street
+  Plain house at 124: four on the floor, a clap on two and four, open hats on the off-beats, piano chords on top.
+  The first eight bars and the last eight are drums only, so it mixes in and out. STAB waits, muted.
+  @try 808 kit: `RolandTR909` -> `RolandTR808`
+  @try Bass in from the start: `.mask("<0!8 1!16 0!8>")` -> `.mask("<1!32>")` in BASS
+*/
+setcps(124/60/4)
+
+const filter = slider(1400, 300, 5000)
+
+KICK: s("bd*4").bank("RolandTR909").gain(0.9)
+  ._punchcard()
+
+CLAP: s("~ cp ~ cp").bank("RolandTR909").gain(0.55)
+
+HATS: s("[~ oh]*4").bank("RolandTR909").gain(0.3)
+
+BASS: note("<a1 a1 d2 e2>*2")
+  .struct("~ x ~ x ~ x ~ x")
+  .s("sawtooth")
+  .lpf(filter)
+  .gain(0.5)
+  .mask("<0!8 1!16 0!8>")
+
+CHORDS: note("<[a3,c4,e4] [a3,c4,e4] [d4,f4,a4] [e4,g4,b4]>")
+  .struct("~ x ~ x ~ x [x ~] ~")
+  .s("gm_epiano1")
+  .lpf(filter)
+  .room(0.3)
+  .gain(0.4)
+  .mask("<0!8 1!16 0!8>")
+
+_STAB: note("<[a4,e5] ~ [d5,a5] ~>")
+  .struct("~ ~ x ~")
+  .s("square")
+  .delay(0.35)
+  .gain(0.2)

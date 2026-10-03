@@ -509,6 +509,7 @@ body[data-transport='loading'] .curtain__play .spinner {
 /* ---------- small buttons shared across the page ---------- */
 
 .pillbtn {
+  display: inline-block;
   padding: 8px 14px;
   border: 1px solid var(--hb-line);
   border-radius: 999px;
@@ -1100,10 +1101,107 @@ dialog::backdrop {
   margin: 8px 0 4px;
   scroll-margin-top: 12px;
 }
+/* a Learn article's sections, listed at the top of the lightbox */
+.readpage__toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0 0 22px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--hb-line-soft);
+}
+.readpage__toc a {
+  font: 500 10.5px/1.4 var(--hb-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--hb-ink-3);
+}
+.readpage__toc a:hover {
+  color: var(--hb-ink);
+}
 @media (max-width: 480px) {
   .readpage__tab {
     display: none;
   }
+}
+
+/* ---------- "Learn more": a small way into the guide, wherever a control is explained ---------- */
+
+.learnlink {
+  display: inline-block;
+  font: 500 10px/1 var(--hb-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hb-ink-4);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+.learnlink::after {
+  content: ' →';
+}
+.learnlink:hover,
+.learnlink:focus-visible {
+  color: var(--hb-ink);
+}
+/* a lone "?": no arrow, a little room around it */
+.learnlink--mark {
+  padding: 0 4px;
+  font-size: 12px;
+}
+.learnlink--mark::after {
+  content: none;
+}
+@media (pointer: coarse) {
+  .learnlink {
+    padding: 4px 0;
+  }
+}
+/* after a sentence it sits on the line like a word; in a header it keeps to the end */
+.sheet__fine .learnlink,
+.panel__note + .learnlink,
+.notice .learnlink {
+  margin-left: 2px;
+}
+.notice .learnlink {
+  display: inline-block;
+  margin-top: 8px;
+}
+.notice .learnlink[hidden] {
+  display: none;
+}
+.panel__head .learnlink {
+  margin-left: auto;
+}
+.panel--pads .panel__head .learnlink {
+  margin-left: 0;
+}
+.drawer__starters .learnlink {
+  justify-self: start;
+  padding: 4px 0 2px;
+}
+
+/* the help sheet's way into the guide: the pill, and four places to start */
+.help__guide {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--hb-line-soft);
+  border-radius: 8px;
+}
+.help__guide .pillbtn {
+  justify-self: start;
+  text-decoration: none;
+}
+.help__guide .sheet__fine a {
+  color: var(--hb-ink-2);
+  text-decoration: underline;
+  text-decoration-color: var(--hb-ink-4);
+  text-underline-offset: 3px;
+}
+.help__guide .sheet__fine a:hover {
+  color: var(--hb-ink);
 }
 
 /* ---------- share ---------- */

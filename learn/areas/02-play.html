@@ -1,0 +1,374 @@
+<article data-title="Play with a beat" data-description="Everything you can do to a song without touching its code: the lit stage, the channels, the knobs and switches, the Try row, the song map, the views and the song list." data-kicker="Knowledge base" data-group="Knowledge base">
+  <p class="lede">
+    A song on Hack The Beats is a short program, and everything the site shows you is read from it: a channel for every
+    part, a knob for every number the author left open, a map of what is where. This is everything you can do to a song
+    without changing a line of its code. None of it needs an account.
+  </p>
+
+  <h2 id="stage">The stage</h2>
+  <p>
+    The big panel of code is the <a data-term="stage">stage</a>. It is not a listing beside the music: it is the
+    score, and the music is being read from it as you watch. Every word in a <a data-term="pattern">pattern</a>
+    lights up at the moment it sounds, so you can see the kick land on the <code>bd</code>, the clap on the
+    <code>cp</code>, the chord on the note names.
+  </p>
+  <figure data-shot="stage-lit" data-alt="The stage with a bar of code playing: the sounding words are lit, and a waveform is drawn under the bass line">
+    <figcaption>The words that are sounding right now are lit, and each part's drawing sits under the line that makes it.</figcaption>
+  </figure>
+  <p>
+    Some lines carry a drawing of their own. A part that ends in <code>._punchcard()</code>, <code>._scope()</code> or
+    <code>._pianoroll()</code> draws an <a data-term="inline-visual">inline visual</a> under that line: a grid of
+    hits, a live waveform, a roll of notes. The drawing dims when the part is muted, and it is one of the things the
+    author chose to show you, so it is worth a look.
+  </p>
+  <p>Three things in the code answer to a click, even before you edit anything:</p>
+  <ul>
+    <li>
+      <strong>A track label</strong> (<code>DRUMS:</code>, <code>BASS:</code>) mutes its part. The pointer says
+      <strong>Click to mute</strong>, or <strong>Click to bring in</strong> when the part is already off.
+    </li>
+    <li>
+      <strong>A highlighted number</strong> belongs to a knob or a switch on the deck. Click it and the deck finds
+      that control for you.
+    </li>
+    <li>
+      <strong>An inline slider</strong> sits under each <code>slider()</code> in the code. Drag it and the number
+      changes in both places at once.
+    </li>
+  </ul>
+  <figure data-shot="stage-inline-sliders" data-alt="Two slider() lines in the code, each with a thin slider drawn under its number">
+    <figcaption>Every <code>slider()</code> gets a slider of its own in the code, and dragging it turns the matching knob.</figcaption>
+  </figure>
+  <p>
+    Until you choose to edit, the code is locked: something to look at and click on, not something you can type into.
+    With a mouse, a click on the text itself starts editing, and so does the <a data-term="edit"><strong>Edit</strong></a> button in the stage
+    bar. On a phone or a tablet a tap is for the music, never for the caret, so editing only ever starts with
+    <strong>Edit</strong>. Signed out, the button says what it needs: <strong>Sign in to change the code</strong>.
+    What happens next is in <a href="remix#edit-live">Remix</a>.
+  </p>
+
+  <h2 id="channels">Channels</h2>
+  <p>
+    Every labelled part of the song is a <a data-term="channel">channel</a>, and the deck's <strong>Channels</strong>
+    panel shows one strip for each: a level fader with a real meter behind it, <strong>M</strong> to mute,
+    <strong>S</strong> to solo and <strong>●</strong> to <a data-term="capture">capture</a> it as a snapshot. The
+    names are the labels from the code, so a song with <code>KICK:</code>, <code>HATS:</code> and <code>BASS:</code>
+    gives you a kick strip, a hats strip and a bass strip.
+  </p>
+  <figure data-shot="deck-mixer" data-alt="The Channels panel with five strips: a level fader, a meter, M, S and the capture dot on each">
+    <figcaption>One strip for every labelled part, in the order they appear in the code.</figcaption>
+  </figure>
+  <figure data-shot="deck-strip" data-alt="One channel strip, with its name button at the top, the fader and meter, and M, S and ● below">
+    <figcaption>A strip: the name focuses the part in the code; the fader goes up to 125 per cent.</figcaption>
+  </figure>
+  <p>
+    The keys <kbd>1</kbd> to <kbd>9</kbd>, then <kbd>0</kbd>, <kbd>-</kbd> and <kbd>=</kbd>, mute channels 1 to 12
+    in the order they sit on the deck, which is the order they appear in the code. That is the fastest way to drop
+    a part and bring it back on the beat.
+  </p>
+  <p>
+    The name at the top of a strip is a button. Click it and the deck gives that track the
+    <a data-term="track-focus">focus</a>: its code and its drawing stay bright while everything else fades back.
+    Click the name again, or press <kbd>Esc</kbd>, to let it go. It is a way to watch one part without silencing
+    the others.
+  </p>
+  <p>
+    Mute, solo and level survive an edit. Change the code and run it again, and any part that keeps its label keeps
+    its fader and its mute, so a performance is not undone by a fix. A part that is renamed comes back fresh. The
+    small light at the top of each strip pulses with the part, which is the quickest way to see who is playing
+    when a dozen strips are side by side.
+  </p>
+  <h3 id="mute-and-solo">Mute and solo</h3>
+  <p>
+    Mute is simple: the part goes silent. Solo is the DJ's version of the same idea turned round: as soon as any
+    channel is soloed, only the soloed channels sound. Solo two of them and you hear those two. Un-solo the last one
+    and the full mix returns. A mute set while a channel is soloed is kept, and comes into effect when the solo is
+    released.
+  </p>
+  <figure data-shot="deck-mixer-mute-solo" data-alt="The Channels panel with one strip muted and another soloed">
+    <figcaption>With HATS soloed, only HATS sounds; the mute on PAD waits underneath.</figcaption>
+  </figure>
+  <p>
+    Some parts come up muted on purpose. An author who names a part with an underscore at the start or the end,
+    <code>_PAD:</code>, is leaving it for you to bring in: a <a data-term="muted-layer">muted layer</a>. Its strip
+    says <strong>Switched off in the code — unmute to bring it in</strong>, and its label in the code is dim. Press
+    its <strong>M</strong>, or click its label, and the part arrives. <a data-term="reset"><strong>Reset</strong></a> mutes it again, because
+    that is what the code says.
+  </p>
+  <p>
+    A strip with its name underlined has a <a data-term="missing-sound">missing sound</a>: the part asks for a
+    sample that none of the loaded packs has, so it stays silent. Rest on the strip to read which sound it wanted.
+    It is a sign to the author, not something you can fix from the deck.
+  </p>
+  <figure data-shot="deck-strip-missing" data-alt="A channel strip whose name is underlined, with the pointer resting on it and a note naming the sound that was not found">
+    <figcaption>An underlined name means a sound the sample packs do not have; the strip says which.</figcaption>
+  </figure>
+  <p>
+    On a phone, or in a short window, the deck shows one panel at a time with four tabs across the top:
+    <strong>Knobs</strong>, <strong>Mixer</strong>, <strong>Pads</strong> and <strong>Master</strong>. The channels
+    are behind <strong>Mixer</strong>. A song written as a single pattern, with no labels, has nothing to split
+    into strips, and the panel says so: <strong>This beat is a single pattern, so there are no separate channels</strong>.
+  </p>
+  <figure data-shot="phone-deck-tabs" data-alt="The deck on a phone, with the Knobs, Mixer, Pads and Master tabs across the top and the Mixer panel open">
+    <figcaption>On a phone the four panels are tabs, and the Mixer tab holds the channels.</figcaption>
+  </figure>
+
+  <h2 id="knobs">Knobs</h2>
+  <p>
+    A song's author opens a number to you by writing it as a <code>slider()</code>. Each one becomes a
+    <a data-term="knob">knob</a> on the deck and a slider in the code at the same time. Turn either one and the number
+    in the code is rewritten as you go, without the song being re-run: the music carries on, with the new value in
+    it. Nothing stops, nothing restarts.
+  </p>
+  <pre class="code" data-example="code-becomes-controls" data-open></pre>
+  <p>
+    Look at the line <code>const pressure = slider(1200, 300, 4000)</code>. That one line is the whole deal: the knob
+    is named <strong>PRESSURE</strong>, it starts at 1200 and runs from 300 to 4000. Further down, <code>.lpf(pressure)</code>
+    is where it goes: it feeds the bass's filter, so turning it opens and closes the bass. Open the example in the
+    player and turn it while the bass plays.
+  </p>
+  <figure data-shot="deck-knobs" data-alt="The Song knobs panel with three knobs, each with a name, a readout and a small sub-label">
+    <figcaption>The Song knobs panel: one knob for every <code>slider()</code>, with Reset at the top right.</figcaption>
+  </figure>
+  <p>
+    Under each knob is a <a data-term="readout">readout</a>, the number as the code will see it. When a knob feeds a
+    filter directly, the readout speaks in the filter's language, in Hz or kHz, so a knob on a low-pass reads 1.20
+    kHz rather than a bare number. Beneath that is a sub-label naming what the knob shapes, read from the code: a
+    knob that feeds <code>lpf</code> on BASS says so. A knob feeding several parts at once, a
+    <a data-term="macro">macro</a>, lists up to two of them. Rest on the knob for the full list.
+  </p>
+  <figure data-shot="deck-knob" data-alt="A single knob close up: the name PRESSURE, the readout 1.20 kHz, and the sub-label lpf">
+    <figcaption>A knob on a filter reads in Hz; the sub-label says what it shapes.</figcaption>
+  </figure>
+  <h3 id="knob-gestures">Turning a knob</h3>
+  <ul>
+    <li>Drag it up and down, or roll the mouse wheel over it.</li>
+    <li>With it focused, <kbd>↑</kbd> and <kbd>↓</kbd> step it; hold <kbd>Shift</kbd> for fine steps; <kbd>Home</kbd> and <kbd>End</kbd> go to either end.</li>
+    <li><kbd>Enter</kbd>, or a double-click, puts it back to the value in the code.</li>
+    <li>Drag the slider under the number in the code instead, if that is where you are looking.</li>
+  </ul>
+  <p>
+    <strong>Reset</strong>, at the top of the panel, is the bigger version of that: it puts every knob and every
+    switch back to what the code says, un-mutes and un-solos the channels, returns the faders to full, and sets the
+    tempo back to the song's own. It is the way home after an experiment.
+  </p>
+  <p>
+    The site remembers where you left the knobs, the switches and the mixer, per song, in this browser. Come back to
+    a beat tomorrow and it is set the way you left it. Your own songs keep their settings with the song, and a song
+    opened from someone's shared link is not remembered at all: it plays fresh each time.
+  </p>
+  <p>
+    A beat with no <code>slider()</code> in its code has an empty Knobs panel and says so: <strong>This beat has no
+    sliders in its code. The mixer and master still work.</strong>
+  </p>
+
+  <h2 id="switches">Switches</h2>
+  <p>
+    A <a data-term="switch">switch</a> is a knob that chooses between things rather than sliding between them. When a
+    song keeps a whole number at the top of its code and explains what the values mean, that number becomes a
+    stepped knob on the deck, placed before the sliders, with <strong>switch</strong> as its sub-label and the name of
+    the chosen option as its readout. Turn it and the readout steps from <strong>intro</strong> to
+    <strong>groove</strong> to <strong>drop</strong>.
+  </p>
+  <pre class="code" data-example="switch" data-open></pre>
+  <p>
+    Two switches live in this one. <code>section</code> is explained by the legend line in the header,
+    <code>section: 0 intro, 1 groove, 2 drop</code>, and <code>mood</code> by the comment after it, <code>// 0-1</code>.
+    Either way of explaining a number works. Follow <code>section</code> down the code and you can see it choosing a
+    kick pattern, a hat pattern, a bass line and a lead level at the same time.
+  </p>
+  <figure data-shot="deck-switch" data-alt="A stepped knob named SECTION whose readout says groove, with the sub-label switch">
+    <figcaption>A switch reads its option by name, and the sub-label says it is a switch.</figcaption>
+  </figure>
+  <p>
+    The difference from a knob matters. A knob changes a number inside a running pattern, so nothing has to stop. A
+    switch can change anything at all, because turning it rewrites the number and then runs the song again, a
+    moment later, with the new value. That is how one switch can change the scale, swap the drum pattern, or decide
+    which parts exist. You will hear the song re-enter on its new setting rather than glide to it, and that is the
+    trade: a switch does bigger things, a knob does smoother ones. Both are put back by <strong>Reset</strong>.
+  </p>
+
+  <h2 id="try">Try</h2>
+  <p>
+    Some songs offer their own suggestions. When an author writes <a data-term="try"><code>@try</code></a> lines in
+    the header, a row appears over the top left of the code once the song has played, labelled
+    <strong>Try</strong>, with up to four chips. Each chip is one change the producer thought you should hear.
+  </p>
+  <figure data-shot="tries" data-alt="The Try row over the code with four chips: 808 kit, Double hats, Bass up an octave, Chords in threes">
+    <figcaption>The Try row: up to four changes the author suggests, each a single tap.</figcaption>
+  </figure>
+  <ul>
+    <li>Tap a chip. The code is rewritten, the song runs with the change, and the changed line is marked down the side.</li>
+    <li>Tap it again and the line is put back exactly as it was.</li>
+    <li>Tap another chip while one is on, and both changes play together.</li>
+  </ul>
+  <figure data-shot="tries-on" data-alt="The Try row with one chip lit, and the changed line in the code marked in orange">
+    <figcaption>With a chip on, its line is marked; a second tap puts it back.</figcaption>
+  </figure>
+  <pre class="code" data-example="try-lines" data-open></pre>
+  <p>
+    Open this one and work through the four chips. Each teaches one thing: a different drum kit, hats twice as busy,
+    the bass an octave up, the chords in threes against a beat in fours. Watch the marked line while you listen and
+    you will see exactly what each change is.
+  </p>
+  <p>
+    A chip goes grey when the code no longer matches what it expects, usually because the line it would change has
+    been edited since. It says <strong>That part of the code has changed since</strong>. Nothing is saved by trying:
+    the row makes an ordinary edit on the stage and takes it away again, so it works signed out, and the song is
+    never changed for anyone else. Signed out, the message that confirms a change ends with the rest: <strong>Sign in to keep
+    your own version</strong>.
+  </p>
+  <p>
+    For a beginner, Try is the gentlest way into the code: a change you can hear, with the line that made it
+    pointed out. For a producer, it is a set of instant remix experiments on someone else's track, ready before
+    you have read a line. The Try row is not shown on the player for a shared link, nor in Gallery. How to write
+    your own is in <a href="build#try-lines">Build</a>.
+  </p>
+
+  <p>
+    Think of Try as a conversation with the author. The chips are their notes in the margin, "listen to this with
+    the hats doubled", and tapping one is reading the note aloud. If a change sounds better to you than the
+    original, that is where <a href="remix#edit-live">editing</a> starts: the line is already on the stage, marked,
+    waiting for an account to keep it.
+  </p>
+
+  <h2 id="song-map">The song map</h2>
+  <p>
+    The <a data-term="song-map">song map</a> lists what is in the code, in four groups: <strong>Setup</strong> (the
+    <a data-term="header">header</a>, the tempo and the sample packs), <strong>Knobs and switches</strong>,
+    <strong>Parts</strong> (one entry per channel) and <strong>Helpers</strong> (values the parts share). In a wide
+    window it sits beside the code, in the empty margin. When the window is narrower, or Split view is on, it waits
+    behind the <strong>Map</strong> button in the stage bar.
+  </p>
+  <figure data-shot="song-map" data-alt="The song map beside the code, with Setup, Knobs and switches, Parts and Helpers listed">
+    <figcaption>The map in its margin: a part's dot pulses with its track and dims when it is muted.</figcaption>
+  </figure>
+  <p>
+    Rest the pointer on an entry, or tab to it, and a card opens. It is written from the code itself: the sounds a
+    part uses, its effects in plain words (a filter, an echo, a room), the knobs that reach it, and, if the author
+    left a comment beside the part, that comment as a <a data-term="part-note">note</a>. Click the entry and the
+    code glides to that place. The card's <strong>Edit this part</strong> opens the code with the caret at its
+    start (signed out it reads <strong>Sign in to edit</strong>). The header, the tempo and a knob each have the
+    matching button.
+  </p>
+  <figure data-shot="song-map-card" data-alt="A song map card for the KEYS part: its sound, its effects in words, the author's note and an Edit this part button">
+    <figcaption>A card is read from the code: what the part plays, what shapes it, and the author's note.</figcaption>
+  </figure>
+  <figure data-shot="phone-map" data-alt="The song map on a phone, opened from the Map button over the code"><figcaption>On a phone the map opens from <strong>Map</strong>; choosing a part puts it away again.</figcaption></figure>
+  <pre class="code" data-example="map-notes" data-open></pre>
+  <p>
+    Open this one with the map showing. Every part has a comment above it, and each of those comments is what the
+    map says about the part, so you can read the whole song before you have heard it. Notice the two
+    <strong>Helpers</strong>: a knob's name and a shared pattern that two parts borrow.
+  </p>
+  <p>
+    With the map focused, <kbd>↑</kbd> and <kbd>↓</kbd> move through the entries, <kbd>Home</kbd> and <kbd>End</kbd>
+    jump to the ends, and <kbd>Esc</kbd> closes it. On a phone, choosing an entry closes the map and takes you to
+    the code.
+  </p>
+
+  <h2 id="views">Views</h2>
+  <p>Three buttons in the stage bar change how the code is shown, and a fourth kind of view comes from the mixer.</p>
+  <dl class="keys">
+    <div>
+      <dt><a data-term="follow"><strong>Follow</strong></a> (<kbd>F</kbd>)</dt>
+      <dd>
+        The code glides to whichever track has just come in, and otherwise tours the tracks that are playing. Scroll
+        by hand and it leaves you alone for a few seconds, then picks the tour up again. It is on by default and
+        remembered.
+      </dd>
+    </div>
+    <div>
+      <dt><strong>Split</strong></dt>
+      <dd>
+        Both decks' code side by side, so you can watch two songs at once. The site switches to Split by itself on
+        a wide window while a <a data-term="mix">mix</a> is fading from one deck to the other.
+      </dd>
+    </div>
+    <div>
+      <dt><strong>Gallery</strong> (<kbd>G</kbd>)</dt>
+      <dd>
+        Full screen, code only, in larger type: the view for a projector or a wall. The pads and channels still
+        answer to their keys. <strong>Exit gallery</strong>, or <kbd>Esc</kbd>, brings the deck back.
+      </dd>
+    </div>
+    <div>
+      <dt>Focus</dt>
+      <dd>
+        Click a channel's name in the mixer to <a data-term="track-focus">focus</a> that track: its code and visual
+        stay bright and the rest fades. Click the name again, or press <kbd>Esc</kbd>, to release it.
+      </dd>
+    </div>
+  </dl>
+  <figure data-shot="gallery" data-alt="The code alone, full screen, in large type, with an Exit gallery button at the top">
+    <figcaption><a data-term="gallery">Gallery</a> is the stage and nothing else, sized for a room.</figcaption>
+  </figure>
+  <figure data-shot="split-view" data-alt="Two columns of code, deck A on the left and deck B on the right, both lit">
+    <figcaption><a data-term="split">Split</a> shows both decks' code at once.</figcaption>
+  </figure>
+  <p>
+    <kbd>Esc</kbd> does the most recent thing first: it leaves Gallery before it releases a focus, and releases a
+    focus before it leaves the code. Press it until you are where you want to be.
+  </p>
+
+  <h2 id="beats-and-songs">Beats and songs</h2>
+  <p>
+    The song list is the drawer titled <strong>Beats</strong>. It opens from the <strong>Songs</strong> button in the
+    top bar, from the Hack The Beats mark, by clicking the chip of the <a data-term="deck">deck</a> that is already
+    in focus, or with <kbd>B</kbd>. <kbd>←</kbd> and <kbd>→</kbd> step to the previous or next song without opening
+    it. When two decks are loaded the title says which deck you are choosing for: <strong>Songs · deck B</strong>.
+  </p>
+  <figure data-shot="crate" data-alt="The Beats drawer open, with My songs at the top, From the community below it, and the Beats list">
+    <figcaption>The song list: your own songs first, then the community shelf, then the beats.</figcaption>
+  </figure>
+  <figure data-shot="phone-topbar" data-alt="The top bar on a phone, with the deck chip and the Songs button"><figcaption>On a phone the list opens from the <strong>Songs</strong> button in the top bar.</figcaption></figure>
+  <figure data-shot="phone-first-screen" data-alt="The player on a phone before anything plays"><figcaption>The whole player on a phone: the code above, the deck in one panel at a time below.</figcaption></figure>
+  <p>The drawer has three shelves:</p>
+  <ul>
+    <li>
+      <strong><a data-term="my-songs">My songs</a></strong>: the songs saved to your account, with
+      <strong>New</strong>, <strong>Import</strong> and <strong>Export</strong> beside the title. A new account
+      starts with one, the <a data-term="user-demo">User demo</a>, a copy of the featured beat that is yours to
+      change. Signed out, the shelf explains what fills it.
+    </li>
+    <li>
+      <strong>From the community</strong>: the <a data-term="community-shelf">community shelf</a>, songs other
+      people have saved and chosen to let the site feature, up to a few dozen at a time.
+    </li>
+    <li>
+      <strong><a data-term="beat">Beats</a></strong>: the site's own songs. Signed out, the
+      <a data-term="featured-beat">featured beats</a> play and the rest are shown but marked
+      <strong>sign in to play</strong>.
+    </li>
+  </ul>
+  <figure data-shot="community-shelf" data-alt="The From the community shelf with a handful of shared songs, each with a title, a by line and a short blurb">
+    <figcaption>The community shelf, shown here with invented names as an illustration.</figcaption>
+  </figure>
+  <p>
+    A row tells you what you are about to load before you load it: the tempo in bpm, how many tracks and knobs the
+    song has (or <strong>one pattern</strong>), <strong>from</strong> and a title when it is a remix of another song,
+    <strong>shared</strong> when it has a link, and when it was last saved. Clicking the row loads it on the deck in
+    focus. The small <strong>A</strong> and <strong>B</strong> buttons at the end load it on a particular deck. Your
+    own songs have a <strong>⋯</strong> menu (rename, duplicate, share, delete), and a beat has
+    <strong>Copy to my songs</strong>. There is no search box; the list is meant to be short enough to read.
+  </p>
+  <p>
+    Every beat has an address of its own, <code>/beats/</code> and its name, which you can send to anyone. A link
+    made from the share sheet carries your knob, switch, channel and tempo settings with it, so a friend hears the
+    beat the way you set it: see <a href="share#share-links">Share</a>.
+  </p>
+  <p>
+    Signed out on the live site, with more than one featured beat available, a row of chips sits beside deck A, one
+    per featured beat. Tap one to switch. They are the quickest way round the small player you get without an
+    account; the rest of what an account adds is in <a href="start#free-and-account">Start here</a>.
+  </p>
+  <figure data-shot="featured-chips" data-alt="Three chips beside the deck A button, each naming a featured beat, with one lit">
+    <figcaption>Signed out, the featured beats are chips beside deck A.</figcaption>
+  </figure>
+  <aside class="note" data-kind="tip">
+    <p>
+      When you have found a beat you like, the next step is yours to choose: take it to the DJ booth in
+      <a href="perform">Perform</a>, or open the code in <a href="remix">Remix</a>.
+    </p>
+  </aside>
+</article>

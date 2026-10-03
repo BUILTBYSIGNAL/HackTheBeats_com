@@ -1,0 +1,159 @@
+<!doctype html>
+<!--
+  The Learn pages' chrome. tools/learn.mjs assembles /learn and /learn/<slug> from this file,
+  learn/landing.html and learn/areas/NN-<slug>.html; the dev server does it on every request
+  and the site build writes the result to dist/. Nothing generated is committed.
+
+  Authoring an area (learn/areas/NN-<slug>.html), in full:
+    <article data-title="…" data-description="…" data-kicker="…" data-group="Getting started|Knowledge base|Reference">
+      first child: <p class="lede">…</p>; the builder draws the kicker and the h1 from the attributes
+    <h2 id="…"> and <h3 id="…">: every one has an explicit id, unique within the page (h4 needs none)
+    <a data-term="snapshot">snapshots</a>: a glossary term; opens the drawer; the id must be an entry in the glossary page
+    links: href="#id" (this page), href="perform#pads" or href="perform" (another area), href="about", href="privacy",
+           href="/" and href="/beats/…" (the player), http(s)://… (external; target and rel are added)
+    <pre class="code" data-example="macro" data-open data-title="Pressure Cooker"></pre>: inlines learn/examples/macro.strudel,
+           highlighted, with an "Open in the player" button when data-open is present
+    <pre class="code" data-title="…">literal text</pre>: a short excerpt. The text is literal, not HTML: write < and & as they are.
+           data-lang="text" leaves it unhighlighted
+    <a data-start="macro">Open in the player</a>: a bare open-in-the-player link (the builder fills the address)
+    <figure data-shot="deck-pads" data-alt="The six pads with Echo held"><figcaption>…</figcaption></figure>: images/learn/deck-pads.png
+    <aside class="note" data-kind="tip|note|caution"><p>…</p></aside>: a callout
+    <kbd>Space</kbd>, <kbd data-mod>Ctrl</kbd>+<kbd>Enter</kbd> (data-mod reads ⌘ on a Mac); <dl class="keys"><div><dt>…</dt><dd>…</dd></div></dl>
+    a comment marker named keys (as written below for nav, crumb and article): the player's own shortcut list, lifted from index.html (the reference page only)
+    <table class="ref">: a reference table
+  The glossary page (learn/areas/08-glossary.html) holds the drawer's definitions:
+    <dl class="glossary"><div class="entry" id="snapshot" data-related="capture pin"><dt>Snapshot</dt>
+      <dd><p>…</p><p class="entry__more"><a href="perform#snapshots">Read the full section</a></p></dd></div></dl>
+  The landing (learn/landing.html) is an <article> with a lede, the four audience paths and a comment marker named areas.
+  Every rule here is checked by the builder: a broken link, a missing picture or term, a heading without an id
+  fails `npm test` and `npm run build -- --strict`, and the dev server prints what is wrong.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Learn — Hack The Beats</title>
+    <meta name="description" content="How to play, mix, remix and write live-coded beats on Hack The Beats." />
+    <!--seo-->
+    <meta name="theme-color" content="#191919" />
+    <meta name="color-scheme" content="dark" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23191919'/%3E%3Crect x='6' y='7' width='6' height='5' fill='%23eceae4'/%3E%3Crect x='20' y='7' width='6' height='5' fill='%23eceae4' opacity='.5'/%3E%3Crect x='13' y='14' width='6' height='5' fill='%23ff6b35'/%3E%3Crect x='6' y='21' width='6' height='5' fill='%23eceae4' opacity='.5'/%3E%3Crect x='20' y='21' width='6' height='5' fill='%23eceae4'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/support.css" />
+    <link rel="stylesheet" href="/css/learn-content.css" />
+    <link rel="stylesheet" href="/css/learn.css" />
+  </head>
+  <body class="learn">
+    <a class="skip" href="#article">Skip to the article</a>
+    <header class="learnbar">
+      <a class="brand" href="/" aria-label="Hack The Beats, the player">
+        <svg class="brand__mark" viewBox="0 0 20 20" aria-hidden="true">
+          <rect x="1" y="2" width="5" height="4" /><rect x="14" y="2" width="5" height="4" opacity=".45" />
+          <rect class="brand__dot" x="7.5" y="8" width="5" height="4" />
+          <rect x="1" y="14" width="5" height="4" opacity=".45" /><rect x="14" y="14" width="5" height="4" />
+        </svg>
+        <span class="brand__name">Hack The Beats</span>
+      </a>
+      <a class="learnbar__kicker" href="/learn">Learn</a>
+      <button type="button" class="iconbtn learnbar__contents" id="contents-open" aria-label="Contents" aria-controls="contents-sheet" aria-expanded="false">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" /></svg>
+      </button>
+      <form class="search" role="search" id="search" action="/learn/glossary">
+        <label class="visually-hidden" for="q">Search the guide</label>
+        <input type="search" id="q" name="q" placeholder="Search the guide" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" role="combobox" aria-expanded="false" aria-controls="search-results" aria-autocomplete="list" aria-haspopup="listbox" />
+        <kbd class="search__hint" aria-hidden="true">/</kbd>
+        <button type="button" class="iconbtn search__open" id="search-open" aria-label="Search the guide">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4" /><path d="m10 10 3.5 3.5" /></svg>
+        </button>
+        <button type="button" class="iconbtn search__close" id="search-close" aria-label="Close the search">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+        <div class="search__panel" id="search-panel" hidden>
+          <ul class="search__results" id="search-results" role="listbox" aria-label="Results"></ul>
+          <p class="search__note" id="search-note" hidden></p>
+        </div>
+      </form>
+      <a class="learnbar__donate" href="#support">Donate</a>
+      <a class="learnbar__player" href="/">Open the player</a>
+    </header>
+
+    <div class="learn__main">
+      <nav class="learnnav" id="contents" aria-label="Contents">
+        <!--nav-->
+      </nav>
+      <main class="learn__body learn-content" id="article" tabindex="-1">
+        <!--crumb-->
+        <!--article-->
+        <!--pager-->
+      </main>
+    </div>
+
+    <div class="learn__support">
+    <section class="support" id="support" aria-labelledby="support-title">
+      <div class="support__copy">
+        <h2 class="support__title" id="support-title">Support the site</h2>
+        <p>
+          Hack The Beats is free: no ads, no paywall, no subscription. If it has had your head nodding, help us keep hacking
+          the beats. Tell a friend who makes music, share a song you made, and wear the shirt.
+        </p>
+        <p class="support__fine">Every shirt helps keep the site running, free, and full of new beats.</p>
+        <a class="support__buy" href="https://creativecanvaslabs.com/collections/hack-the-beats" target="_blank" rel="noopener">
+          Buy a shirt
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5" /></svg>
+        </a>
+      </div>
+      <a class="support__merch" href="https://creativecanvaslabs.com/collections/hack-the-beats" target="_blank" rel="noopener" aria-label="The Hack the Beats shirt, in the shop (opens in a new window)">
+        <span class="support__tag" aria-hidden="true">merch_001<span>long sleeve</span></span>
+        <span class="support__scan" aria-hidden="true"></span>
+        <img
+          src="/images/shirt.webp"
+          alt="A black long-sleeve shirt with the Hack the Beats logo in white and orange pixels"
+          width="552"
+          height="720"
+          loading="lazy"
+        />
+        <span class="support__steps" aria-hidden="true"><i style="--i: 0"></i><i style="--i: 1"></i><i style="--i: 2"></i><i style="--i: 3"></i><i style="--i: 4"></i><i style="--i: 5"></i><i style="--i: 6"></i><i style="--i: 7"></i><i style="--i: 8"></i><i style="--i: 9"></i><i style="--i: 10"></i><i style="--i: 11"></i><i style="--i: 12"></i><i style="--i: 13"></i><i style="--i: 14"></i><i style="--i: 15"></i></span>
+      </a>
+    </section>
+    </div>
+
+    <footer class="pagefoot">
+      <p>© Built By Signal LLC · <a href="/">Open the player</a> · <a href="/learn">Learn</a> · <a href="/about">About</a> · <a href="/privacy">Privacy</a> · <span id="version"></span></p>
+      <a class="signal" href="https://builtbysignal.com" target="_blank" rel="noopener" aria-label="Built by SIGNAL (opens in a new window)">
+        <svg class="signal__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="5" fill="#181A1F" /><rect x="14" y="7" width="4" height="18" fill="#DD5E2E" /></svg>
+        <span>Built by <strong>SIGNAL</strong></span>
+      </a>
+    </footer>
+
+    <dialog class="termdrawer" id="termdrawer" aria-labelledby="termdrawer-title">
+      <header class="termdrawer__head">
+        <p class="termdrawer__kicker">Glossary</p>
+        <button type="button" class="iconbtn" data-act="close" aria-label="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+      </header>
+      <h2 class="termdrawer__title" id="termdrawer-title" tabindex="-1"></h2>
+      <div class="termdrawer__body learn-content"></div>
+      <p class="termdrawer__related" hidden></p>
+      <footer class="termdrawer__foot">
+        <a class="pillbtn termdrawer__more" data-act="more" href="/learn/glossary">Read the full section →</a>
+      </footer>
+    </dialog>
+
+    <dialog class="learnnav-sheet" id="contents-sheet" aria-labelledby="contents-title">
+      <header class="learnnav-sheet__head">
+        <h2 class="learnnav-sheet__title" id="contents-title">Contents</h2>
+        <button type="button" class="iconbtn" data-act="close" aria-label="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+      </header>
+      <div class="learnnav-sheet__body"></div>
+    </dialog>
+
+    <script src="/site-config.js"></script>
+    <script type="module" src="/js/learn.js"></script>
+  </body>
+</html>

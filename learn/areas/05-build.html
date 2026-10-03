@@ -1,0 +1,454 @@
+<article data-title="Build for Hack The Beats" data-description="For people who write Strudel: how the site reads a song, which lines become knobs, switches, channels and suggestions, and how to write one that performs well on the stage, the decks and the strip." data-kicker="Knowledge base" data-group="Knowledge base">
+  <p class="lede">
+    You already know Strudel, or you are about to. This page is about what happens to your code once it is on the site:
+    how a song is read, which of its lines become controls and pictures, what a DJ can do with it that your code never
+    has to handle, and how to write a song that takes advantage of all that. You write the song; the site turns it into
+    an instrument someone else can play.
+  </p>
+
+  <h2 id="strudel-basics">Strudel in ten lines</h2>
+  <p>
+    A song here is plain <a data-term="strudel">Strudel</a>. Anything that plays on strudel.cc plays here, with the few
+    exceptions under <a href="#sound-palette">the sound palette</a> and in the <a href="reference#not-supported">reference</a>.
+    If you are new to it, here is the part of the language that nearly every song on the site is made of.
+  </p>
+  <pre class="code" data-title="Most of what a song needs">setcps(124/60/4)                       // the tempo: 124 beats a minute, one cycle per bar
+
+KICK: s("bd*4").bank("RolandTR909")    // four kicks a bar, from the 909
+CLAP: s("[~ cp]*2")                    // rest then clap, twice: claps on two and four
+HATS: s("hh(3,8)")                     // three hats spread evenly over eight steps
+BASS: note("<a1 a1 c2 g1>*2")          // one note per bar, four bars in a row, twice as fast
+  .s("sawtooth")                       // played on a sawtooth synth
+  .lpf(900)                            // through a low-pass filter at 900 Hz
+  .gain(0.5)                           // at half level
+LEAD: n("0 2 4 7").scale("A4:minor")   // scale steps instead of note names
+  .room(0.4)                           // in a little reverb</pre>
+  <p>
+    The text inside double quotes is <a data-term="mini-notation">mini-notation</a>, Strudel's language for rhythm.
+    Space separates steps in a bar, <code>~</code> is a rest, <code>*4</code> repeats a step four times inside its
+    space, <code>[ ]</code> groups steps so they share one space, <code>&lt;a b&gt;</code> plays one of its items per
+    <a data-term="cycle">cycle</a> in turn, and <code>(3,8)</code> is a Euclidean rhythm, three hits spread over
+    eight steps. <code>s()</code> picks a sample or a synth, <code>.bank()</code> picks the drum machine the drum names
+    come from, <code>note()</code> plays note names and <code>n()</code> with <code>.scale()</code> plays scale
+    degrees. <code>.lpf()</code>, <code>.room()</code> and <code>.gain()</code> are a filter, a reverb and a level. And
+    <code><a data-term="setcps">setcps</a>()</code> sets the <a data-term="tempo">tempo</a> in cycles per second, which is
+    why songs write it as beats per minute divided by sixty and by four: one cycle is then one <a data-term="bar">bar</a> of
+    four beats, which is what the whole site assumes.
+  </p>
+  <p>
+    That is where this guide stops teaching Strudel and <a href="https://strudel.cc/workshop/getting-started/">strudel.cc's own workshop</a>
+    takes over: it covers every function in the lines above, and hundreds more, with sound. Learn it there, write
+    here.
+  </p>
+  <aside class="note" data-kind="caution">
+    <p>Four mistakes that cost people an evening:</p>
+    <ul>
+      <li><strong>Double quotes are mini-notation.</strong> A plain JavaScript string must use single quotes. <code>const name = "hello"</code> is read as a pattern and breaks; <code>const name = 'hello'</code> is a string. Pattern text stays in double quotes: <code>s("bd*4")</code>.</li>
+      <li><strong><code>slider()</code> is a pattern, not a number.</strong> Never use it to pick from a list: <code>kits[slider(0, 0, 2)]</code> crashes. Use a plain number for choosing (which is exactly what a <a href="#switches">switch</a> is) and keep sliders inside the chain, as in <code>.lpf(cut)</code>.</li>
+      <li><strong>Do not <code>chop()</code> or <code>loopAt()</code> a short one-shot</strong> to stretch it over bars; it turns a hit into noise. Those are for long loops. A one-shot plays at <code>speed(1)</code> on a grid.</li>
+      <li><strong>Load only the sample packs the song plays.</strong> The first load of several packs from GitHub is slow, and the song waits for them.</li>
+    </ul>
+  </aside>
+
+  <h2 id="start-a-song">Start a song</h2>
+  <p>There are four ways to get a song onto the deck, and all of them end in the same place: a song of yours in <a data-term="my-songs">My songs</a>.</p>
+  <ul>
+    <li><strong>New</strong>, in the song list (<kbd>B</kbd>), offers two <a data-term="starter">starters</a>: <strong>Drum loop</strong>, one track of drums and one knob with room to add your own, or <strong>Full song</strong>, drums, bass and a lead with three knobs. Both use only sounds that are always loaded, and each carries a couple of suggestions to try.</li>
+    <li><strong><a data-term="import-export">Import</a></strong>, beside it, takes a file: a single song as <code>.strudel</code>, <code>.js</code>, <code>.str</code> or <code>.txt</code>, or a pattern export from strudel.cc as <code>.json</code>, with any number of patterns in one file. So you can write on strudel.cc, where the whole language is documented and the REPL is quick, export, and import here. <strong>Export</strong> goes the other way, with all your songs in one strudel.cc-format file.</li>
+    <li><strong>The examples in this guide.</strong> Every <strong>Open in the player</strong> button on these pages loads that song onto deck A. It is nobody's song yet: press play, and <strong>Save a copy</strong> keeps it as a song of your own to take apart.</li>
+    <li><strong>In a local copy of the site</strong>, drop a file into <code>beats/</code> and reload; it appears beside the demo beats First Light, Low Tide and Clockwork. The repository README has the details.</li>
+  </ul>
+  <figure data-shot="crate-starters" data-alt="The New panel in the song list, with the Drum loop and Full song starters"><figcaption>New offers two starters, a drum loop and a full song, each with suggestions already written in.</figcaption></figure>
+  <figure data-shot="example-on-deck" data-alt="An example from the guide on deck A, with the status line offering Save a copy"><figcaption>An example from this guide on the deck: play it, and Save a copy makes it yours.</figcaption></figure>
+  <p>
+    Then shape it for the stage, which is what the rest of this page is about: a <a href="#header">header</a>, <a href="#labels">labels</a>,
+    <a href="#macros">named knobs</a>, a <a href="#switches">switch</a> or two, <a href="#try-lines">suggestions</a>,
+    <a href="#song-map-notes">notes for the song map</a>, a <a href="#visuals">visual</a> or two and a <a href="#form-32-bars">32-bar form</a>.
+    None of it is required. A bare pattern plays. But each one gives a listener something to hold.
+  </p>
+
+  <h2 id="code-becomes-controls">How the site reads your code</h2>
+  <p>
+    The site reads the code before it runs it, the way you would read a score, and builds the <a data-term="deck">deck</a>
+    from what it finds. Nothing is declared, nothing is configured: the code is the configuration.
+  </p>
+  <table class="ref">
+    <thead><tr><th>You write</th><th>The listener gets</th></tr></thead>
+    <tbody>
+      <tr><td><code>DRUMS: s("bd*4")</code></td><td>A <a data-term="channel">channel</a> called <strong>DRUMS</strong> in the mixer: a level with a real meter, mute, solo and a capture button. The first twelve channels answer to the keys <kbd>1</kbd> to <kbd>9</kbd>, <kbd>0</kbd>, <kbd>-</kbd> and <kbd>=</kbd>.</td></tr>
+      <tr><td><code>$: note("c2 g2").s("sine")</code></td><td>A channel too, named from the first sound it plays (here <strong>SINE</strong>), or "track" if there is none.</td></tr>
+      <tr><td><code>_PAD: …</code> or <code>PAD_: …</code></td><td>A <a data-term="muted-layer">muted layer</a>: a channel that comes up muted, ready to be brought in live.</td></tr>
+      <tr><td><code>const pressure = slider(1200, 300, 4000)</code></td><td>A <a data-term="knob">knob</a> called <strong>PRESSURE</strong>, 300 to 4000, with a sub-label saying what it feeds. The same slider is drawn in the code; knob and slider are one control.</td></tr>
+      <tr><td><code>.lpf(slider(900, 200, 4000))</code> inline</td><td>A knob named after its track and the parameter, <strong>BASS · lpf</strong>: accurate, less inviting.</td></tr>
+      <tr><td><code>const mood = 0</code> with a header line <code>mood: 0 minor, 1 major</code></td><td>A <a data-term="switch">switch</a> with named positions. Turning it re-runs the song in that version.</td></tr>
+      <tr><td><code>const part = 0 // 0-2</code></td><td>A switch with positions 0 to 2, from the comment beside it.</td></tr>
+      <tr><td><code>setcps(122/60/4)</code> or <code>setcpm(122/4)</code></td><td>The tempo shown as <strong>122 BPM</strong>, and the tempo the other deck syncs to.</td></tr>
+      <tr><td><code>@try Label: `find` -> `replace`</code> in the header</td><td>A <a data-term="try">Try</a> chip over the code, up to four. One tap makes the change and runs it; another puts it back.</td></tr>
+      <tr><td>A comment in words just above a part</td><td>That part's note in the <a data-term="song-map">song map</a>, beside the code.</td></tr>
+      <tr><td><code>._punchcard()</code>, <code>._scope()</code> and the other inline visuals</td><td>A drawing under the line, moving while that part plays, dim while it is muted.</td></tr>
+      <tr><td>The opening comment with <code>@title</code>, <code>@by</code> and some plain lines</td><td>The song's name on the deck chip and the curtain, its credit, and its notes in the help sheet and in search results.</td></tr>
+    </tbody>
+  </table>
+  <p>Here is a whole song that uses one of each, and what the site makes of every line.</p>
+  <pre class="code" data-example="code-becomes-controls" data-open></pre>
+  <p>
+    The comment at the top is the <a data-term="header">header</a>. <code>@title</code> names the song; the two plain
+    lines are its notes, written for whoever is about to play it; the <code>@try</code> line becomes a chip that swaps
+    the bass from a sawtooth to a triangle, inside <strong>BASS</strong> only. <code>setcps(118/60/4)</code> makes the
+    deck say 118 BPM. <code>const pressure = slider(1200, 300, 4000)</code> is a knob named PRESSURE, and because it goes
+    straight into <code>.lpf()</code> its readout is in hertz and its travel is logarithmic, so the low end is not
+    crammed into the first few degrees of turn. <code>DRUMS:</code> is a channel that the <strong>No drums</strong> pad
+    recognises by name; the <code>._punchcard()</code> at the end of its chain draws the drum pattern under the line.
+    <code>BASS:</code> is a second channel with a <code>._scope()</code> drawing its wave. <code>_PAD:</code> is a third
+    that starts muted: the mixer shows it dim, and a listener brings it in when the lights come up, as the notes suggest.
+  </p>
+
+  <h2 id="header">The header</h2>
+  <p>The first comment in the file is the song's identity. The site reads four kinds of line from it and drops the rest.</p>
+  <pre class="code" data-title="A header with everything in it">/*
+  @title Night Ferry
+  @by Your Name
+  A slow one for late crossings. Everything is built from four chords.
+  Mute DRUMS and the bass carries it alone.
+  mood: 0 minor, 1 major
+  @try Glassy lead: `s("sawtooth")` -> `s("triangle")` in LEAD
+  @try Double-time hats: `hh*8` -> `hh*16`
+*/</pre>
+  <ul>
+    <li><strong><code>@title</code> and <code>@by</code></strong> are the name and the credit, shown on the deck chip, the curtain, the song list and in a video clip. Strudel's shorthand <code>// "night ferry" @by yourname</code> on one line works too. Without one of these the song has no title of its own.</li>
+    <li><strong>Plain lines</strong> are the song's <a data-term="notes">notes</a>: they appear in the help sheet while the song is on the deck, on the curtain before it plays, and as the page description search engines show for a beat. Write them for a listener, not a coder: what the song is, what to turn, what to mute. Two or three sentences is plenty.</li>
+    <li><strong>A switch legend</strong>, <code>mood: 0 minor, 1 major</code>, names the positions of a switch (<a href="#switches">below</a>). It can carry on over the following lines as long as they begin with a digit. Legends are shown in the help sheet with the notes, but kept out of the page description.</li>
+    <li><strong><code>@try</code> lines</strong> become the chips (<a href="#try-lines">below</a>).</li>
+  </ul>
+  <p>
+    Any other <code>@tag</code> is dropped, so a <code>@license</code> or <code>@tempo</code> line from another tool does no
+    harm but is not shown. The tempo is only ever read from <code>setcps()</code> or <code>setcpm()</code> in the code.
+  </p>
+
+  <h2 id="labels">Labels: every part a channel</h2>
+  <p>
+    A label is a name, a colon and a pattern at the top level of the file: <code>BASS: note(…)</code>. Each becomes a
+    channel in the mixer, and the name is what the listener sees, so choose it the way you would name a track in a
+    session. Leading and trailing underscores are stripped, <code>camelCase</code> is split into words, duplicates are
+    numbered, and the result is shown in capitals: <code>subBass:</code> reads <strong>SUB BASS</strong>.
+  </p>
+  <figure data-shot="deck-strip" data-alt="One channel strip in the mixer: name, meter, fader, M, S and the capture dot"><figcaption>What a label becomes: a strip with a meter that moves with that part alone.</figcaption></figure>
+  <p>
+    A label that starts or ends with an underscore, <code>_ACID:</code> or <code>ACID_:</code>, is a muted layer: it
+    comes up muted, and <strong>Reset</strong> mutes it again. This is the simplest performance feature you can write.
+    Three or four muted layers let a DJ build the song up in the mixer over a few minutes, and the song still reads as a
+    complete piece when every layer is in.
+  </p>
+  <p>
+    <strong>Keep drums in their own tracks</strong>, with plain names. The <a data-term="no-drums">No drums</a> pad finds
+    percussion by name (drum, kick, bd, hat, hh, oh, clap, cp, snare, sd, perc, break, click, rim, cymbal, tom) or, failing
+    that, by what the track plays in its first eight bars; if a track is mostly drum hits it counts. A
+    <strong>DRUMS</strong> track that also carries the bass line takes the bass out with the drums. Separate tracks also
+    make better <a data-term="snapshot">snapshots</a>, since a capture takes one channel alone, and a cleaner
+    <a data-term="arrangement-strip">arrangement strip</a>, which shows one row per label.
+  </p>
+  <p>
+    What a listener gets from each label: a fader with a meter, <strong>M</strong> and <strong>S</strong>, the keys 1 to 12,
+    a <strong>●</strong> to capture it, a row on the strip, a name to click in the code to mute it, and an entry in the song
+    map. A song with no labels at all is one pattern: it plays, but there are no strips, no rows, nothing to capture and
+    nothing for No drums to act on.
+  </p>
+  <p>A song built as floors, each part on its own, two of them waiting with the lights off:</p>
+  <pre class="code" data-example="layers" data-open></pre>
+
+  <h2 id="macros">Knobs as macros</h2>
+  <p>
+    A knob is the main way someone who has never seen Strudel touches your song. Signed-out visitors can turn knobs on
+    the featured beats, so a knob is often the first thing a stranger does with your music. The site makes every
+    <code>slider(value, min, max)</code> a knob; your job is to make each one a musical idea.
+  </p>
+  <p>
+    <strong>Name it with a <code>const</code>.</strong> <code>const air = slider(0.35, 0, 0.9)</code> shows as <strong>AIR</strong>
+    with a sub-label naming up to two of the parameters it feeds. An inline slider is named after its track and parameter,
+    which is accurate but says nothing about the music. Names that are musical ideas work best: PRESSURE, DARKNESS,
+    ENERGY, SPACE, DRIVE, AIR, CHAOS, TENSION. A knob called LPF is a technical fact; a knob called DARKNESS is an
+    invitation.
+  </p>
+  <p>
+    <strong>One const in several places is a <a data-term="macro">macro</a>.</strong> Use <code>energy</code> on the bass
+    filter, again scaled for the hats' level, and again for the pad's reverb, and one gesture changes three things at
+    once. The site lists every track a knob shapes in its tooltip (<em>Shapes BASS, HATS, PAD</em>). Two to five strong
+    knobs beat twelve subtle ones, and every position of each should sound good: a visitor will turn it all the way both
+    ways.
+  </p>
+  <pre class="code" data-example="macro" data-open></pre>
+  <p>
+    <strong>The <a data-term="readout">readout</a> follows the sound.</strong> A knob that reaches a filter, directly
+    (<code>.lpf(cut)</code>) or through <code>.range()</code>, <code>.rangex()</code>, <code>.add()</code>,
+    <code>.mul()</code> and the like with plain numbers (<code>.lpf(haze.range(400, 3200))</code>), reads in hertz or
+    kilohertz, showing the frequency the filter actually receives, not the slider's own number. A knob fed straight into
+    a frequency parameter, with a minimum above zero and a range of four times or more, also gets a logarithmic travel,
+    so 300 to 4000 feels even across the turn. A mapped knob keeps the curve its mapping gives it.
+  </p>
+  <p>
+    <strong>Write the range as plain positive numbers.</strong> The minimum and maximum are read only when they are
+    number literals: <code>slider(0.5, 0, 1)</code>. A negative literal or an expression is not read, so
+    <code>slider(0, -12, 12)</code> becomes a knob from 0 to 12 and <code>slider(1, 0, max * 2)</code> a knob from 0 to 1.
+    Put the maths inside the chain instead: <code>.add(detune.sub(12))</code>. A fourth argument sets a step.
+  </p>
+  <p>
+    Turning a knob rewrites the number in the code without re-running the song, so a knob is instant and safe. Positions
+    on a beat are remembered in the listener's browser, and <strong>Reset</strong> puts every knob back to the value you
+    wrote, so write the value you want people to hear first.
+  </p>
+
+  <h2 id="switches">Switches: versions, not tweaks</h2>
+  <p>
+    A switch is a plain whole number at the top level, <code>const section = 0</code>, whose meaning you spell out:
+    either in the header as a legend, <code>section: 0 intro, 1 groove, 2 drop</code>, or in a comment after the
+    statement that starts with a range, <code>// 0-2</code>. It appears before the knobs on the deck as a stepped control
+    with the option's name as its readout.
+  </p>
+  <figure data-shot="deck-switch" data-alt="A switch on the deck, its readout showing the current option's name"><figcaption>A switch reads the name of its position; turning it re-runs the song.</figcaption></figure>
+  <p>
+    Because a switch re-runs the song (a moment after the turn settles), it can change anything: the scale, the drum
+    pattern, which parts exist. That makes it the control for real versions, not fine adjustments: intro, groove and
+    drop; minor and major; sparse and full; hook and verse. A knob is for things that should change while the music
+    carries on; a switch is for things that need a new run.
+  </p>
+  <p>
+    The rules are short. Positions must count up by one from the first, there must be at least two, and the value in
+    the code must be one of them; a number without a legend is just a number. Index lists with it, which is the one
+    place a plain number does what a slider cannot:
+  </p>
+  <pre class="code" data-title="A switch picking a drum pattern">const section = 0 // 0-2
+DRUMS: s(["bd*2, hh*4", "bd*4, [~ cp]*2, hh*8", "bd*4, cp*2, hh*16"][section])</pre>
+  <p>Two switches in one song, one from a header legend and one from a comment, with a scale and a whole arrangement hanging off them:</p>
+  <pre class="code" data-example="switch" data-open></pre>
+
+  <h2 id="try-lines">Suggestions: @try lines</h2>
+  <p>
+    A <code>@try</code> line in the header is a change the listener can hear with one tap and put back with another.
+    Treat them as lessons hidden in the song. Each should teach one Strudel idea: swap a bank, double a subdivision,
+    move an octave, change a rhythm's shape. They also appear in the first-steps list for new visitors, so for many
+    people a <code>@try</code> is the first edit they ever make.
+  </p>
+  <pre class="code" data-title="The syntax">@try 808 kit: `RolandTR909` -> `RolandTR808`
+@try Busier: `hh*8` -> `hh*16`; `bd*4` -> `bd*8`
+@try Glass bell: `s("triangle")` -> `s("sine")` in BELL</pre>
+  <ul>
+    <li>A label of up to 48 characters, a colon, then <code>`find`</code> <code>-></code> <code>`replace`</code> in backticks. The arrow <code>→</code> works too.</li>
+    <li><code>;</code> joins several changes into one tap.</li>
+    <li><code>in NAME</code> keeps the change inside one track. Without it, every place the <code>find</code> text appears outside comments is changed.</li>
+    <li>Up to four are shown, in the order written.</li>
+  </ul>
+  <figure data-shot="tries" data-alt="The Try row over the code, with four suggestion chips"><figcaption>Four suggestions over the code; each is one tap to hear and one tap to put back.</figcaption></figure>
+  <p>
+    <strong>Pick text that is unique</strong> to the spot you mean. A chip is greyed, with the hint that that part of the
+    code has changed since, when the code no longer says <code>find</code>, when the <code>replace</code> text already
+    appears somewhere else in scope (so the site could not tell the change from its reversal), when two of its changes
+    would overlap, when the named track is missing, or when it would rewrite a knob's or a switch's number, which belongs
+    to the deck. So <code>`0.5` -> `0.8`</code> is a poor suggestion and <code>`.room(0.5)` -> `.room(0.8)`</code> is a
+    good one, as long as only one part has that reverb. A suggestion is read from the code itself, so it still works
+    after the listener has turned knobs or edited other lines.
+  </p>
+  <p>Four suggestions, one idea each, the last scoped to one track:</p>
+  <pre class="code" data-example="try-lines" data-open></pre>
+
+  <h2 id="song-map-notes">Notes for the song map</h2>
+  <p>
+    Beside the code (or behind <strong>Map</strong> when the window is narrow) the song map lists the song's sections:
+    setup (the header, the tempo, sample packs), knobs and switches, parts, and the helpers parts share. Each entry
+    describes itself from the code: the sounds it names, its effects in plain words, the knobs it uses. A click glides
+    the code there, and the entry's card offers <strong>Edit this part</strong>.
+  </p>
+  <figure data-shot="song-map-card" data-alt="A song map entry's card, with its note, its details and the Edit this part button"><figcaption>A part's card in the song map: the author's note first, then what the code says it does.</figcaption></figure>
+  <p>
+    A comment in words becomes a <a data-term="part-note">part note</a>, shown first on the card. The site takes an
+    own-line comment that ends just above the part, or sits inside it, or follows it directly with a blank line after.
+    It must contain a letter and not look like code; rows of dashes and commented-out code are ignored, so only real
+    notes show; and it is cut at 160 characters. Header comments are never notes.
+  </p>
+  <p>
+    A good note says what the part is for and what to do with it, not what the code is: <em>the bass follows the kick
+    and ducks under it</em>, <em>bring these in when the room is ready</em>, <em>the only knob: how far away the keys
+    sit</em>. The code already says it is a sawtooth through a filter; the map reads that out for you.
+  </p>
+  <pre class="code" data-title="A note above a part, and one above a helper">// a dip on every beat, so the chords breathe with the kick
+const duck = "[0.5 1]*4"
+
+// a bass line that walks between two chords
+BASS: note("<c2 c2 f2 g2>*2").s("square").lpf(600).gain(0.45)</pre>
+  <p>Every part and helper with its own note, so the map reads like liner notes:</p>
+  <pre class="code" data-example="map-notes" data-open></pre>
+
+  <h2 id="visuals">Inline visuals</h2>
+  <p>
+    Six calls draw a live picture under the line they end: <code>._punchcard()</code> (a grid of hits, best on drums),
+    <code>._pianoroll()</code> (notes over time, best on a melody), <code>._scope()</code> (the waveform, best on a bass),
+    <code>._spectrum()</code>, <code>._spiral()</code> and <code>._pitchwheel()</code>. Each is an
+    <a data-term="inline-visual">inline visual</a>: it lives under its own line on the <a data-term="stage">stage</a>, dims
+    while its track is muted, and is drawn into <a data-term="video-clip">video clips</a>. Put the call last in the chain
+    so it sits under the part it belongs to, and give the first three a width if the default 640 is too wide for the line.
+  </p>
+  <figure data-shot="stage-lit" data-alt="The stage with the code lit as it plays and a punchcard drawn under the drum line"><figcaption>Mini-notation lights up word by word, and a punchcard under the drums draws each hit as it lands.</figcaption></figure>
+  <p>
+    One or two per song reads best; a drawing under every line is a wall. A punchcard on the drums and a scope on the
+    bass is a good default, with a pianoroll on a lead if the song has one. The stage lights up mini-notation word by
+    word as each event sounds, so the more of your song lives in quoted patterns, the more the stage dances; long
+    patterns built in JavaScript light up less.
+  </p>
+  <p>
+    The versions without the underscore, <code>.punchcard()</code>, <code>.scope()</code> and the rest, plus
+    <code>.tscope()</code>, <code>.fscope()</code> and <code>.wordfall()</code>, draw on a canvas behind the whole stage
+    at half strength rather than under their line, and are left out of clips. They work, but the inline ones are the
+    ones the site is built around. Hydra is not included.
+  </p>
+  <pre class="code" data-example="visuals" data-open></pre>
+
+  <h2 id="form-32-bars">A 32-bar form</h2>
+  <p>
+    The arrangement strip under the stage shows which tracks play in each of 32 bars, one cycle per bar. A song that is
+    the same loop for ever shows 32 identical bars, and a listener who trims it is editing a loop. A song with a shape
+    shows that shape, and trimming and rearranging become musical decisions: cut the intro, keep only the drop, move the
+    break earlier.
+  </p>
+  <figure data-shot="arrangement-open" data-alt="The arrangement strip opened, showing a song whose tracks come in over the 32 bars"><figcaption>A song with a form: the strip shows the bass arriving at bar 9 and the lead at bar 17.</figcaption></figure>
+  <p>
+    A shape that works for most things: bars 1 to 8 drums alone or nearly, 9 to 16 everything in, 17 to 24 the fullest
+    stretch or a lift, 25 to 28 a break, 29 to 32 the way out. Techno tends to climb in straight lines, one element every
+    four or eight bars and nothing leaving. Rap and trap want a hook and a verse that are the same length and swap
+    cleanly, with the keys thinner under the verse. Experimental music can ignore all of it, but even there eight bars of
+    something before the strangeness lets a DJ get in. Treat the shape as guidance, not a rule: the point is that the
+    32 bars tell a story.
+  </p>
+  <p>Three ways to write it, in plain Strudel:</p>
+  <pre class="code" data-title="A mask: the bass sits out the first eight bars">BASS: note("<f1 f1 ab1 c2>*2").s("sawtooth").lpf(900)
+  .mask("<0!8 1!24>")</pre>
+  <pre class="code" data-title="Alternation: a different hat pattern each bar, a fill every fourth">HATS: s("<[~ hh]*4 [~ hh]*4 [~ hh]*4 [hh*2 hh*3 hh*4 oh]>")</pre>
+  <pre class="code" data-title="arrange: whole sections in order, the way a trim is written">all(x => arrange([8, x.ribbon(0, 8)], [16, x.ribbon(8, 16)], [8, x.ribbon(24, 8)]))</pre>
+  <p>
+    <code>.mask()</code> is the one the strip understands best, because it is what the strip writes. When a listener
+    silences a track for a stretch, the site adds a 32-step mask to the end of that track's chain, or rewrites one that
+    is already there. So <strong>a mask must be the last call in its chain</strong>, after the visual too, for
+    <strong>Silence</strong> and <strong>Bring back</strong> to find it; a mask buried in the middle is left alone and a
+    second one is added after it. Likewise the site recognises its own trim line by its exact form, so if you hand-edit
+    one keep the same shape. The strip sees the first 32 bars; a longer form plays, but only those bars are shown and
+    trimmed.
+  </p>
+  <p>A whole shape in one loop, written with masks, so the strip shows it from the first bar:</p>
+  <pre class="code" data-example="form" data-open></pre>
+
+  <h2 id="snapshot-hooks">Parts that stand alone</h2>
+  <p>
+    A snapshot takes one channel alone, as it sounds now, for 1, 2, 4 or 8 bars, and keeps it on a pad to bring back in
+    time, or to <a data-term="pin">pin</a> as a looping channel under another song. So a track that sounds good on its
+    own is a gift: a riff, a vocal chop, a fill, a chord stab. Write at least one, give it its own label, and keep it
+    musically separate from the parts around it: a capture takes that channel alone, with its own effects, and nothing
+    else.
+  </p>
+  <p>
+    Think about length. A riff that takes two bars to say itself needs a four-bar capture to loop cleanly; a one-bar
+    drum pattern loops at one. Alternation that cycles every four bars, <code>&lt;a b c d&gt;</code>, captures whole at
+    four or eight bars and oddly at two. The listener chooses the length, but the song decides what lengths make sense.
+  </p>
+  <pre class="code" data-example="hook" data-open></pre>
+
+  <h2 id="dj-friendly">Write for the decks</h2>
+  <p>
+    Two decks play two songs at once, kept in time, with a crossfader between them, pads on the <a data-term="master">master</a>
+    and a mixer on each. None of this is yours to code, but knowing it is there changes what you write.
+  </p>
+  <ul>
+    <li><strong>Declare the tempo.</strong> <code>setcps(bpm/60/4)</code> or <code>setcpm(bpm/4)</code>, so the deck shows a BPM and <a data-term="sync">Sync</a> can bring the other deck in at it. A song without one has no tempo to sync to. The tempo knob bends a deck by up to a quarter either way, so two songs a little apart in tempo still meet.</li>
+    <li><strong>Eight bars of drums at each end.</strong> A song that starts with drums alone and ends the same way is easy to bring in over another and easy to leave. Masks do it in two lines.</li>
+    <li><strong>Leave headroom.</strong> Two songs sum on the master, and a <a data-term="limiter">limiter</a> after them holds the output under full scale, turning the meter orange when it works hard. Keep the gains modest and the limiter stays idle, and the two songs have room to sit together.</li>
+    <li><strong>Leave the pads something to do.</strong> The listener has <a data-term="echo">echo</a>, a filter <a data-term="drop">drop</a> and a reverb <a data-term="wash">wash</a> of their own. A song already drowned in reverb and delay has nowhere to go when a pad is held; a drier song comes alive under one.</li>
+    <li><strong>Muted layers to build up live.</strong> Two or three <code>_LAYER:</code> tracks give a DJ a song that grows in the mixer over minutes, which is how a set is built.</li>
+    <li><strong>Design the first 8 to 16 bars for clips.</strong> A video clip records 4, 8, 16 or 32 bars from the next bar line, with the code lit and the visuals drawn, and most people press record near the top of a song. The opening is what gets posted, so make it look and sound like the song.</li>
+  </ul>
+
+  <h2 id="sound-palette">The sound palette</h2>
+  <p>Before any song runs, the site loads a set of sounds every song can rely on. Nothing in this table needs a <code>samples()</code> line.</p>
+  <table class="ref">
+    <thead><tr><th>Sounds</th><th>How to reach them</th></tr></thead>
+    <tbody>
+      <tr><td>The drum machines</td><td><code>.bank("RolandTR909")</code>, <code>"RolandTR808"</code> and dozens more from the tidal-drum-machines collection, with the usual drum names: <code>bd sd hh oh cp rim cr lt mt ht</code>. The short aliases work too.</td></tr>
+      <tr><td>Dirt-Samples</td><td>The classic TidalCycles pack: <code>s("casio")</code>, breaks, hits and voices. Use <code>:n</code> or <code>.n()</code> to pick a sample within a name.</td></tr>
+      <tr><td>Piano, VCSL, mridangam</td><td>A sampled piano, the VCSL orchestral and percussion library, and a mridangam, each by its sample names.</td></tr>
+      <tr><td>The uzu drumkit</td><td>Strudel's own kit, by its drum names.</td></tr>
+      <tr><td>The synths</td><td><code>sine</code>, <code>triangle</code>, <code>square</code>, <code>sawtooth</code>, <code>supersaw</code>, and the noises <code>white</code>, <code>pink</code>, <code>brown</code> and <code>crackle</code>.</td></tr>
+      <tr><td>General MIDI soundfonts</td><td>Every <code>gm_</code> instrument: <code>gm_epiano1</code>, <code>gm_pad_halo</code>, <code>gm_lead_2_sawtooth</code> and the rest. Each loads the first time it is played.</td></tr>
+      <tr><td>ZZFX</td><td>Strudel's small synthesised effects, by their names.</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Anything else is a <a data-term="sample-pack">sample pack</a>, loaded with <code>samples('github:user/repo')</code> or
+    from any address that allows cross-origin requests; there is no list of approved packs. Packs on GitHub,
+    felixroos.github.io and Shabda are kept on the device once heard, so a song plays offline the second time. The site
+    waits about seven seconds for a pack; after that the song starts without it, the status says <em>Still waiting for
+    sample pack</em>, and the missing sounds come in when the pack arrives. So keep packs small and public, name only the
+    ones the song plays, and credit them in the header. The About page credits the packs the site's own beats use;
+    your song's notes are where you credit yours.
+  </p>
+  <p>
+    The sounds strudel.cc lists on its <a href="https://strudel.cc/learn/samples/">samples page</a> are the same ones,
+    and that page explains <code>samples()</code> in full.
+  </p>
+
+  <h2 id="genre-sketches">Four genre sketches</h2>
+  <p>
+    Four short songs, each a working example of a style and of the ideas on this page. Open any of them in the player,
+    and <strong>Save a copy</strong> keeps it to take apart.
+  </p>
+  <h3 id="sketch-techno">Techno</h3>
+  <p>
+    Ballast is a long straight build at 134: the kick is there from the first bar and never leaves, the hats arrive at
+    bar 5, percussion at 9, the pad at 17. Listen for how PRESSURE opens the bass and the pad together, which is the
+    macro idea from <a href="#macros">above</a>, and for how the <code>.mask()</code> at the end of each later chain is what
+    draws the climb on the strip. <strong>ACID</strong> waits muted for the second half, a layer for the mixer. The two
+    suggestions each swap one word.
+  </p>
+  <pre class="code" data-example="techno" data-open></pre>
+  <h3 id="sketch-trap">Trap</h3>
+  <p>
+    Half Light is half-time at 140: a kick that lands late, a snare on three, hats that roll in sixteenths and double
+    up every other bar through <code>&lt;…&gt;</code> alternation. The sub slides between two notes on a sine, and WEIGHT
+    is its level. The <code>part</code> switch is a hook and a verse that are the same length, with the keys thinner under
+    the verse, and <strong>STAB</strong> stays muted until the hook needs it. Room is left for a voice.
+  </p>
+  <pre class="code" data-example="trap" data-open></pre>
+  <h3 id="sketch-house">House</h3>
+  <p>
+    Paper Street is plain house at 124: four on the floor, a clap on two and four, open hats on the off-beats, piano
+    chords on top. Listen for the form: the first eight bars and the last eight are drums only, so it mixes in and out
+    on the other deck, which is the <a href="#dj-friendly">DJ advice</a> made audible. FILTER is one macro on the bass and
+    the chords, and the second suggestion rewrites a whole mask to bring the bass in from the start.
+  </p>
+  <pre class="code" data-example="house" data-open></pre>
+  <h3 id="sketch-experimental">Experimental</h3>
+  <p>
+    Loose Teeth lines nothing up on purpose: kicks in threes over eight, hats in fives, a bass line seven bars long so
+    it drifts against everything. CHAOS drops notes at random, and the <code>texture</code> switch adds grit from a noise
+    track. It is short and odd, which makes it good snapshot material, and its spiral and pitch wheel show the two
+    visuals the other sketches do not use.
+  </p>
+  <pre class="code" data-example="experimental" data-open></pre>
+
+  <h2 id="checklist">Before you hand a song over</h2>
+  <ul>
+    <li><code>@title</code>, <code>@by</code>, and a sentence or two of notes written for a listener</li>
+    <li><code>setcps(bpm/60/4)</code> or <code>setcpm(bpm/4)</code>, one cycle per bar</li>
+    <li>Every part labelled, drums in their own tracks with plain names</li>
+    <li>Two to five knobs as named <code>const</code> sliders, with plain positive numbers for the range, musical across the whole turn</li>
+    <li>A switch for real versions of the song, if it has them, with a legend in the header or a <code>// 0-2</code> comment</li>
+    <li>Two to four <code>@try</code> lines that each teach one idea, with find text unique to the spot</li>
+    <li>A comment in words above each part, for the song map</li>
+    <li>One or two inline visuals, last in their chain, or just before the mask</li>
+    <li>A 32-bar form that shows on the arrangement strip, with every <code>.mask()</code> the last call in its chain</li>
+    <li>At least one part that stands alone as a snapshot</li>
+    <li>Eight bars of drums at each end, and some headroom, for the other deck</li>
+    <li>The first 8 to 16 bars standing on their own, for clips</li>
+    <li>Sample packs small, public and credited, and only the ones the song plays</li>
+    <li>Double quotes for patterns, single quotes for strings, and no <code>slider()</code> used as an index</li>
+  </ul>
+  <p>
+    Then share it: <a href="share#share-links">Share</a> explains the link, and <strong>Let the site feature this</strong>
+    offers it for the <a data-term="community-shelf">community shelf</a>.
+  </p>
+</article>

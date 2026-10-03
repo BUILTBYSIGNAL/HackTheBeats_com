@@ -53,7 +53,14 @@ export const crate = {
     this.fill(this.lists.mine, mine, true);
     this.fillCommunity(community);
     this.fill(this.lists.beats, beats, false);
-    this.note.textContent = mine.length ? '' : 'Nothing here yet. Change any beat and press Save as my song, copy a beat with the button beside it, or start a New song.';
+    this.note.replaceChildren();
+    if (!mine.length) {
+      const more = document.createElement('a');
+      more.className = 'learnlink';
+      more.href = 'learn/build#start-a-song';
+      more.textContent = 'Starting points in the guide';
+      this.note.append('Nothing here yet. Change any beat and press Save as my song, copy a beat with the button beside it, or start a New song. ', more);
+    }
     this.note.hidden = mine.length > 0;
   },
 

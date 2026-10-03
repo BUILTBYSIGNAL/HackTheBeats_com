@@ -1,0 +1,27 @@
+/*
+  @title Scope and Card
+  Three drawings under three lines: a punchcard of the drums, the bass as a wave, the lead on a piano roll.
+  Busy patterns make busy pictures, so every part keeps moving.
+*/
+setcps(126/60/4)
+
+const cut = slider(1500, 300, 5000)
+
+DRUMS: s("bd*4, [~ cp]*2, [hh*2 hh*3]*2, ~ ~ ~ [~ oh]")
+  .bank("RolandTR909")
+  .gain(0.8)
+  ._punchcard()
+
+BASS: note("<[e1 e1 e2 e1] [g1 g1 g2 g1] [a1 a1 a2 a1] [b1 b1 b2 a1]>*2")
+  .s("sawtooth")
+  .lpf(cut)
+  .decay(0.2).sustain(0.1)
+  .gain(0.5)
+  ._scope()
+
+LEAD: n("<[0 2 4 7 4 2 0 -3] [2 4 7 9 7 4 2 0]>")
+  .scale("E4:minor")
+  .s("triangle")
+  .delay(0.3)
+  .gain(0.25)
+  ._pianoroll()

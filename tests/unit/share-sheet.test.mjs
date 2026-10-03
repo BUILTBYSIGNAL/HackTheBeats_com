@@ -105,3 +105,11 @@ test('my own song, while shared, can be offered to the community shelf', () => {
   assert.equal(sheetState({ kind: 'beat', title: 'Amber', accounts: true, link: 'x', audience: 'everyone' }).feature, null);
   assert.equal(sheetState({ kind: 'theirs', link: 'y', ownerName: 'Ana' }).feature, null);
 });
+
+test('an example from the guide is kept as a song of my own before it is shared', () => {
+  const view = sheetState({ kind: 'loose', example: true, title: 'Ballast' });
+  assert.match(view.note, /example from the guide.*Save a copy/);
+  assert.equal(view.warning, null);
+  assert.equal(view.link, null);
+  assert.equal(view.toggle, null);
+});

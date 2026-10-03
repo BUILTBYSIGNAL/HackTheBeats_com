@@ -1,0 +1,25 @@
+/*
+  @title Loose Riff
+  One riff that stands on its own. Solo HOOK and it still works; the beat underneath is as plain as it gets.
+  "shine" sets how much of the riff comes back as an echo.
+*/
+setcps(120/60/4)
+
+const shine = slider(0.3, 0, 0.7)
+
+HOOK: n("<[0 ~ 3 ~ 5 ~ 3 7] [0 ~ 3 ~ 5 ~ 10 7]>")
+  .scale("G3:minor")
+  .s("gm_lead_2_sawtooth")
+  .lpf(2200)
+  .delay(shine)
+  .gain(0.35)
+  ._pianoroll()
+
+KICK: s("bd*4")
+  .bank("RolandTR909")
+  .gain(0.85)
+  ._punchcard()
+
+HATS: s("[~ hh]*4")
+  .bank("RolandTR909")
+  .gain(0.4)

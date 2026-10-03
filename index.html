@@ -21,6 +21,8 @@
     <link rel="stylesheet" href="css/controls.css" />
     <link rel="stylesheet" href="css/clip.css" />
     <link rel="stylesheet" href="css/support.css" />
+    <!-- the guide's article styles, for Learn pages shown over the player (js/pages.js) -->
+    <link rel="stylesheet" href="css/learn-content.css" />
   </head>
   <body data-transport="idle" data-focus="A">
     <header class="topbar">
@@ -97,7 +99,7 @@
         <button type="button" class="iconbtn" id="share" aria-label="Share this song" data-tip="Share this song">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.8 9.2a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.7.7M9.2 6.8a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7l.7-.7" /></svg>
         </button>
-        <button type="button" class="iconbtn" id="open-about" aria-label="About and keyboard shortcuts" data-tip="About and keyboard shortcuts (?)">
+        <button type="button" class="iconbtn" id="open-about" aria-label="Help and shortcuts" data-tip="Help and shortcuts (?)">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 6a2 2 0 1 1 3 1.7c-.7.4-1 .8-1 1.6M8 11.8v.2" /></svg>
         </button>
         <button type="button" class="iconbtn iconbtn--account" id="account" aria-label="Sign in" data-tip="Sign in" hidden>
@@ -121,6 +123,7 @@
             <p class="pane__empty-title">Deck B is empty</p>
             <p>Load a second beat here, then bring it in with the crossfader or <strong>Mix</strong>.</p>
             <button type="button" class="pillbtn" id="load-b">Choose a beat</button>
+            <a class="learnlink" href="learn/perform#two-decks">How two decks work</a>
           </div>
         </section>
       </div>
@@ -175,7 +178,7 @@
         </header>
         <ol class="coach__steps" id="coach-steps"></ol>
         <div class="coach__end" id="coach-end" hidden>
-          <p>That's the loop: play it, bend it, change it, keep it, pass it on. Press <kbd>?</kbd> for every key.</p>
+          <p>That's the loop: play it, bend it, change it, keep it, pass it on. Press <kbd>?</kbd> for every key, or <a class="learnlink" href="learn">read the guide</a>.</p>
           <button type="button" class="pillbtn pillbtn--go" id="coach-done">Done</button>
         </div>
         <button type="button" class="textbtn coach__never" id="coach-never">Don't show these again</button>
@@ -247,6 +250,7 @@
       <div class="notice" id="notice" role="alert" hidden>
         <p class="notice__title" id="notice-title"></p>
         <p class="notice__hint" id="notice-hint" hidden></p>
+        <a class="learnlink" href="learn/remix#edit-live">What went wrong, and how to fix it</a>
         <p class="notice__detail" id="notice-detail"></p>
         <details class="notice__raw" id="notice-raw" hidden>
           <summary>What the browser said</summary>
@@ -265,7 +269,7 @@
         </button>
         <ol class="ribbon__rows" id="ribbon-rows"></ol>
       </div>
-      <canvas class="ribbon__canvas" id="ribbon" role="img" aria-label="Arrangement: which tracks play in each of 32 bars. Click a bar to jump there; drag across bars to cut them from the song."></canvas>
+      <canvas class="ribbon__canvas" id="ribbon" role="img" aria-label="Arrangement: which tracks play in each of 32 bars. Click a bar to jump there; drag across bars to pick them, then cut, keep, move, copy or paste them; open the strip and drag along a track to silence it."></canvas>
       <div class="trimbar" id="trimbar" role="toolbar" aria-label="Trim the song" hidden></div>
       <div class="ribbon__tools">
         <button type="button" class="ribbon__btn" id="coach-toggle" aria-expanded="false" aria-controls="coach" hidden>Steps <span id="coach-progress"></span></button>
@@ -299,6 +303,7 @@
         <header class="panel__head">
           <h2 class="panel__title">Channels <span class="panel__deck"></span></h2>
           <span class="panel__note">M mute · S solo · ● capture</span>
+          <a class="learnlink" href="learn/play#channels">Learn more</a>
           <div class="caplen" id="cap-length" role="group" aria-label="Bars a capture takes" title="How many bars ● captures, from the next bar line">
             <button type="button" data-bars="1" aria-pressed="false">1</button>
             <button type="button" data-bars="2" aria-pressed="false">2</button>
@@ -319,6 +324,7 @@
           </div>
           <span class="panel__note panel__note--hold">hold</span>
           <button type="button" class="textbtn pads__latch" id="pads-latch" aria-pressed="false" title="Tap a pad to switch it on, and again to switch it off">Latch</button>
+          <a class="learnlink" href="learn/perform#pads">What the pads do</a>
         </header>
         <div class="padbank" id="padbank" data-bank="fx">
           <div class="pads" id="pads"></div>
@@ -370,8 +376,8 @@
 
     <footer class="sitefoot">
       <p class="sitefoot__legal">
-        © Built By Signal LLC · <a href="about" target="_blank" rel="noopener">About</a> ·
-        <a href="privacy" target="_blank" rel="noopener">Privacy</a>
+        © Built By Signal LLC · <a href="learn" target="_blank" rel="noopener">Learn</a> ·
+        <a href="about" target="_blank" rel="noopener">About</a> · <a href="privacy" target="_blank" rel="noopener">Privacy</a>
       </p>
       <a class="signal" href="https://builtbysignal.com" target="_blank" rel="noopener" aria-label="Built by SIGNAL (opens in a new window)">
         <svg class="signal__mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="5" fill="#181A1F" /><rect x="14" y="7" width="4" height="18" fill="#DD5E2E" /></svg>
@@ -400,7 +406,9 @@
               <input type="file" id="song-file" accept=".json,.js,.strudel,.str,.txt,application/json,text/plain" multiple hidden />
             </div>
           </header>
-          <div class="drawer__starters" id="starters" role="group" aria-label="Start a new song from" hidden></div>
+          <div class="drawer__starters" id="starters" role="group" aria-label="Start a new song from" hidden>
+            <a class="learnlink" href="learn/build#start-a-song">Starting points in the guide</a>
+          </div>
           <ol class="drawer__list" id="mine-list"></ol>
           <p class="drawer__note" id="mine-note"></p>
         </section>
@@ -470,7 +478,7 @@
           <button type="button" class="pillbtn" id="snap-download">Download WAV</button>
           <button type="button" class="pillbtn" id="snap-clear">Clear the slot</button>
         </div>
-        <p class="sheet__fine">A pinned snapshot loops in time on that deck as a channel of its own, muted until you bring it in with its pad or its M.</p>
+        <p class="sheet__fine">A pinned snapshot loops in time on that deck as a channel of its own, muted until you bring it in with its pad or its M. <a class="learnlink" href="learn/perform#snapshots">Learn more</a></p>
       </div>
     </dialog>
 
@@ -539,6 +547,7 @@
           <button type="button" class="pillbtn" id="share-record">Record audio</button>
           <button type="button" class="pillbtn" id="share-video" hidden>Make a video clip</button>
         </div>
+        <p class="sheet__fine"><a class="learnlink" href="learn/share#share-links">How sharing works</a></p>
       </div>
     </dialog>
 
@@ -559,7 +568,7 @@
             <button type="button" class="chipbtn" data-clip-format="1:1" aria-pressed="false">Square 1:1</button>
           </div>
           <div class="clip__choices" id="clip-lengths" role="group" aria-label="Length"></div>
-          <p class="sheet__fine" id="clip-note">Recorded live on this device as the music plays, starting on the next bar. Nothing is uploaded.</p>
+          <p class="sheet__fine" id="clip-note">Recorded live on this device as the music plays, starting on the next bar. Nothing is uploaded. <a class="learnlink" href="learn/share#video-clips">Learn more</a></p>
           <p class="clip__problem" id="clip-problem" role="alert" hidden></p>
           <div class="sheet__row">
             <button type="button" class="pillbtn pillbtn--go" id="clip-record">Record clip</button>
@@ -647,9 +656,16 @@
       <div class="sheet__body">
         <p>
           Every sound here is made by the code on screen, running live in your browser. Each knob is a <code>slider()</code> from the
-          song, each channel is one of its labelled patterns, and two decks let you bring a second beat in over the first. The code is
-          yours to change: click in it and type.
+          song, each channel is one of its labelled patterns, and the code is yours to change.
         </p>
+        <div class="help__guide">
+          <a class="pillbtn pillbtn--go" href="learn" target="_blank" rel="noopener">Open the guide ↗</a>
+          <p class="sheet__fine">Start where you are:
+            <a href="learn/start#listener">I just want to play with a beat</a> ·
+            <a href="learn/start#dj">I mix and perform</a> ·
+            <a href="learn/start#remixer">I want to change a song</a> ·
+            <a href="learn/start#coder">I write Strudel</a></p>
+        </div>
 
         <section class="sheet__song" id="about-song"></section>
 
@@ -657,6 +673,7 @@
 
         <h3>Keys</h3>
         <p class="sheet__fine">While you are typing in the code, the single-key shortcuts are off.</p>
+        <!--keys-->
         <dl class="keys">
           <div><dt><kbd>Space</kbd></dt><dd>Play or stop the deck in focus</dd></div>
           <div><dt><kbd>X</kbd></dt><dd>Switch focus between deck A and deck B</dd></div>
@@ -672,29 +689,24 @@
           <div><dt><kbd data-mod>Ctrl</kbd>+<kbd>.</kbd></dt><dd>Stop the deck in focus (works while typing in the code, too)</dd></div>
           <div><dt><kbd data-mod>Ctrl</kbd>+<kbd>Enter</kbd> <kbd data-mod>Ctrl</kbd>+<kbd>S</kbd></dt><dd>Run your changes without stopping the music; save</dd></div>
         </dl>
+        <!--/keys-->
 
-        <h3>On screen</h3>
+        <h3>Where things are</h3>
         <dl class="keys">
-          <div><dt>Editing</dt><dd>Click in the code (or press <strong>Edit</strong>) to change it, and <strong>Update</strong> runs it. A mistake is shown in plain words and the last good version keeps playing. Changed lines are marked until you <strong>Save</strong>; <strong>Save as new</strong> keeps your version as a song of its own, <strong>Revert</strong> throws the changes away. <kbd>Esc</kbd> leaves the code.</dd></div>
-          <div><dt>In the code</dt><dd>Click a track label to mute it, click a highlighted number to find its knob, drag an inline slider. <strong>Try</strong>, top left, makes one of the song's suggested changes; tap it again to put it back.</dd></div>
-          <div><dt>Song map</dt><dd>The sections of the code, beside it (or behind <strong>Map</strong> when the window is narrow). Rest on one to read what it does; click to glide there.</dd></div>
-          <div><dt>Views</dt><dd><strong>Follow</strong> glides the code to whichever track comes in, <strong>Split</strong> shows both decks' code, <strong>Gallery</strong> is full screen. Click a channel's name to focus on that track; click again to let it go.</dd></div>
-          <div><dt>On a knob</dt><dd>Arrows adjust, <kbd>Shift</kbd> for fine, <kbd>Enter</kbd> or double-click resets. <strong>Reset</strong> puts every knob back to what the code says.</dd></div>
-          <div><dt>Pads</dt><dd>Hold one, or <kbd>Shift</kbd>-click (or switch <strong>Latch</strong> on) to keep it on.</dd></div>
-          <div><dt>Snapshots</dt><dd>Press ● on a channel in the Mixer to capture it (1, 2, 4 or 8 bars) from the next bar. Tap its pad to bring it in on the next bar; right-click or long-press to rename, pin, download as WAV or clear it.</dd></div>
-          <div><dt>Two decks</dt><dd>With <strong>Sync</strong> on, a deck started while the other plays comes in on the bar, at its tempo. <strong>Mix</strong> does that and fades across over eight bars.</dd></div>
-          <div>
-            <dt>Arrangement</dt>
-            <dd>
-              Which tracks play in each of 32 bars; click a bar to jump there. Drag across bars, <kbd>Shift</kbd>-click one, or type the bar numbers to pick them, then:
-              <strong>Cut</strong> or <strong>Keep only</strong> them; move them a bar with <strong>‹ ›</strong> (or <kbd>←</kbd> <kbd>→</kbd>);
-              <strong>Copy</strong> them, pick other bars and <strong>Paste</strong> them in after (or <strong>Paste over</strong> to replace those).
-              <kbd data-mod>Ctrl</kbd>+<kbd>C</kbd> and <kbd data-mod>Ctrl</kbd>+<kbd>V</kbd> copy and paste, <kbd>Delete</kbd> cuts, <kbd>Esc</kbd> lets them go.
-              Open the strip and drag along one track to <strong>Silence</strong> it there. Every change is made in the code: Save keeps it.
-            </dd>
-          </div>
-          <div><dt>Your songs</dt><dd>In the beats list: <strong>New</strong>, <strong>Import</strong> and <strong>Export</strong>, and each song's <strong>⋯</strong> menu to rename, duplicate, share or delete it. Each shows when it was last saved, and whether it is shared.</dd></div>
-          <div><dt>Sharing</dt><dd>The link icon shares a song by link, which always plays its latest saved version; switching sharing off closes the link for good. <strong>Make a video clip</strong> there (or <kbd>V</kbd>) records the code lighting up with the music, ready to post.</dd></div>
+          <div><dt>First steps</dt><dd>A short tour of the loop (play, bend, change, keep, share), one step at a time. <a class="learnlink" href="learn/start#first-steps">Learn more</a></dd></div>
+          <div><dt>Editing</dt><dd>Click in the code (or press <strong>Edit</strong>) to change it, <strong>Update</strong> runs it, and <kbd>Esc</kbd> leaves the code. <a class="learnlink" href="learn/remix#edit-live">Learn more</a></dd></div>
+          <div><dt>In the code</dt><dd>Click a track label to mute it, click a highlighted number to find its knob, drag an inline slider. <a class="learnlink" href="learn/play#stage">Learn more</a></dd></div>
+          <div><dt>Try</dt><dd><strong>Try</strong>, top left, makes one of the song's suggested changes; tap it again to put it back. <a class="learnlink" href="learn/play#try">Learn more</a></dd></div>
+          <div><dt>Song map</dt><dd>The sections of the code, beside it (or behind <strong>Map</strong> when the window is narrow); click one to glide there. <a class="learnlink" href="learn/play#song-map">Learn more</a></dd></div>
+          <div><dt>Views</dt><dd><strong>Follow</strong> glides the code to whichever track comes in, <strong>Split</strong> shows both decks' code, <strong>Gallery</strong> is full screen. <a class="learnlink" href="learn/play#views">Learn more</a></dd></div>
+          <div><dt>Knobs and switches</dt><dd>Arrows adjust a knob, <kbd>Shift</kbd> for fine, <kbd>Enter</kbd> or double-click resets it, and <strong>Reset</strong> puts every knob back to what the code says. <a class="learnlink" href="learn/play#knobs">Learn more</a></dd></div>
+          <div><dt>Channels</dt><dd>Each labelled pattern is a channel with a level, a meter, <strong>M</strong> to mute and <strong>S</strong> to solo. <a class="learnlink" href="learn/play#channels">Learn more</a></dd></div>
+          <div><dt>Pads</dt><dd>Hold one, or <kbd>Shift</kbd>-click (or switch <strong>Latch</strong> on) to keep it on. <a class="learnlink" href="learn/perform#pads">Learn more</a></dd></div>
+          <div><dt>Snapshots</dt><dd>Press ● on a channel in the Mixer to capture it from the next bar, then tap its pad to bring it in. <a class="learnlink" href="learn/perform#snapshots">Learn more</a></dd></div>
+          <div><dt>Two decks</dt><dd>With <strong>Sync</strong> on, a deck started while the other plays comes in on the bar, and <strong>Mix</strong> fades across over eight bars. <a class="learnlink" href="learn/perform#two-decks">Learn more</a></dd></div>
+          <div><dt>Arrangement</dt><dd>Which tracks play in each of 32 bars: click a bar to jump there, or drag across bars to pick them and cut, keep, move, copy or paste them. <a class="learnlink" href="learn/remix#arrangement">Learn more</a></dd></div>
+          <div><dt>Your songs</dt><dd>In the beats list: <strong>New</strong>, <strong>Import</strong> and <strong>Export</strong>, and each song's <strong>⋯</strong> menu to rename, duplicate, share or delete it. <a class="learnlink" href="learn/remix#save-and-versions">Learn more</a></dd></div>
+          <div><dt>Sharing</dt><dd>The link icon shares a song by link, which always plays its latest saved version; <strong>Make a video clip</strong> there (or <kbd>V</kbd>) records the code lighting up with the music. <a class="learnlink" href="learn/share#share-links">Learn more</a></dd></div>
         </dl>
 
         <h3>MIDI controller</h3>
@@ -704,7 +716,7 @@
           <button type="button" class="pillbtn" id="midi-learn" aria-pressed="false">Learn</button>
           <button type="button" class="pillbtn" id="midi-clear">Forget bindings</button>
         </div>
-        <p class="sheet__fine">With Learn on, click any knob, fader, pad or button on the deck, then move a control on your hardware.</p>
+        <p class="sheet__fine">With Learn on, click any knob, fader, pad or button on the deck, then move a control on your hardware. <a class="learnlink" href="learn/perform#midi">Learn more</a></p>
 
         <section class="support" id="support" aria-labelledby="support-title">
           <div class="support__copy">

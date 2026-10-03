@@ -3,10 +3,17 @@
 //   npm run test:songs                 every song, in chromium
 //   npm run test:songs -- --offline    the same with all remote requests blocked, to prove
 //                                      that the vendored samples (npm run samples) are enough
+//   npm run test:songs -- --examples   the Learn guide's examples (learn/examples/) instead
+//                                      of the beats; combines with --offline and an engine
+//                                      name (chromium, firefox or webkit)
 import { spawn } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { chromium } from 'playwright';
+import * as playwright from 'playwright';
+import { parse } from 'acorn';
+import { createAnalyzer } from '../../js/analyze-core.js';
+import { titleOf } from '../../js/songs-core.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 // SONGS_PORT lets two copies of the project run this at once
@@ -15,6 +22,29 @@ const URL_ = `http://localhost:${PORT}/`;
 const offline = process.argv.includes('--offline');
 // --built tests the site as it is published (run `npm run build` first)
 const built = process.argv.includes('--built');
+// --examples plays the Learn guide's examples instead of the beats
+const examplesMode = process.argv.includes('--examples');
+const engineName = process.argv.slice(2).find((arg) => !arg.startsWith('--')) || 'chromium';
+const engine = playwright[engineName];
+if (!engine) {
+  console.log(`${engineName}: unknown engine`);
+  process.exit(1);
+}
+
+// The examples, described the way the library describes a song (library-core.js), so the
+// deck can load them without the player's own example loader.
+const analyze = createAnalyzer(parse);
+const examples = examplesMode
+  ? readdirSync(resolve(root, 'learn/examples'))
+      .filter((name) => name.endsWith('.strudel'))
+      .sort()
+      .map((name) => {
+        const id = name.replace(/\.strudel$/, '');
+        const code = readFileSync(resolve(root, 'learn/examples', name), 'utf8');
+        const { meta, tracks, sliders, switches } = analyze(code);
+        return { id, title: titleOf(code) || id, by: meta.by, bpm: meta.bpm, notes: meta.notes, trackCount: tracks.length, knobCount: sliders.length + switches.length };
+      })
+  : [];
 
 const server = spawn(process.execPath, [resolve(root, 'tools/serve.mjs')], { env: { ...process.env, PORT: String(PORT), ...(built ? { SERVE: 'dist' } : {}) }, stdio: 'ignore' });
 process.on('exit', () => server.kill());
@@ -26,8 +56,13 @@ for (let i = 0; i < 50; i++) {
   }
 }
 
-// a silent, virtual audio output: no noise, and no dependence on the machine's sound device
-const browser = await chromium.launch({ args: ['--disable-audio-output'] });
+// Chromium renders to a silent, virtual output: no noise, and no dependence on the machine's
+// sound device. Firefox and WebKit have no such switch and play out loud.
+const options = {
+  chromium: { args: ['--disable-audio-output'] },
+  firefox: { firefoxUserPrefs: { 'media.autoplay.default': 0, 'media.autoplay.blocking_policy': 0 } },
+};
+const browser = await engine.launch(options[engineName] || {});
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
 // these tests never touch the real accounts project
 await context.addInitScript(() => (window.HTB_CONFIG = { firebase: null, analytics: null }));
@@ -49,14 +84,36 @@ await page.waitForFunction(() => window.hackingTheBeats?.players.A.ready || wind
 await page.click('#curtain-play');
 await page.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 45000 });
 
-const results = await page.evaluate(async () => {
+const results = await page.evaluate(async ({ examples }) => {
   const h = window.hackingTheBeats;
   const A = h.players.A;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const rows = [];
-  for (const song of h.app.songs) {
+
+  // The songs to play, each with the way it goes on deck A: a beat by its button in the
+  // library, an example by its file, loaded as a song object the way the library loads one.
+  const queue = examples.length
+    ? examples.map((example) => async () => {
+        const response = await fetch(`/learn/examples/${example.id}.strudel`);
+        if (!response.ok) throw new Error(`${response.status} for ${example.id}`);
+        const song = { ...example, id: `example:${example.id}`, source: 'example', code: await response.text() };
+        A.load(song, { autoplay: true });
+        return song;
+      })
+    : h.app.songs.map((song) => async () => {
+        document.querySelector(`.beat[data-id="${CSS.escape(song.id)}"] .beat__deck[data-deck="A"]`).click();
+        return song;
+      });
+
+  for (const start of queue) {
     const began = performance.now();
-    document.querySelector(`.beat[data-id="${CSS.escape(song.id)}"] .beat__deck[data-deck="A"]`).click();
+    let song;
+    try {
+      song = await start();
+    } catch (error) {
+      rows.push({ title: String(error.message), ok: false, seconds: '0.0', peak: '0.00', tracks: 0, knobs: 0, failure: 'could not load', silent: [], tries: [] });
+      continue;
+    }
     while (performance.now() - began < 40000 && !(A.song === song && (A.failure || (A.started && A.now() > 1.5)))) await sleep(100);
     let peak = 0;
     for (let i = 0; i < 50 && !A.failure; i++) {
@@ -91,7 +148,7 @@ const results = await page.evaluate(async () => {
     rows.push({
       tries: tries,
       title: song.title,
-      ok: !A.failure && A.started && peak > 0.01 && tries.length === 0,
+      ok: !A.failure && A.started && peak > 0.01 && tries.length === 0 && !A.mixer.tracks.some((track) => track.missingSounds.length),
       seconds: ((performance.now() - began) / 1000 - 2).toFixed(1),
       peak: peak.toFixed(2),
       tracks: A.mixer.tracks.length,
@@ -102,7 +159,7 @@ const results = await page.evaluate(async () => {
   }
   A.stop();
   return rows;
-});
+}, { examples });
 await browser.close();
 server.kill();
 
@@ -117,5 +174,6 @@ if (errors.length) console.log(`\npage errors:\n  ${[...new Set(errors)].slice(0
 if (offline) {
   console.log(blocked.size ? `\nblocked remote requests (${blocked.size}):\n  ${[...blocked].slice(0, 30).join('\n  ')}` : '\nno remote requests were attempted');
 }
-console.log(failures ? `\n${failures} song(s) failed` : `\nall ${results.length} songs play`);
+const what = examplesMode ? 'example' : 'song';
+console.log(failures ? `\n${failures} ${what}(s) failed` : `\nall ${results.length} ${what}s play`);
 process.exit(failures ? 1 : 0);

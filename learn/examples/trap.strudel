@@ -1,0 +1,40 @@
+/*
+  @title Half Light
+  Half-time at 140: a kick that lands late, a snare on three, hats that roll. The sub slides between two notes.
+  Room is left for a voice; "part" takes the keys down for a verse. STAB is muted until the hook needs it.
+  part: 0 hook, 1 verse
+*/
+setcps(140/60/4)
+
+const part = 0
+const weight = slider(0.6, 0.2, 1)
+
+KICK: s("bd ~ ~ ~ ~ ~ bd ~")
+  .bank("RolandTR808")
+  .gain(0.9)
+  ._punchcard()
+
+SNARE: s("~ ~ sd ~")
+  .bank("RolandTR808")
+  .gain(0.7)
+
+HATS: s("<hh*16 [hh*8 hh*16]>")
+  .bank("RolandTR808")
+  .gain("[0.4 0.2]*8")
+
+SUB: note("<f1 f1 ab1 [f1 eb1]>")
+  .s("sine")
+  .decay(0.6).sustain(0.3)
+  .gain(weight)
+  ._scope()
+
+KEYS: note("<[f3,ab3,c4] ~ [eb3,g3,bb3] ~>")
+  .s("gm_epiano1")
+  .room(0.5)
+  .gain([0.35, 0.15][part])
+
+_STAB: note("<f4 ~ ~ eb4>")
+  .struct("x ~ ~ ~ ~ ~ x ~")
+  .s("gm_lead_6_voice")
+  .delay(0.4)
+  .gain(0.3)

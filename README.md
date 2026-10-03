@@ -301,11 +301,11 @@ Accounts are optional, and off in a fresh copy. With them on (see [Deploy your o
 
 | Who | What they get |
 | --- | --- |
-| Not signed in | The **featured beat**, the code lighting up, and an introduction with a Sign in button. Once it plays, its controls are theirs: knobs, channels, pads and the master effects (positions are remembered in their browser), and clicking a track label in the code mutes it. Editing, saving, sharing, recording, the second deck and MIDI need an account. |
-| Signed in | The whole instrument: both decks, knobs, mixer, pads, editing, their own songs, sharing, recording, MIDI. Their beats are the featured one and any the admin has opened to members. A new member is given **User demo**, their own copy of the featured beat, to change as they like. |
+| Not signed in | The **featured beats** (up to six), the code lighting up, and an introduction with a Sign in button. Once it plays, its controls are theirs: knobs, channels, pads and the master effects (positions are remembered in their browser), and clicking a track label in the code mutes it. Editing, saving, sharing, recording, the second deck and MIDI need an account. |
+| Signed in | The whole instrument: both decks, knobs, mixer, pads, editing, their own songs, sharing, recording, MIDI. Their beats are the featured ones and any the admin has opened to members. A new member is given **User demo**, their own copy of the featured beat, to change as they like. |
 | Admin | The same, plus every beat, and the **Admin** sheet (account button → Admin). |
 
-Every beat belongs to the admin alone unless it is the featured one or has been opened to members. Nobody else can
+Every beat belongs to the admin alone unless it is one of the featured beats (up to six) or has been opened to members. Nobody else can
 see that such a beat exists. Signing in is one click with Google, and creates the account. Someone who follows a
 shared song's link can listen without one.
 
@@ -314,17 +314,18 @@ console (it can be empty; the uid is on the Authentication → Users page). Nobo
 site, so nothing in a browser can grant the role, and the site learns the role by asking the database a question
 only an admin is allowed to ask.
 
-**The Admin sheet** has two parts:
+**The Admin sheet** has three tabs:
 
-- *Beats*: the site's beats, in order. Add one of your own songs or import a strudel.cc export, choose the
-  **featured** beat, switch a beat to **Members** (or back to yours alone), rename, replace a beat's code with one
-  of your songs, remove. A beat keeps its address when it is renamed. Every change also rewrites the public catalog
-  (titles and descriptions of the featured beat and the members' beats, no code), which is what other visitors and
-  the site build read.
-- *Shared songs*: every song anyone is currently sharing, with **Open** and **Switch sharing off**. A song that
-  was switched off stays with its owner, who can still edit it but cannot share it again.
-- *From the community*: on *Shared songs*, a song its owner offered has **Feature** (or **Unfeature**), and the
-  rest say *not offered*. The shelf holds 48 at most. Switching a song's sharing off also takes it off the shelf.
+- *Beats*: the site's beats, in order, each with who can play it: **Anyone** (a featured beat, up to six),
+  **Members**, or **Only me**. Import a strudel.cc export file as a beat; rename or remove one. A beat keeps its
+  address when it is renamed. Every change also rewrites the public catalog (titles and descriptions of the
+  featured beats and the members' beats, no code), which is what other visitors and the site build read.
+- *My songs*: your own songs, each with **Publish as beat** (it joins the beats) or, for a song that already is one,
+  **Update beat** (its code replaces the beat's, for everyone).
+- *People*: everyone with an account, with how many songs each has. Its **All shared songs** view lists every song
+  anyone is currently sharing, with **Feature** (or **Unfeature**) for the community shelf (48 at most; a song its
+  owner has not offered says *not offered*) and **Switch sharing off**. A song that was switched off stays with its
+  owner, who can still edit it but cannot share it again, and comes off the shelf.
 
 ## Pages and addresses
 
@@ -334,6 +335,8 @@ only an admin is allowed to ask.
 | `/beats/<slug>` | The player opened on one beat. The slug comes from the title: `/beats/low-tide`. |
 | `/about` | What the site is, the list of beats, credits, source and contact. |
 | `/privacy` | The privacy notice. |
+| `/learn` | The guide: where to start, by what you want to do. |
+| `/learn/<area>` | One part of the guide: `start`, `play`, `perform`, `remix`, `build`, `share`, `reference` or `glossary`. From the player it opens over the music; "Open in the player" puts an example on deck A (`/#start=<example>`). |
 | `/s/<uuid>` | On the shared-song player: a shared song's own address. With link previews on, it is answered with the song's title, description and picture before any script runs (see below). |
 
 The address follows deck A: choosing a beat moves to its address, and back and forward move between the beats you
@@ -495,6 +498,7 @@ npm run test:browsers              # plays, mixes, edits, visits every page: thr
 npm run test:browsers -- --built   # the same against dist/ (after npm run build)
 npm run test:songs                 # loads and plays every song in beats/
 npm run test:songs -- --offline    # the same with all remote requests blocked
+npm run test:examples              # plays every example song of the Learn guide (-- --offline too)
 npm run test:accounts              # sign-in, saving, sharing, roles and the security rules,
                                    # on local emulators
 ```
@@ -537,6 +541,10 @@ and the offline cache name in `sw.js` together.
 ```text
   index.html ............ the player (the build makes every /beats/<slug> page from it)
   about.html, privacy.html, 404.html, sw.js
+  learn/ ................ the guide's sources: template.html, landing.html, areas/NN-<slug>.html,
+                          examples/*.strudel; tools/learn.mjs makes the pages (the dev server on
+                          each request, the build into dist/); images/learn/ holds its screenshots
+                          (npm run learn:shots); npm run learn lists anything to fix
   site-config.js ........ empty here; a site's settings arrive through it (config.site.json)
   firestore.rules ....... who may read and write what
   functions/ ............ the link-preview function (bundled into functions/dist/ by tools/build-functions.mjs)
@@ -569,6 +577,9 @@ and the offline cache name in `sw.js` together.
     onboarding.js ....... First steps
     outline.js .......... the song map beside the code      outline-core.js finds its sections
     keys-core.js ........ key names as the visitor's keyboard has them (⌘ on a Mac)
+    learn.js ............ the Learn pages: contents, search, the term drawer
+    learn-core.js ....... the guide from its sources (headings, links, terms, code, pictures, the search index)
+    learn-search-core.js  the search's words and scores
     errors-core.js ...... a song's mistakes in plain words
     *-core.js ........... the pure logic of each, shared with the build and the unit tests
   tools/ ................ dev server, site build, share pictures, engine build,

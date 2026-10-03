@@ -1,0 +1,559 @@
+<article data-title="Glossary" data-description="Every word the site uses, in a sentence or two, with a link to the section that explains it." data-kicker="Reference" data-group="Reference">
+  <p class="lede">The words the site uses, each in a sentence or two. Click a dotted word anywhere in the guide to see its entry without leaving the page.</p>
+
+  <dl class="glossary">
+    <div class="entry" id="beat" data-related="featured-beat my-songs">
+      <dt>Beat</dt>
+      <dd>
+        <p>One of the songs the site itself offers, listed under <strong>Beats</strong> in the songs list, each with a page of its own at <code>/beats/&lt;slug&gt;</code>. The site's administrator chooses who can play each one.</p>
+        <p class="entry__more"><a href="play#beats-and-songs">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="featured-beat" data-related="beat signed-out">
+      <dt>Featured beat</dt>
+      <dd>
+        <p>A beat that anyone can play without an account. There are between one and six, shown as chips beside deck A when you are signed out.</p>
+        <p class="entry__more"><a href="start#free-and-account">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="my-songs" data-related="save-as-my-song import-export">
+      <dt>My songs</dt>
+      <dd>
+        <p>The first section of the songs list: the songs saved to your account, with <strong>New</strong>, <strong>Import</strong> and <strong>Export</strong>, and a <strong>⋯</strong> menu on each to rename, duplicate, share or delete it. A song is private until you share it by link.</p>
+        <p class="entry__more"><a href="remix#save-and-versions">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="user-demo" data-related="my-songs starter">
+      <dt>User demo</dt>
+      <dd>
+        <p>The one song every new account starts with, under My songs, there to be edited and saved over.</p>
+        <p class="entry__more"><a href="start#free-and-account">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="channel" data-related="muted-layer knob missing-sound">
+      <dt>Channel</dt>
+      <dd>
+        <p>A labelled part of the code (<code>DRUMS:</code>) as a strip in the <strong>Channels</strong> panel, also called the Mixer: a level with a meter, <strong>M</strong> to mute, <strong>S</strong> to solo and <strong>●</strong> to capture it. Keys 1 to 9, 0, - and = mute channels 1 to 12.</p>
+        <p class="entry__more"><a href="play#channels">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="muted-layer" data-related="channel">
+      <dt>Muted layer</dt>
+      <dd>
+        <p>A part whose label starts or ends with an underscore (<code>_PAD:</code>). It comes up muted, ready to be brought in live from the mixer, and <strong>Reset</strong> mutes it again.</p>
+        <p class="entry__more"><a href="build#labels">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="missing-sound" data-related="channel sample-pack">
+      <dt>Missing sound</dt>
+      <dd>
+        <p>A sound name the loaded sample packs do not have. The notice reads "Not in the loaded sample packs", the strip is marked, and that part stays silent while the rest plays.</p>
+        <p class="entry__more"><a href="play#channels">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="knob" data-related="readout reset macro">
+      <dt>Knob</dt>
+      <dd>
+        <p>A <code>slider(value, min, max)</code> in the code, shown as a knob on the deck and as a slider in the code. Turning either rewrites the number as you go, without re-running the song.</p>
+        <p class="entry__more"><a href="play#knobs">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="macro" data-related="knob">
+      <dt>Macro</dt>
+      <dd>
+        <p>A knob that several parts of the code read, so one turn moves more than one thing: <code>const drive = slider(0.3, 0, 1)</code>, used in two tracks. Its sub-label names up to two of the parameters it feeds.</p>
+        <p class="entry__more"><a href="build#macros">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="readout" data-related="knob switch">
+      <dt>Readout</dt>
+      <dd>
+        <p>The value under a knob. It is the number in the code, or hertz when the knob reaches a frequency, or a switch's option label.</p>
+        <p class="entry__more"><a href="play#knobs">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="reset" data-related="knob switch tempo">
+      <dt>Reset</dt>
+      <dd>
+        <p>The button at the top of the Song knobs panel. It puts every knob and switch back to what the code says, unmutes and levels the mixer, and returns the tempo to the song's own.</p>
+        <p class="entry__more"><a href="play#knobs">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="switch" data-related="knob readout">
+      <dt>Switch</dt>
+      <dd>
+        <p>A whole-number <code>const</code> in the code with its options named in the header (<code>mode: 0 dry, 1 wet</code>), shown as a stepped knob before the sliders. Turning it changes the number and re-runs the song a moment later.</p>
+        <p class="entry__more"><a href="play#switches">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="try" data-related="edit changed-lines">
+      <dt>Try</dt>
+      <dd>
+        <p>The row of chips at the top left of the stage, one for each <code>@try</code> line in the song's header. Tap one to make that change and run it; tap again to put it back. The row appears once something has played, and nothing is saved by trying.</p>
+        <p class="entry__more"><a href="play#try">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="song-map" data-related="part-note stage">
+      <dt>Song map</dt>
+      <dd>
+        <p>The sections of the code, read from the code itself, listed beside it or behind <strong>Map</strong> on a narrow window: setup, knobs and switches, parts and helpers. Rest on one to read what it does; click to glide there.</p>
+        <p class="entry__more"><a href="play#song-map">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="part-note" data-related="song-map notes">
+      <dt>Part note</dt>
+      <dd>
+        <p>A comment of its own on the line above a part, or inside it, that the song map shows on that part's card. Up to 160 characters, in words rather than code.</p>
+        <p class="entry__more"><a href="build#song-map-notes">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="header" data-related="title-and-by notes try">
+      <dt>Header</dt>
+      <dd>
+        <p>The comment lines at the top of a song: <code>@title</code>, <code>@by</code>, any <code>@try</code> lines, a switch's options, and the notes. Other <code>@tags</code> are dropped.</p>
+        <p class="entry__more"><a href="build#header">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="title-and-by" data-related="header remix-of">
+      <dt>@title and @by</dt>
+      <dd>
+        <p>The header lines that name a song and credit its author. They show on the deck chip, in the songs list, on a shared song's page and in a video clip.</p>
+        <p class="entry__more"><a href="build#header">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="notes" data-related="header part-note">
+      <dt>Notes</dt>
+      <dd>
+        <p>The lines of the header that are not tags: what the song is, how to play it. They show on the song's card in the help sheet and under From the community.</p>
+        <p class="entry__more"><a href="build#header">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="stage" data-related="song-map follow inline-visual">
+      <dt>Stage</dt>
+      <dd>
+        <p>The code, lit as it plays: the words that make a sound light up at the moment they sound, knobs draw as sliders in the code, and a track's visual draws under its line. Click in it to edit, or a label to mute.</p>
+        <p class="entry__more"><a href="play#stage">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="mini-notation" data-related="pattern cycle">
+      <dt>Mini-notation</dt>
+      <dd>
+        <p>Strudel's way of writing a rhythm in a double-quoted string: <code>"bd ~ sd ~"</code> is four steps in one cycle. Single quotes are plain text, not a pattern.</p>
+        <p class="entry__more"><a href="build#strudel-basics">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="inline-visual" data-related="stage channel">
+      <dt>Inline visual</dt>
+      <dd>
+        <p>A drawing under a track's code from <code>._punchcard()</code>, <code>._pianoroll()</code>, <code>._scope()</code>, <code>._spectrum()</code>, <code>._spiral()</code> or <code>._pitchwheel()</code>. It dims when the track is muted and is drawn into video clips; the versions without the underscore draw on the whole window instead.</p>
+        <p class="entry__more"><a href="build#visuals">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="tempo" data-related="setcps sync reset">
+      <dt>Tempo</dt>
+      <dd>
+        <p>The song's speed in bpm, set in the code by <code>setcps()</code> or <code>setcpm()</code>, and the master knob that bends it from three quarters to one and a quarter times. The bpm readout in the top bar shows the result.</p>
+        <p class="entry__more"><a href="perform#sync-and-mix">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="bar" data-related="cycle arrangement-strip">
+      <dt>Bar</dt>
+      <dd>
+        <p>Four beats, and one cycle of the code: on this site the two are the same thing. The top bar counts bars, the arrangement strip shows 32 of them, and pads, snapshots and Mix all wait for the next one.</p>
+        <p class="entry__more"><a href="build#form-32-bars">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="deck" data-related="sync crossfader">
+      <dt>Deck</dt>
+      <dd>
+        <p>A or B: each holds one song with its own knobs and channels. The deck in focus is the one the keys and the panels act on; <kbd>X</kbd> switches. Deck B needs an account.</p>
+        <p class="entry__more"><a href="perform#two-decks">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="sync" data-related="deck mix tempo">
+      <dt>Sync</dt>
+      <dd>
+        <p>On by default: a deck started while the other plays comes in on the next bar line at the other's tempo, and the two keep one tempo. Switched off, a deck starts at once at its own.</p>
+        <p class="entry__more"><a href="perform#sync-and-mix">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="mix" data-related="sync crossfader deck">
+      <dt>Mix</dt>
+      <dd>
+        <p>The button, or <kbd>M</kbd>, that starts the other deck in time and fades across to it over eight bars, then stops the deck you left. Press it again to stop the fade where it is.</p>
+        <p class="entry__more"><a href="perform#sync-and-mix">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="crossfader" data-related="mix deck">
+      <dt>Crossfader</dt>
+      <dd>
+        <p>The A to B fader in the Master panel, blending the two decks with equal power. Double-click centres it; its readout says which deck, or the split.</p>
+        <p class="entry__more"><a href="perform#sync-and-mix">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="pad" data-related="latch deck">
+      <dt>Pad</dt>
+      <dd>
+        <p>One of six held effects on the deck: Echo, Drop, Wash, Half, Stutter and No drums. Hold one, Shift-click it, or switch Latch on to keep it. They work without an account.</p>
+        <p class="entry__more"><a href="perform#pads">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="echo" data-related="pad master">
+      <dt>Echo</dt>
+      <dd>
+        <p>Both a pad, <kbd>Q</kbd>, that throws the whole mix into a tempo-synced echo while it is held, and the master knob that sets how much of the mix goes to that echo all the time. The echo repeats on dotted eighths.</p>
+        <p class="entry__more"><a href="perform#pads">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="drop" data-related="pad master">
+      <dt>Drop</dt>
+      <dd>
+        <p>The pad, <kbd>W</kbd>, that closes the master's low-pass filter to 140 Hz over about half a beat. Let go and everything comes back at once.</p>
+        <p class="entry__more"><a href="perform#pads">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="wash" data-related="pad master">
+      <dt>Wash</dt>
+      <dd>
+        <p>The pad, <kbd>E</kbd>, that drowns the mix in the master's reverb while it is held.</p>
+        <p class="entry__more"><a href="perform#pads">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="half" data-related="pad stutter">
+      <dt>Half</dt>
+      <dd>
+        <p>The pad, <kbd>A</kbd>, that plays both decks at half time from the moment you press it, for as long as you hold it. It only works while the deck plays.</p>
+        <p class="entry__more"><a href="perform#pads">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="stutter" data-related="pad half">
+      <dt>Stutter</dt>
+      <dd>
+        <p>The pad, <kbd>S</kbd>, that repeats the eighth of a bar you pressed it in, on both decks, until you let go. It only works while the deck plays.</p>
+        <p class="entry__more"><a href="perform#pads">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="no-drums" data-related="pad channel">
+      <dt>No drums</dt>
+      <dd>
+        <p>The pad, <kbd>D</kbd>, that mutes every channel the site takes for drums while it is held: by its name (kick, hat, snare, perc and the like) or because most of what it plays in its first eight bars is a drum sound.</p>
+        <p class="entry__more"><a href="perform#pads">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="latch" data-related="pad">
+      <dt>Latch</dt>
+      <dd>
+        <p>The switch in the Pads header that makes a tap turn a pad on and another tap turn it off, instead of holding. Shift with a pad does the same for one press.</p>
+        <p class="entry__more"><a href="perform#pads">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="master" data-related="limiter crossfader echo">
+      <dt>Master</dt>
+      <dd>
+        <p>The deck's fourth panel, acting on both decks together: the Filter, Echo, Space, Tempo and Volume knobs, the meter and spectrum, and the row with the crossfader, Sync and Mix. The Filter is one knob: left closes a low-pass, right opens a high-pass.</p>
+        <p class="entry__more"><a href="perform#master">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="limiter" data-related="master">
+      <dt>Limiter</dt>
+      <dd>
+        <p>The fixed last stage of the master, which keeps the output under full scale. The meter turns orange while it is holding the sound down by more than 2 dB.</p>
+        <p class="entry__more"><a href="perform#master">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="snapshot" data-related="capture pin channel">
+      <dt>Snapshot</dt>
+      <dd>
+        <p>A recording of one channel alone, 1, 2, 4 or 8 bars from the next bar line and at most 30 seconds, kept on one of eight pads. Tap it to bring it in on the next bar; it follows the deck's tempo like a record.</p>
+        <p class="entry__more"><a href="perform#snapshots">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="capture" data-related="snapshot channel">
+      <dt>Capture</dt>
+      <dd>
+        <p>Pressing <strong>●</strong> on a channel to record it into a snapshot pad, for the number of bars chosen by the 1, 2, 4 and 8 chips. It starts at the next bar line, takes the channel as it sounds after its effects and fader, and lets go if the deck stops or the tempo changes.</p>
+        <p class="entry__more"><a href="perform#snapshots">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="pin" data-related="snapshot channel">
+      <dt>Pin</dt>
+      <dd>
+        <p>Keeping a snapshot on a deck's mixer as a channel of its own, looping in time and starting muted, so it is there to bring in. From the snapshot sheet: <strong>Pin to deck A's mixer</strong>, then <strong>Unpin</strong>.</p>
+        <p class="entry__more"><a href="perform#snapshots">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="arrangement-strip" data-related="bar cut silence">
+      <dt>Arrangement strip</dt>
+      <dd>
+        <p>The strip under the stage, also called the arrangement or the ribbon: which tracks play in each of 32 bars. Click a bar to jump there; pick bars to trim the song, and every trim is written into the code.</p>
+        <p class="entry__more"><a href="remix#arrangement">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="cut" data-related="keep-only arrangement-strip undo">
+      <dt>Cut</dt>
+      <dd>
+        <p>Taking the picked bars out of the song, with the <strong>Cut</strong> button or <kbd>Delete</kbd>. The song becomes the bars that remain, in order, and the strip marks where it now loops.</p>
+        <p class="entry__more"><a href="remix#arrangement">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="keep-only" data-related="cut arrangement-strip">
+      <dt>Keep only</dt>
+      <dd>
+        <p>The opposite of Cut: the picked bars stay and everything else goes.</p>
+        <p class="entry__more"><a href="remix#arrangement">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="move-bars" data-related="arrangement-strip copy-paste">
+      <dt>Move bars</dt>
+      <dd>
+        <p>Shifting the picked bars a bar earlier or later with <strong>‹</strong> and <strong>›</strong> in the trim toolbar, or the left and right arrow keys.</p>
+        <p class="entry__more"><a href="remix#arrangement">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="copy-paste" data-related="move-bars arrangement-strip">
+      <dt>Copy and paste</dt>
+      <dd>
+        <p><strong>Copy</strong> remembers the picked bars; <strong>Paste</strong> puts them in after another pick, and <strong>Paste over</strong> replaces it. Copying works within one song, and a paste cannot take it past 32 bars.</p>
+        <p class="entry__more"><a href="remix#arrangement">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="silence" data-related="bring-back arrangement-strip">
+      <dt>Silence</dt>
+      <dd>
+        <p>Quietening one track for a stretch of bars: open the strip, drag along that track's row, press <strong>Silence</strong>. In the code it is a <code>.mask()</code> on that track.</p>
+        <p class="entry__more"><a href="remix#arrangement">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="bring-back" data-related="silence">
+      <dt>Bring back</dt>
+      <dd>
+        <p>The button that takes the place of Silence on a stretch that is already silenced, and lets the track play there again.</p>
+        <p class="entry__more"><a href="remix#arrangement">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="undo" data-related="cut revert">
+      <dt>Undo</dt>
+      <dd>
+        <p>Offered in the trim toolbar for fifteen seconds after a trim, as long as the code has not changed since. After that, a trim is an ordinary edit: Revert throws it away with the rest.</p>
+        <p class="entry__more"><a href="remix#arrangement">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="edit" data-related="update changed-lines">
+      <dt>Edit</dt>
+      <dd>
+        <p>The stage bar button that unlocks the code, reading <strong>Done</strong> while it is unlocked. With a mouse a click in the code does the same; on a touch screen editing always starts with Edit. Esc leaves the code.</p>
+        <p class="entry__more"><a href="remix#edit-live">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="update" data-related="edit changed-lines">
+      <dt>Update</dt>
+      <dd>
+        <p>The button, or <kbd data-mod>Ctrl</kbd>+<kbd>Enter</kbd>, that runs the edited code without stopping the music. A mistake is reported in plain words with its line number, and the last good version keeps playing.</p>
+        <p class="entry__more"><a href="remix#edit-live">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="changed-lines" data-related="save revert">
+      <dt>Changed lines</dt>
+      <dd>
+        <p>The lines that differ from the saved song, marked in orange down the side of the code. While there are any, the stage bar reads <strong>Unsaved changes</strong> and the deck chip carries a dot.</p>
+        <p class="entry__more"><a href="remix#save-and-versions">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="save" data-related="save-as-new revert changed-lines">
+      <dt>Save</dt>
+      <dd>
+        <p>Writes over your own song, from the stage bar or <kbd data-mod>Ctrl</kbd>+<kbd>S</kbd>. There is no version history, so keep a version with Save as new first if you want it back. Only the owner can save over a song.</p>
+        <p class="entry__more"><a href="remix#save-and-versions">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="save-as-new" data-related="save save-as-my-song">
+      <dt>Save as new</dt>
+      <dd>
+        <p>Keeps the version on the deck as a new song of yours and leaves the original as it was. It is the button's name on your own song.</p>
+        <p class="entry__more"><a href="remix#save-and-versions">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="save-as-my-song" data-related="save-as-new remix-of save-a-copy">
+      <dt>Save as my song</dt>
+      <dd>
+        <p>The same button on a song that is not yours, a beat or someone's shared song: your edited version becomes a song of yours, credited as a remix of theirs.</p>
+        <p class="entry__more"><a href="remix#save-and-versions">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="save-a-copy" data-related="save-as-my-song remix-of">
+      <dt>Save a copy</dt>
+      <dd>
+        <p>On a song that is not yours and has not been edited: keeps it under My songs as it is, credited to its author. The copy icon beside a beat in the songs list, <strong>Copy to my songs</strong>, does the same.</p>
+        <p class="entry__more"><a href="remix#save-and-versions">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="revert" data-related="save undo">
+      <dt>Revert</dt>
+      <dd>
+        <p>Throws the unsaved changes away and restarts the saved version of the song.</p>
+        <p class="entry__more"><a href="remix#save-and-versions">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="remix-of" data-related="save-as-my-song title-and-by">
+      <dt>Remix of</dt>
+      <dd>
+        <p>The credit a copy carries: <em>Remix of "Paper Lanterns" by Mira Teal</em>. It is written when you save a copy of, or your own version of, a song that is not yours, and shows in the songs list as <strong>from</strong>.</p>
+        <p class="entry__more"><a href="remix#save-and-versions">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="follow" data-related="split gallery track-focus">
+      <dt>Follow</dt>
+      <dd>
+        <p>The stage bar button, or <kbd>F</kbd>, that glides the code to whichever track comes in, and otherwise tours the tracks that are playing. Scrolling by hand pauses it for a few seconds.</p>
+        <p class="entry__more"><a href="play#views">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="split" data-related="follow gallery deck">
+      <dt>Split</dt>
+      <dd>
+        <p>The view that shows both decks' code side by side. Mix switches to it for the fade on wide windows.</p>
+        <p class="entry__more"><a href="play#views">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="gallery" data-related="follow split">
+      <dt>Gallery</dt>
+      <dd>
+        <p>Full screen, code only, in larger type: the stage bar button or <kbd>G</kbd>. Esc leaves it. The Try row is hidden there.</p>
+        <p class="entry__more"><a href="play#views">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="track-focus" data-related="channel follow">
+      <dt>Track focus</dt>
+      <dd>
+        <p>Clicking a channel's name to isolate that track's code and its visual on the stage. Click again, or press Esc, to release it.</p>
+        <p class="entry__more"><a href="play#views">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="record" data-related="video-clip master">
+      <dt>Record</dt>
+      <dd>
+        <p>The dot in the top bar, or <kbd>R</kbd>: the mix as it comes out of the master, after the Volume knob, to a 16-bit stereo WAV file. It stops itself at twenty minutes.</p>
+        <p class="entry__more"><a href="share#record">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="video-clip" data-related="record share-link">
+      <dt>Video clip</dt>
+      <dd>
+        <p>A short vertical or square video of the code lighting up with the music, with the song's title, author, tempo and address, made on your device from <strong>Make a video clip</strong> in the share sheet or <kbd>V</kbd>. Lengths are 4, 8, 16 or 32 bars, between 5 and 90 seconds; nothing is uploaded.</p>
+        <p class="entry__more"><a href="share#video-clips">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="share-link" data-related="mix-link shared-song">
+      <dt>Share link</dt>
+      <dd>
+        <p>Your song's own address, <code>/s/&lt;uuid&gt;</code>, made when you switch <strong>Share by link</strong> on. It always plays the latest saved version; switching sharing off closes it for good, and switching it on again makes a new one.</p>
+        <p class="entry__more"><a href="share#share-links">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="mix-link" data-related="share-link beat">
+      <dt>Mix link</dt>
+      <dd>
+        <p>A beat's address with your settings in it: <code>/beats/&lt;slug&gt;#mix=…</code> carries the knobs, switches, mixer and tempo. The share sheet makes one for a beat, since the beat's code is not yours to share.</p>
+        <p class="entry__more"><a href="share#share-links">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="shared-song" data-related="share-link save-a-copy community-shelf">
+      <dt>Shared song</dt>
+      <dd>
+        <p>Someone's song reached by its link. On its own page it plays with its knobs, channels and pads; on the main site it asks "Run this song" or "Run and keep a copy" first, with "Read the code first" beside them. You cannot change their song, only keep a copy that credits them.</p>
+        <p class="entry__more"><a href="remix#someone-elses-song">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="community-shelf" data-related="shared-song admin">
+      <dt>Community shelf</dt>
+      <dd>
+        <p>The <strong>From the community</strong> section of the songs list: up to 48 shared songs that their owners offered with <strong>Let the site feature this</strong> and the site's editors picked.</p>
+        <p class="entry__more"><a href="share#community">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="starter" data-related="my-songs user-demo">
+      <dt>Starter</dt>
+      <dd>
+        <p>What <strong>New</strong> under My songs starts a song from: a <strong>Drum loop</strong> or a <strong>Full song</strong>, each a short working template to change.</p>
+        <p class="entry__more"><a href="build#start-a-song">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="import-export" data-related="my-songs">
+      <dt>Import and Export</dt>
+      <dd>
+        <p>The buttons beside New. <strong>Import</strong> brings songs in from <code>.json</code>, <code>.js</code>, <code>.strudel</code>, <code>.str</code> or <code>.txt</code> files; <strong>Export</strong> downloads all of your songs as one file.</p>
+        <p class="entry__more"><a href="share#export">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="sample-pack" data-related="bank missing-sound">
+      <dt>Sample pack</dt>
+      <dd>
+        <p>A set of sounds a song can call by name. The site loads a fixed set of public packs, and a song can add any pack that allows it with <code>samples('github:user/repo')</code>; the site waits about seven seconds for it, then plays without it.</p>
+        <p class="entry__more"><a href="build#sound-palette">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="bank" data-related="sample-pack">
+      <dt>Bank</dt>
+      <dd>
+        <p>A drum machine's set of sounds inside a pack, chosen with <code>.bank("RolandTR909")</code>, so that <code>"bd sd hh"</code> plays that machine's kick, snare and hat.</p>
+        <p class="entry__more"><a href="build#sound-palette">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="midi-learn" data-related="knob pad">
+      <dt>MIDI Learn</dt>
+      <dd>
+        <p>Binding a hardware controller to the deck: press <strong>MIDI</strong>, click a control on screen, move one on the hardware. Knobs, switches, channel strips, pads, master knobs, the crossfader, Mix and play can be bound; bindings stay in the browser until <strong>Forget bindings</strong>.</p>
+        <p class="entry__more"><a href="perform#midi">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="first-steps" data-related="signed-out">
+      <dt>First steps</dt>
+      <dd>
+        <p>The short list in the corner of the stage that opens after the first play: press play, turn a knob, mute a track, try a change, then keep and share your version. Each step ticks itself off; <strong>Steps</strong> on the strip and <strong>Show the first steps again</strong> in the help sheet bring it back.</p>
+        <p class="entry__more"><a href="start#first-steps">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="signed-out" data-related="featured-beat first-steps">
+      <dt>Signed out</dt>
+      <dd>
+        <p>What the site is without an account: the featured beats on deck A, with their knobs, switches, channels, pads, Try chips, the song map, the master knobs, Follow and Gallery. Editing, saving, sharing, recording, deck B, snapshots and MIDI wait for a free sign-in.</p>
+        <p class="entry__more"><a href="start#free-and-account">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="admin" data-related="beat community-shelf">
+      <dt>Admin</dt>
+      <dd>
+        <p>The sheet the site's administrator has, from the account dialog: which beats anyone, members or only the administrator can play, publishing a song as a beat, and the people with accounts and the songs they share.</p>
+        <p class="entry__more"><a href="reference#account-and-admin">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="strudel" data-related="pattern mini-notation">
+      <dt>Strudel</dt>
+      <dd>
+        <p>The music engine, a language for live-coding music in JavaScript and the port of TidalCycles to the browser. Every song on the site is a Strudel program, and anything that plays on strudel.cc plays here.</p>
+        <p class="entry__more"><a href="start#what-is-this">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="cycle" data-related="bar setcps">
+      <dt>Cycle</dt>
+      <dd>
+        <p>Strudel's unit of time: one pass through a pattern. On this site one cycle is one bar of four beats, so a 32-cycle song is 32 bars.</p>
+        <p class="entry__more"><a href="build#form-32-bars">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="pattern" data-related="mini-notation cycle">
+      <dt>Pattern</dt>
+      <dd>
+        <p>What Strudel plays: a description of events over cycles, written with mini-notation and functions like <code>s()</code>, <code>note()</code> and <code>.lpf()</code>. A labelled top-level pattern is a channel.</p>
+        <p class="entry__more"><a href="build#strudel-basics">Read the full section</a></p>
+      </dd>
+    </div>
+    <div class="entry" id="setcps" data-related="tempo cycle">
+      <dt>setcps</dt>
+      <dd>
+        <p>The line that sets a song's tempo in cycles per second: <code>setcps(120/60/4)</code> is 120 bpm with one cycle to the bar, and <code>setcpm(120/4)</code> says the same. The site reads the bpm from it.</p>
+        <p class="entry__more"><a href="build#form-32-bars">Read the full section</a></p>
+      </dd>
+    </div>
+  </dl>
+</article>

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parse } from 'acorn';
 import { createAnalyzer } from '../../js/analyze-core.js';
 import { collect, createLibrary } from '../../js/library-core.js';
-import { slugify, assignSlugs, beatPath, slugFromPath, songTitle, songDescription, creditLine, remixLine, songLinkIn, sharePath, shareIdFromPath } from '../../js/routes-core.js';
+import { slugify, assignSlugs, beatPath, slugFromPath, songTitle, songDescription, creditLine, remixLine, songLinkIn, sharePath, shareIdFromPath, startFromHash } from '../../js/routes-core.js';
 
 const library = createLibrary(createAnalyzer(parse));
 
@@ -89,4 +89,15 @@ test("a shared song's own address is /s/<uuid>, and nothing else is taken for on
   assert.equal(shareIdFromPath(`/s/${uuid}`), uuid);
   assert.equal(shareIdFromPath(`/s/${uuid}/`), uuid);
   for (const path of ['/s/', '/s/hello', `/s/${uuid.toUpperCase()}`, `/s/${uuid}/card.png`, `/x/${uuid}`, '/']) assert.equal(shareIdFromPath(path), null, path);
+});
+
+test('an example from the guide is found in its link', () => {
+  assert.equal(startFromHash('#start=techno'), 'techno');
+  assert.equal(startFromHash('#x=1&start=code-becomes-controls'), 'code-becomes-controls');
+  assert.equal(startFromHash('#song=abc'), null);
+  assert.equal(startFromHash(''), null);
+  assert.equal(startFromHash(undefined), null);
+  // only plain lower-case ids: nothing else is taken for one
+  assert.equal(startFromHash('#start=Techno'), null);
+  assert.equal(startFromHash('#start=../x'), null);
 });

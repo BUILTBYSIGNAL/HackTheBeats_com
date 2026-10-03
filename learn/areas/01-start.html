@@ -1,0 +1,245 @@
+<article data-title="Start here" data-description="What Hack The Beats is, what Strudel does, what you can do without an account, and four ways in depending on what you want." data-kicker="Getting started" data-group="Getting started">
+  <p class="lede">
+    Strudel is the engine: a language for writing music as code. Hack The Beats is the stage, the instrument and the DJ booth
+    built around it, where that code becomes something you can play, perform, remix, record and share.
+  </p>
+
+  <h2 id="what-is-this">What is this?</h2>
+  <p>
+    Every song on the site is a short program. When you press play, your browser runs it and makes the sound as it goes:
+    nothing is a recording. The code stays on screen the whole time, and the words that make a sound light up at the moment
+    they sound. Change a word and the music changes with it.
+  </p>
+  <p>
+    The language is <a data-term="strudel">Strudel</a>, made at <a href="https://strudel.cc">strudel.cc</a>: a way of writing
+    music in JavaScript where a <a data-term="pattern">pattern</a> is a sentence about time. <code>s("bd*4")</code> is four kicks
+    in a <a data-term="bar">bar</a>; <code>s("[~ cp]*2")</code> is "rest, clap, twice". Strudel is what lets you write music with
+    code, and anything that plays on strudel.cc plays here.
+  </p>
+  <p>
+    Hack The Beats is what stands around that engine. The site reads the code the way you would read a score, and turns what it
+    finds into controls: each named part becomes a <a data-term="channel">channel</a> in a mixer, each <code>slider()</code>
+    becomes a <a data-term="knob">knob</a>, and a song can offer one-tap changes to <a data-term="try">try</a>. Around that sit
+    the things a DJ expects: two <a data-term="deck">decks</a> kept in time, a <a data-term="crossfader">crossfader</a>,
+    performance <a data-term="pad">pads</a>, <a data-term="snapshot">snapshots</a> and a <a data-term="master">master</a>
+    section. Then there is a remix room, where you edit the code while it plays and keep your own version, and a way out: a
+    recording, a video clip or a link that anyone can open. So Strudel writes the music, and Hack The Beats makes it something
+    people can play, manipulate, perform, remix, visualise, record and share.
+  </p>
+  <figure data-shot="player-overview" data-alt="The whole player: the code on the stage above, the deck with its knobs, channels and pads below"><figcaption>The stage shows the code; the deck beneath it holds the controls the site read out of that code.</figcaption></figure>
+  <p>Here is a whole song, the way the site sees it.</p>
+  <pre class="code" data-example="code-becomes-controls" data-open></pre>
+  <p>
+    The comment at the top is the <a data-term="header">header</a>: its <code>@title</code> names the song on the deck and its
+    plain lines become the notes you read in the help sheet, while the <code>@try</code> line becomes a chip over the code that
+    swaps the bass sound with one tap. <code>setcps(118/60/4)</code> sets the <a data-term="tempo">tempo</a>, 118 BPM. The
+    <code>slider</code> line becomes a knob called pressure that runs from 300 to 4000 and reads in hertz, because it feeds a
+    filter. <code>DRUMS:</code> and <code>BASS:</code> become two channels with faders and meters, <code>_PAD:</code> a third
+    that starts <a data-term="muted-layer">muted</a>, waiting to be brought in, and the <code>._punchcard()</code> and
+    <code>._scope()</code> calls draw a live picture under the line that makes the sound.
+  </p>
+
+  <h2 id="play-first">Play first</h2>
+  <p>
+    Press play. Turn a knob. Mute a channel. Tap a suggestion. That is the first five minutes, and no code is involved. You do not
+    need an account for any of it.
+  </p>
+  <figure data-shot="first-screen" data-alt="The whole player before anything plays: the code on the stage and the deck below it"><figcaption>The first screen: the beat's code on the stage, the deck underneath, nothing playing yet.</figcaption></figure>
+  <figure data-shot="curtain" data-alt="The curtain over a beat, with its title, its credit and a large play button"><figcaption>The curtain: a beat's title and credit, and the play button that starts it.</figcaption></figure>
+  <ol>
+    <li>
+      <strong>Press play</strong> on the curtain, or press <kbd>Space</kbd>. The code lights up as it sounds, and a scope at the
+      top of the <a data-term="stage">stage</a> moves with the music.
+    </li>
+    <li>
+      <strong>Turn a knob</strong> on the deck. Each one is a number in the code; watch the number change as you turn it, without
+      the music stopping. Double-click a knob (or press <kbd>Enter</kbd> on it) to put it back.
+    </li>
+    <li>
+      <strong>Mute a channel.</strong> Press <strong>M</strong> on a strip in the mixer, or click the track's label in the code
+      (<code>DRUMS:</code>, say): the tooltip reads <strong>Click to mute</strong>, then <strong>Click to bring in</strong>. The
+      keys <kbd>1</kbd> to <kbd>9</kbd>, <kbd>0</kbd>, <kbd>-</kbd> and <kbd>=</kbd> mute channels 1 to 12.
+    </li>
+    <li>
+      <strong>Hold a pad.</strong> <kbd>Q</kbd> throws an <a data-term="echo">echo</a>, <kbd>W</kbd> drops the music into a
+      filter, <kbd>E</kbd> washes it in reverb, <kbd>A</kbd> halves the time, <kbd>S</kbd> stutters, <kbd>D</kbd> takes the
+      drums away. Let go and it stops.
+    </li>
+    <li>
+      <strong>Tap a Try chip</strong>, top left over the code, once something has played. The line changes, and so does the music;
+      tap it again to put it back.
+    </li>
+  </ol>
+  <figure data-shot="deck-knob" data-alt="One knob on the deck, with its name, its readout and the sub-label saying what it shapes"><figcaption>A knob's readout shows the value the code now holds; the small print says which parameters it feeds.</figcaption></figure>
+  <figure data-shot="deck-strip" data-alt="One channel strip in the mixer with its meter, fader, M, S and the capture dot"><figcaption>A channel: the meter moves with that part alone, and M mutes it on the next sound.</figcaption></figure>
+  <figure data-shot="tries-on" data-alt="A Try chip lit over the code, with the changed line marked"><figcaption>A Try chip that is on: the changed line is marked until you tap the chip again.</figcaption></figure>
+  <p>
+    A visitor who is not signed in sees the live site in its free form: the <a data-term="featured-beat">featured beat</a> on deck
+    A with a short pitch beneath it, every knob, switch, channel and pad working, and a sign-in button for the rest. The first
+    time you click into the code without an account, a line explains that signing in is what unlocks editing, and that in the
+    meantime a track name mutes and a lit number finds its knob.
+  </p>
+  <figure data-shot="signed-out-first-screen" data-alt="The player as a visitor who is not signed in sees it, with one deck and the featured beat"><figcaption>Signed out: deck A, the featured beat and its controls, and nothing that needs an account.</figcaption></figure>
+  <figure data-shot="signed-out-intro" data-alt="The pitch shown under the deck to a visitor who is not signed in"><figcaption>Signed out, the player says what is free and what an account adds, with the sign-in button underneath.</figcaption></figure>
+
+  <h2 id="paths">Four ways in</h2>
+  <p>The guide is written for four people. Pick the one you are today; the other paths will still be here.</p>
+
+  <h3 id="listener">I just want to play with a beat</h3>
+  <p>
+    You want to hear something good and lean on it: turn the knobs, drop the drums out and back in, hold a pad through a
+    section, see what the suggestions do. None of this needs code, and none of it needs an account.
+  </p>
+  <ol>
+    <li><a href="play#stage">The stage</a>: what the code is doing while it plays, and how to read the lights.</li>
+    <li><a href="play#knobs">Knobs</a>, <a href="play#channels">channels</a> and <a href="play#switches">switches</a>: the three kinds of control on the deck.</li>
+    <li><a href="perform#pads">Pads</a>: the six held effects.</li>
+    <li><a href="play#try">Try</a> and the <a href="play#song-map">song map</a>: a song's own suggestions, and a guide to its parts.</li>
+    <li><a href="play#views">Follow, Split and Gallery</a>: the three ways to look at the code.</li>
+  </ol>
+
+  <h3 id="dj">I mix and perform</h3>
+  <p>
+    You want two songs at once, in time, with a crossfader between them, pads to throw at the room and loops you can bring in on
+    the bar. You probably own a controller. The second deck and the capture button need the free account; the pads and the
+    master knobs do not.
+  </p>
+  <ol>
+    <li><a href="perform#two-decks">Two decks</a> and <a href="perform#sync-and-mix">Sync and Mix</a>: how a second song comes in on the bar line and how the fade works.</li>
+    <li><a href="perform#pads">Pads</a> and <a href="perform#master">the master section</a>: Filter, Echo, Space, Tempo and Volume.</li>
+    <li><a href="perform#snapshots">Snapshots</a>: capture one channel for a few bars and play it back like a record.</li>
+    <li><a href="perform#midi">MIDI</a>: bind any knob, fader, pad or button to your hardware.</li>
+    <li><a href="share#record">Record</a> the mix when it is good.</li>
+  </ol>
+
+  <h3 id="remixer">I want to change a song</h3>
+  <p>
+    You hear a beat and want it slower, darker, with a different bass, or with bars 9 to 16 gone. You are happy to touch code
+    if the site tells you what each line does, and you want to keep your version without breaking the original. This needs the
+    free account.
+  </p>
+  <ol>
+    <li><a href="remix#edit-live">Edit while it plays</a>: Edit, Update, and what happens when a change does not run.</li>
+    <li><a href="remix#change-sounds">Change the sounds</a>: swap a sample, a note, a number.</li>
+    <li><a href="remix#arrangement">The arrangement strip</a>: cut, keep, move and silence bars without typing.</li>
+    <li><a href="remix#capture-loops">Capture loops</a> and <a href="remix#save-and-versions">save your versions</a>.</li>
+    <li><a href="remix#someone-elses-song">Someone else's song</a>: what a shared link lets you do, and how a copy credits its source.</li>
+  </ol>
+
+  <h3 id="coder">I write Strudel</h3>
+  <p>
+    You already write patterns and want to know how this site reads them: what makes a channel, a knob, a switch, a suggestion,
+    a note on the map, and what makes a song that performs well under someone else's hands. The Strudel rules are here, with the
+    things that trip people up.
+  </p>
+  <ol>
+    <li><a href="build#strudel-basics">Strudel basics</a>: the rules the site relies on, and the mistakes that cost an evening.</li>
+    <li><a href="build#code-becomes-controls">How code becomes controls</a>: the table of what the site reads.</li>
+    <li><a href="build#header">The header</a>, <a href="build#labels">labels</a>, <a href="build#macros">macros</a>, <a href="build#switches">switches</a> and <a href="build#try-lines">@try lines</a>.</li>
+    <li><a href="build#form-32-bars">Form in 32 bars</a> and <a href="build#dj-friendly">writing for a DJ</a>.</li>
+    <li><a href="build#checklist">The checklist</a> before you share.</li>
+  </ol>
+
+  <h2 id="free-and-account">What is free, and what needs an account</h2>
+  <p>
+    The live site has two levels. <a data-term="signed-out">Signed out</a>, you get an instrument; signed in, you get a studio.
+    The account is free and is a Google sign-in, nothing more to fill in.
+  </p>
+  <figure data-shot="featured-chips" data-alt="The featured beats as chips beside deck A, for a visitor who is not signed in"><figcaption>Signed out, up to six featured beats sit as chips beside deck A; any of them plays at once.</figcaption></figure>
+  <table class="ref">
+    <thead><tr><th>Free, signed out</th><th>With the free account</th></tr></thead>
+    <tbody>
+      <tr><td>The featured <a data-term="beat">beats</a> on deck A, and up to six of them as chips beside the deck</td><td>Every beat, and the song list for both decks</td></tr>
+      <tr><td>Knobs, switches, channels, pads and the master knobs, with <strong>Reset</strong></td><td>The crossfader, deck B and <strong>Mix</strong></td></tr>
+      <tr><td>Try, the song map, <strong>Follow</strong> and <strong>Gallery</strong></td><td>Editing the code, <strong>Save</strong>, <strong>Save as new</strong>, <strong>Save as my song</strong> and <strong>Save a copy</strong></td></tr>
+      <tr><td>Jumping about the arrangement strip: click a bar, or <kbd>[</kbd> and <kbd>]</kbd></td><td>Trimming the arrangement: <strong>Cut</strong>, <strong>Keep only</strong>, <strong>Silence</strong> and the rest</td></tr>
+      <tr><td>The keys that go with all of the above, and <kbd>?</kbd></td><td>Sharing by link, recording, video clips, snapshots and MIDI Learn</td></tr>
+    </tbody>
+  </table>
+  <p>
+    So a signed-out visitor can play a featured beat, bend every control on it, read its map and try its suggestions. A Try chip
+    still works, but the message beside it says <strong>Sign in to keep your own version</strong>, because nothing you change is
+    kept until you can save. Beats that are not featured show <strong>sign in to play</strong> in the list, and opening one by its
+    address shows a curtain that says so, with a button to play a featured beat instead.
+  </p>
+  <figure data-shot="locked-beat" data-alt="The curtain for a beat that needs an account, with Sign in with Google and a button to play a featured beat instead"><figcaption>A beat that needs an account says so on its curtain and offers a featured beat instead.</figcaption></figure>
+  <p>
+    Signing in opens the rest: editing and saving, <a data-term="save-a-copy">Save a copy</a>, sharing a song by link, recording
+    the mix, video clips, the second deck with <a data-term="mix">Mix</a> and the crossfader, snapshots, trims on the arrangement
+    strip, and <a data-term="midi-learn">MIDI Learn</a>. A new account also gets a first song of its own, called
+    <a data-term="user-demo">User demo</a>: a copy of the featured beat, in <a data-term="my-songs">My songs</a>, there to be
+    changed. The featured beat itself is never touched.
+  </p>
+  <figure data-shot="account-dialog" data-alt="The account sheet for a visitor who is signed out, with what an account adds and the sign-in button"><figcaption>The account sheet says what the account adds and what the site keeps: your name, your email address and the songs you save.</figcaption></figure>
+  <p>
+    A local copy of the site, run from the source with no accounts set up, has everything open: the editor, both decks, recording, video clips,
+    snapshots, all of it, with your songs kept in the browser; only sharing by link needs a hosted copy with accounts. That is the version this guide's demo beats
+    live in.
+  </p>
+  <aside class="note" data-kind="tip"><p>Not sure whether something needs the account? Press it. Anything that does says so in a sentence and offers the sign-in button.</p></aside>
+
+  <h2 id="first-steps">First steps</h2>
+  <p>
+    The first time a song plays, a small card called <a data-term="first-steps">First steps</a> opens in the corner of the stage.
+    It is a short list, and it is the loop the whole site is built on: play it, bend it, change it, keep it, pass it on.
+  </p>
+  <figure data-shot="coach" data-alt="The First steps card in the corner of the stage, with the first two steps ticked"><figcaption>The First steps card: each line ticks itself off when you have done it, and Show me points at where.</figcaption></figure>
+  <p>Signed out, the steps are these; each one ticks itself off the moment you do it, wherever you did it.</p>
+  <ol>
+    <li><strong>Press play.</strong> The code lights up as it plays: every sound comes from it.</li>
+    <li><strong>Turn a knob.</strong> Each knob is a number in the code. Watch the number change as you turn it.</li>
+    <li><strong>Mute a track.</strong> Click a track name in the code, like <code>DRUMS:</code>, or press M on its channel.</li>
+    <li><strong>Try a change.</strong> Tap a suggestion over the code. This step only appears when the song has suggestions.</li>
+    <li><strong>Sign in to keep going.</strong> Free, with Google. Then change the code, keep your version and share it.</li>
+  </ol>
+  <p>
+    With an account the list ends differently: <strong>Try a change</strong> becomes <strong>Change the code</strong> when the song
+    has no suggestions (press <strong>Edit</strong>, change a number or a word, press <strong>Update</strong>), then
+    <strong>Keep your version</strong> with <strong>Save as my song</strong> or <strong>Save</strong>, and <strong>Share it</strong>,
+    so that anyone with the link can play your song and keep a copy of their own.
+  </p>
+  <p>
+    Each step has a <strong>Show me</strong> chip that points at the control it means, and the card's count reads how many are
+    done. When the last one ticks, the card says so and a <strong>Done</strong> button closes it.
+  </p>
+  <figure data-shot="coach-end" data-alt="The First steps card with every step ticked and its closing line"><figcaption>All steps done: the card sums up the loop and offers Done.</figcaption></figure>
+  <p>
+    You can close the card at any time with its ×. It comes back from the <strong>Steps</strong> button on the ribbon above the
+    deck, which shows how far you got, as in <strong>Steps 2/5</strong>. <strong>Don't show these again</strong>, at the foot of the
+    card, puts it away for good in this browser; if you change your mind, the help sheet has <strong>Show the first steps
+    again</strong>.
+  </p>
+  <figure data-shot="ribbon-tools" data-alt="The ribbon above the deck, with the Steps button and its count"><figcaption>The Steps button on the ribbon reopens the card and shows how many steps are done.</figcaption></figure>
+
+  <h2 id="help-in-the-player">Help inside the player</h2>
+  <p>
+    You do not have to leave the player to find out what something does. The <strong>?</strong> button at the right of the top bar
+    (or the <kbd>?</kbd> key) opens the help sheet, which is quick help for whatever is loaded.
+  </p>
+  <figure data-shot="topbar-actions" data-alt="The right end of the top bar: the record dot, the share icon, the help button and the account button"><figcaption>The top bar's right end: record, share, help and your account, each with a tooltip when you rest on it.</figcaption></figure>
+  <p>From the top, the help sheet holds:</p>
+  <ul>
+    <li><strong>Open the guide ↗</strong>, which opens this guide in a new tab, with the four paths from <a href="#paths">above</a> as links beneath it.</li>
+    <li>The song's own <a data-term="notes">notes</a>: whatever its author wrote in the header, and the legend of any switch it has.</li>
+    <li><strong>Show the first steps again</strong>.</li>
+    <li><strong>Keys</strong>: every shortcut, written for your machine (a Mac sees ⌘ where Windows sees Ctrl).</li>
+    <li><strong>On screen</strong>: one line each on editing, the code, Try, the song map, the views, knobs, channels, pads, snapshots, two decks, the arrangement, your songs and sharing, each with a <strong>Learn more</strong> link into this guide.</li>
+    <li><strong>MIDI controller</strong>: <strong>Connect</strong>, <strong>Learn</strong> and <strong>Forget bindings</strong>, with the connection's status.</li>
+    <li><strong>Support the site</strong>, and the credits, the licence and the source.</li>
+  </ul>
+  <figure data-shot="help-sheet" data-alt="The help sheet open over the player, with the Open the guide button and the song's notes"><figcaption>The help sheet: the guide button and the four paths at the top, then the song's notes and the keys.</figcaption></figure>
+  <p>
+    A <strong>Learn more</strong> link does not take you away. It opens the article over the player, where you can read it and
+    close it with the music still going; <strong>Open as a page ↗</strong> at the top of that reader opens the same article here,
+    in a new tab, when you want the whole guide and its contents list.
+  </p>
+  <figure data-shot="learn-lightbox" data-alt="A guide article open in a reader over the player, with Open as a page at the top"><figcaption>A Learn more link opens the article over the player; Open as a page ↗ brings it here.</figcaption></figure>
+  <p>
+    Smaller help is everywhere else. Rest the pointer on anything in the top bar and a tooltip names it with its key:
+    <strong>Record the mix to a file (R)</strong>, <strong>Help and shortcuts (?)</strong>. The buttons on the deck and the stage bar
+    do the same, so <strong>Update</strong> reads <strong>Run the edited code</strong> with its shortcut, and each knob's tooltip says
+    what it shapes. When something cannot be done, the player says why in a sentence at the foot of the screen rather than
+    doing nothing.
+  </p>
+  <aside class="note" data-kind="tip"><p>The single-key shortcuts are off while you are typing in the code, so <kbd>?</kbd> opens help only once you have left the editor with <kbd>Esc</kbd>.</p></aside>
+</article>

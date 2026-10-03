@@ -1,0 +1,39 @@
+/*
+  @title Two Doors
+  Two numbers with a legend become switches. "section" opens the song a step at a time; "mood" picks which scale it walks.
+  section: 0 intro, 1 groove, 2 drop
+*/
+setcps(120/60/4)
+
+const section = 0
+const mood = 0 // 0-1
+const tone = slider(900, 200, 4000)
+const key = ["E2:minor", "E2:dorian"][mood]
+
+KICK: s(["bd ~ ~ ~", "bd*4", "bd*4"][section])
+  .bank("RolandTR909")
+  .gain(0.9)
+  ._punchcard()
+
+HATS: s(["~ ~ hh ~", "[~ hh]*4", "hh*8"][section])
+  .bank("RolandTR909")
+  .gain(0.4)
+
+CLAP: s("~ cp ~ cp")
+  .bank("RolandTR909")
+  .gain([0.3, 0.5, 0.6][section])
+
+BASS: n("<0 0 3 5>*2")
+  .scale(key)
+  .struct(["x ~ ~ ~ x ~ ~ ~", "x ~ x x ~ x ~ x", "x*8"][section])
+  .s("sawtooth")
+  .lpf(tone)
+  .gain(0.5)
+  ._scope()
+
+LEAD: n("<[0 2 4 7] [7 4 2 0]>")
+  .scale(key)
+  .add(14)
+  .s("triangle")
+  .delay(0.3)
+  .gain([0, 0.15, 0.25][section])

@@ -517,6 +517,9 @@ async function addresses(browser) {
   await page.goto(`${URL}privacy`);
   const privacy = await page.title();
   check('About and Privacy are pages of their own', about.title.startsWith('About Hack The Beats') && about.h1 === 'About' && privacy.startsWith('Privacy'), `${about.title} · ${privacy}`);
+  await page.goto(`${URL}learn/remix`);
+  const learn = { title: await page.title(), h1: await page.locator('h1').textContent(), description: await page.evaluate(() => document.querySelector('meta[name="description"]').content) };
+  check('the guide\'s pages are pages of their own, each with its title and description', learn.title === 'Remix — Learn — Hack The Beats' && learn.h1 === 'Remix' && learn.description.length > 40, learn.title);
 
   if (built) {
     // what a crawler that runs no scripts is given
@@ -573,7 +576,227 @@ async function sharing(browser) {
   return results;
 }
 
+// The guide and the player: an example opened from the guide, the help sheet's way into
+// the guide, Learn pages over the player, and "Learn more" beside the controls.
+async function learning(browser) {
+  const results = [];
+  const check = (name, passed, detail = '') => results.push([name, Boolean(passed), String(detail)]);
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
+  await context.addInitScript(() => (window.HTB_CONFIG = { firebase: null, analytics: null }));
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => message.type() === 'error' && !/Failed to load resource/.test(message.text()) && errors.push(message.text()));
+  const ready = () => page.waitForFunction(() => window.hackingTheBeats?.players.A.ready, null, { timeout: 45000 });
+  const shown = (selector) => page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    return Boolean(el) && getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0;
+  }, selector);
+  // the Learn pages are built (tools/learn.mjs); until one exists, the lightbox is not asked to show it
+  const learnPage = (name) => fetch(`${URL}learn/${name}`).then((response) => response.ok && Boolean(response.headers.get('content-type')?.includes('text/html'))).catch(() => false);
+  const learnBuilt = await learnPage('start');
+  const performBuilt = await learnPage('perform');
+  const skipped = 'learn pages not built yet';
+
+  await page.goto(`${URL}#start=techno`);
+  await ready();
+  const example = await page.evaluate(() => {
+    const A = window.hackingTheBeats.players.A;
+    return { source: A.song?.source, title: A.song?.title, hash: location.hash, path: location.pathname, curtain: document.getElementById('curtain-title').textContent };
+  });
+  check('#start=<example> opens an example from the guide on deck A, behind the curtain', example.source === 'example' && example.title === 'Ballast' && example.hash === '' && example.path === '/' && example.curtain === 'Ballast', JSON.stringify(example));
+  await page.click('#curtain-play');
+  await page.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 45000 });
+  await page.waitForTimeout(300);
+  check('it plays, and Save a copy is offered', (await page.evaluate(() => window.hackingTheBeats.players.A.started)) && (await shown('#save-copy')));
+  await page.click('#edit');
+  check('and its code can be edited', await page.evaluate(() => window.hackingTheBeats.players.A.stage.editing));
+  await page.click('#edit');
+
+  // the help sheet: the guide in a new tab, or a place to start in the lightbox
+  await page.keyboard.press('?');
+  const help = await page.evaluate(() => ({ open: document.getElementById('about').open, target: document.querySelector('#about .help__guide .pillbtn')?.getAttribute('target') }));
+  check('? opens the help sheet, whose guide button opens a new tab', help.open && help.target === '_blank', JSON.stringify(help));
+  // (until the pages are built, the lightbox hands the page to a tab of its own)
+  const fallback = learnBuilt ? null : context.waitForEvent('page', { timeout: 3000 }).catch(() => null);
+  await page.click('#about a[href="learn/start#listener"]');
+  await page.waitForTimeout(600);
+  if (fallback) await fallback.then((tab) => tab?.close());
+  const started = await page.evaluate(() => ({ help: document.getElementById('about').open, sheet: document.getElementById('page-sheet').open, toc: Boolean(document.querySelector('#page-sheet .readpage__toc')), content: document.querySelector('#page-sheet .sheet__body').classList.contains('learn-content') }));
+  check('a place to start closes the help sheet', !started.help, JSON.stringify(started));
+  const inView = (id) =>
+    page.evaluate((el) => {
+      const target = document.getElementById(el);
+      const body = document.querySelector('#page-sheet .sheet__body').getBoundingClientRect();
+      if (!target) return false;
+      const box = target.getBoundingClientRect();
+      return box.top >= body.top - 2 && box.top < body.bottom;
+    }, id);
+  if (learnBuilt) {
+    check('and opens that part of the guide over the player, with its sections listed', started.sheet && started.toc && started.content && (await inView('page-listener')), JSON.stringify(started));
+    await page.evaluate(() => document.getElementById('page-sheet').close());
+  } else {
+    check('and opens that part of the guide over the player (skipped)', true, skipped);
+    await page.evaluate(() => document.querySelectorAll('dialog[open]').forEach((dialog) => dialog.close()));
+  }
+  // a "Learn more" beside a control opens the part of the guide about it
+  if (performBuilt) {
+    await page.click('#split');
+    await page.click('#empty-b .learnlink');
+    await page.waitForTimeout(600);
+    check('"Learn more" beside a control opens the part of the guide about it', (await page.evaluate(() => document.getElementById('page-sheet').open)) && (await inView('page-two-decks')));
+    await page.evaluate(() => document.getElementById('page-sheet').close());
+    await page.click('#split');
+  } else {
+    check('"Learn more" beside a control opens the part of the guide about it (skipped)', true, skipped);
+  }
+
+  // a modifier-click is the browser's: a new tab, and no lightbox
+  await page.keyboard.press('?');
+  const popup = context.waitForEvent('page', { timeout: 2000 }).catch(() => null);
+  await page.click('#about a[href="learn/start#dj"]', { modifiers: [process.platform === 'darwin' ? 'Meta' : 'Control'] });
+  const opened = await popup;
+  await page.waitForTimeout(300);
+  check('a modifier-click on a guide link is left to the browser', !(await page.evaluate(() => document.getElementById('page-sheet').open)), opened ? 'new tab' : 'no new tab');
+  if (opened) await opened.close();
+  await page.evaluate(() => document.getElementById('about').close());
+
+  // signed out, an example still plays; changing it asks for an account
+  await page.evaluate(() => window.hackingTheBeats.setAccess('preview'));
+  await page.evaluate(() => window.hackingTheBeats.openExample('house'));
+  await page.waitForFunction(() => window.hackingTheBeats.players.A.song?.title === 'Paper Street' && window.hackingTheBeats.players.A.ready, null, { timeout: 45000 });
+  await page.click('#edit');
+  const preview = await page.evaluate(() => ({ title: window.hackingTheBeats.players.A.song?.title, account: document.getElementById('account-dialog').open, editing: window.hackingTheBeats.players.A.stage.editing }));
+  check('signed out, an example still opens and plays; Edit asks for an account', preview.title === 'Paper Street' && preview.account && !preview.editing, JSON.stringify(preview));
+  await page.evaluate(() => document.getElementById('account-dialog').close());
+  await page.evaluate(() => window.hackingTheBeats.setAccess('full'));
+
+  check('no errors in the console while learning', errors.length === 0, errors.slice(0, 3).join(' | '));
+  await context.close();
+  return results;
+}
+
 // A phone: a touch screen, a narrow window, no keyboard shortcuts to lean on.
+// The Learn guide: its pages, the contents, the search and the term drawer, on a desktop and
+// on a phone.
+async function guide(browser) {
+  const results = [];
+  const check = (name, passed, detail = '') => results.push([name, Boolean(passed), String(detail)]);
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
+  await context.addInitScript(() => (window.HTB_CONFIG = { firebase: null, analytics: null }));
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => message.type() === 'error' && !/Failed to load resource/.test(message.text()) && errors.push(message.text()));
+
+  await page.goto(`${URL}learn`);
+  const landing = await page.evaluate(() => ({
+    title: document.title,
+    h1: document.querySelector('h1')?.textContent,
+    paths: document.querySelectorAll('.path').length,
+    nav: document.querySelectorAll('.learnnav__group ol > li').length,
+    areas: document.querySelectorAll('.area').length,
+  }));
+  check('the guide has a landing page with four ways in and every area listed', landing.title.startsWith('Learn —') && landing.paths === 4 && landing.nav >= 8 && landing.areas === landing.nav, JSON.stringify(landing));
+
+  await page.goto(`${URL}learn/perform`);
+  const area = await page.evaluate(() => ({
+    title: document.title,
+    current: document.querySelector('.learnnav [aria-current="page"]')?.textContent,
+    h2: document.querySelectorAll('.learn__body h2[id]').length,
+    sections: document.querySelectorAll('.learnnav__sections a').length,
+    shots: [...document.querySelectorAll('.shot img')].map((img) => img.getAttribute('src')),
+    pager: [...document.querySelectorAll('.pager a')].map((link) => link.getAttribute('href')),
+    terms: document.querySelectorAll('a.term').length,
+    code: document.querySelectorAll('.code .tok-label').length,
+  }));
+  check(
+    'an area page lists its sections in the contents, and has pictures, terms, code and a pager',
+    area.title.startsWith('Perform — Learn') && area.current === 'Perform' && area.h2 > 3 && area.sections === area.h2 && area.shots.length > 0 && area.pager.length === 2 && area.terms > 0 && area.code > 0,
+    JSON.stringify({ ...area, shots: area.shots.length }),
+  );
+  const fetched = await page.evaluate(async (urls) => {
+    const out = [];
+    for (const url of urls) out.push([url, (await fetch(url)).status]);
+    return out;
+  }, [...area.shots, ...area.pager]);
+  check('every picture and link on it answers', fetched.every(([, status]) => status === 200), fetched.filter(([, status]) => status !== 200).map(([url]) => url).join(' '));
+
+  // the contents follow the reading
+  await page.evaluate(() => [...document.querySelectorAll('.learn__body h2[id]')].at(-1).scrollIntoView({ behavior: 'instant' }));
+  await page.waitForTimeout(600);
+  const followed = await page.evaluate(() => ({ active: document.querySelector('.learnnav__sections a.is-active')?.getAttribute('href'), last: '#' + [...document.querySelectorAll('.learn__body h2[id]')].at(-1).id }));
+  check('the contents mark the section being read', followed.active === followed.last, JSON.stringify(followed));
+
+  // search: typed, chosen with the keyboard, and reached with /
+  await page.click('#q');
+  await page.type('#q', 'snapshot');
+  const listed = await page.waitForSelector('#search-panel:not([hidden]) .search__result', { timeout: 8000 }).then(() => true, () => false);
+  const found = await page.evaluate(() => [...document.querySelectorAll('.search__result .search__title')].map((el) => el.textContent.trim()));
+  check('typing in the search box lists snapshots', listed && found.some((title) => /snapshot/i.test(title)), found.slice(0, 3).join(' | '));
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(600);
+  const landed = await page.evaluate(() => ({ where: location.pathname + location.hash, panel: document.getElementById('search-panel').hidden }));
+  check('choosing a result with the keyboard goes there', /snapshot/.test(landed.where) && landed.panel, JSON.stringify(landed));
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('/');
+  check('/ puts the caret in the search box', await page.evaluate(() => document.activeElement?.id === 'q'));
+  await page.keyboard.press('Escape');
+
+  // the term drawer
+  await page.goto(`${URL}learn/perform`);
+  await page.click('a.term');
+  const opened = await page.waitForSelector('#termdrawer[open]', { timeout: 8000 }).then(() => true, () => false);
+  const drawer = await page.evaluate(() => {
+    const el = document.getElementById('termdrawer');
+    return { open: el.open, title: el.querySelector('.termdrawer__title').textContent.trim(), words: el.querySelector('.termdrawer__body').textContent.trim().length, more: el.querySelector('[data-act="more"]').getAttribute('href'), modal: el.hasAttribute('data-modal'), focus: document.activeElement?.className };
+  });
+  check('a dotted term opens the drawer beside the text, with its definition and a way to the full section', opened && drawer.open && drawer.title && drawer.words > 20 && /\/learn\//.test(drawer.more) && !drawer.modal && /termdrawer__title/.test(drawer.focus), JSON.stringify(drawer));
+  await page.keyboard.press('Escape');
+  check('Esc closes the drawer and hands focus back to the term', await page.evaluate(() => !document.getElementById('termdrawer').open && document.activeElement?.classList.contains('term')));
+  // "Read the full section" on a term whose section is on this page
+  const sameTerm = await page.evaluate(() => {
+    const here = location.pathname;
+    return [...document.querySelectorAll('a.term')].find((term) => term.dataset.term === 'snapshot' || term.dataset.term === 'pad')?.dataset.term ?? null;
+  });
+  if (sameTerm) {
+    await page.click(`a.term[data-term="${sameTerm}"]`);
+    await page.waitForSelector('#termdrawer[open]', { timeout: 8000 });
+    await page.click('#termdrawer [data-act="more"]');
+    await page.waitForTimeout(500);
+    const jumped = await page.evaluate(() => ({ open: document.getElementById('termdrawer').open, hash: location.hash, focused: document.activeElement?.tagName }));
+    check('"Read the full section" closes the drawer and goes to the section', !jumped.open && jumped.hash.length > 1 && /^H[23]$/.test(jumped.focused), JSON.stringify(jumped));
+  }
+  check('no errors in the console on the guide', errors.length === 0, errors.slice(0, 3).join(' | '));
+  await context.close();
+
+  // a phone: the contents behind a button, the drawer as a sheet from the bottom, the search behind a button
+  const phoneContext = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
+  await phoneContext.addInitScript(() => (window.HTB_CONFIG = { firebase: null, analytics: null }));
+  const phone = await phoneContext.newPage();
+  await phone.goto(`${URL}learn/perform`);
+  check('on a phone the contents are behind a button', await phone.evaluate(() => getComputedStyle(document.getElementById('contents')).display === 'none' && getComputedStyle(document.getElementById('contents-open')).display !== 'none'));
+  await phone.tap('#contents-open');
+  const sheet = await phone.evaluate(() => ({ open: document.getElementById('contents-sheet').open, links: document.querySelectorAll('#contents-sheet .learnnav__sections a').length }));
+  await phone.locator('#contents-sheet .learnnav__sections a').last().tap();
+  await phone.waitForTimeout(400);
+  const chose = await phone.evaluate(() => ({ open: document.getElementById('contents-sheet').open, hash: location.hash }));
+  check('the button opens them, and choosing a section closes them and goes there', sheet.open && sheet.links > 0 && !chose.open && chose.hash.length > 1, JSON.stringify({ sheet, chose }));
+  await phone.locator('a.term').first().tap();
+  const phoneDrawer = await phone.waitForSelector('#termdrawer[open]', { timeout: 8000 }).then(() => true, () => false);
+  const bottom = await phone.evaluate(() => {
+    const el = document.getElementById('termdrawer');
+    return { modal: el.hasAttribute('data-modal'), top: Math.round(el.getBoundingClientRect().top), bottom: Math.round(el.getBoundingClientRect().bottom), height: window.innerHeight };
+  });
+  check('a term opens as a sheet from the bottom of the screen', phoneDrawer && bottom.modal && Math.abs(bottom.bottom - bottom.height) <= 12 && bottom.top > bottom.height / 4, JSON.stringify(bottom));
+  await phone.evaluate(() => document.getElementById('termdrawer').close());
+  await phone.tap('#search-open');
+  check('the search opens from its button and takes the bar', await phone.evaluate(() => document.body.classList.contains('is-searching') && getComputedStyle(document.getElementById('q')).display !== 'none'));
+  await phoneContext.close();
+  return results;
+}
+
 async function phone(browser) {
   const results = [];
   const check = (name, passed, detail = '') => results.push([name, Boolean(passed), String(detail)]);
@@ -584,6 +807,9 @@ async function phone(browser) {
   await page.waitForFunction(() => window.hackingTheBeats?.players.A.ready, null, { timeout: 45000 });
   const shown = (id) => page.evaluate((el) => getComputedStyle(document.getElementById(el)).display !== 'none', id);
   check('on a phone, the song list has a button of its own', await shown('open-list'));
+  await page.tap('#open-about');
+  check('and the help sheet opens on a tap', await page.evaluate(() => document.getElementById('about').open));
+  await page.evaluate(() => document.getElementById('about').close());
   await page.tap('#open-list');
   check('and it opens the list', await page.evaluate(() => window.hackingTheBeats.crate.dialog.open));
   await page.evaluate(() => window.hackingTheBeats.crate.dialog.close());
@@ -672,7 +898,7 @@ for (const name of engines) {
     }
     await page.mouse.move(700, 450);
     preResults.push(['the song map waits for the music', await page.evaluate(() => getComputedStyle(document.getElementById('map')).display === 'none' && getComputedStyle(document.getElementById('map-toggle')).display === 'none')]);
-    preResults.push(['the top bar\'s icon buttons say what they are on hover', tips.join() === '"Record the mix to a file (R)","Share this song","About and keyboard shortcuts (?)"', tips.join(' | ')]);
+    preResults.push(['the top bar\'s icon buttons say what they are on hover', tips.join() === '"Record the mix to a file (R)","Share this song","Help and shortcuts (?)"', tips.join(' | ')]);
     await page.click('#curtain-play');
     await page.waitForFunction(() => window.hackingTheBeats.players.A.started, null, { timeout: 45000 });
     await page.waitForTimeout(1500);
@@ -691,6 +917,8 @@ for (const name of engines) {
     results.push(['no errors in the console', errors.length === 0, errors.slice(0, 3).join(' | ')]);
     results.push(...(await addresses(browser)));
     results.push(...(await sharing(browser)));
+    results.push(...(await learning(browser)));
+    results.push(...(await guide(browser)));
     // Firefox has no mobile mode in Playwright
     if (name !== 'firefox') results.push(...(await phone(browser)));
     results.push(...(await counting(browser)));

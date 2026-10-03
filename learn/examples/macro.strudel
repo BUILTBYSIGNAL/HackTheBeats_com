@@ -1,0 +1,30 @@
+/*
+  @title Pressure Cooker
+  One knob, three jobs. "energy" opens the bass filter, lifts the hats and pushes the pad further back, all at once.
+  Turn it down for a lid on the pot, up for a full boil.
+*/
+setcps(128/60/4)
+
+const energy = slider(1200, 300, 4000)
+
+KICK: s("bd*4, ~ cp ~ cp")
+  .bank("RolandTR909")
+  .gain(0.85)
+  ._punchcard()
+
+HATS: s("[~ hh]*4, hh*8")
+  .bank("RolandTR909")
+  .gain(energy.div(8000))
+
+BASS: note("<a1 a1 c2 g1>*2")
+  .struct("x ~ x x ~ x x ~")
+  .s("sawtooth")
+  .lpf(energy)
+  .gain(0.5)
+  ._scope()
+
+PAD: note("<[a3,c4,e4] [a3,c4,e4] [c4,e4,g4] [g3,b3,d4]>")
+  .s("gm_pad_warm")
+  .attack(0.2).release(0.8)
+  .room(energy.div(4000))
+  .gain(0.3)

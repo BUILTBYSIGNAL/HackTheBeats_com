@@ -146,7 +146,8 @@ export const trim = {
       const quiet = track && silenced(player.code, analyze(player.code).tracks[pick.row] ?? track, player.cut, pick.from, pick.to);
       buttons = quiet ? button('unsilence', 'Bring back', true) : button('silence', 'Silence', true);
     }
-    this.show(label, numbers + buttons + `<button type="button" class="trimbar__close" data-act="cancel" aria-label="Cancel">×</button>`, a);
+    const help = '<a class="learnlink learnlink--mark" href="learn/remix#arrangement" aria-label="How trimming works">?</a>';
+    this.show(label, numbers + buttons + `<button type="button" class="trimbar__close" data-act="cancel" aria-label="Cancel">×</button>` + help, a);
   },
 
   // The bar of buttons, over the strip at `column`.
