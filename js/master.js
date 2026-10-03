@@ -101,6 +101,7 @@ export const master = {
       volume.connect(analyser);
 
       this.nodes = { context, busA, busB, input, highpass, lowpass, dry, echoSend, echoDelay, echoFeedback, reverbSend, limiter, volume };
+      this.nodes.clip = clip;
       this.analyser = analyser;
       this.time = new Float32Array(analyser.fftSize);
       this.freq = new Uint8Array(analyser.frequencyBinCount);
@@ -145,6 +146,12 @@ export const master = {
   // The node at the very end of the chain (what you hear), for the recorder.
   get output() {
     return this.nodes?.volume ?? null;
+  },
+
+  // The finished mix before the volume knob (the soft clip), for video clips: a clip sounds
+  // the same however loud the speakers are.
+  get mix() {
+    return this.nodes?.clip ?? null;
   },
 
   apply() {

@@ -1,0 +1,142 @@
+/* Video clips (js/clip.js): the sheet with its live preview, and the pill on the stage while
+   a clip records. */
+
+/* ---------- the sheet ---------- */
+
+.clip__frame {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border: 1px solid var(--hb-line-soft);
+  border-radius: 8px;
+  background: var(--hb-bg);
+}
+.clip__frame canvas,
+.clip__frame video {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(46dvh, 440px);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px var(--hb-line-soft);
+}
+.clip__frame video {
+  background: var(--hb-bg-deep);
+}
+.clip__setup,
+.clip__done {
+  display: grid;
+  gap: 12px;
+}
+.clip__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.clip__problem {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--hb-accent) 45%, var(--hb-line));
+  border-radius: 6px;
+  color: var(--hb-ink);
+  font-size: 13px;
+}
+
+/* ---------- the pill on the stage ---------- */
+
+.clip-hud {
+  position: absolute;
+  z-index: 6;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 2 * var(--hb-gutter));
+  padding: 6px 6px 6px 8px;
+  border: 1px solid var(--hb-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--hb-bg-deep) 94%, transparent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font: 400 12px/1 var(--hb-mono);
+  color: var(--hb-ink-2);
+  white-space: nowrap;
+}
+.clip-hud[hidden] {
+  display: none;
+}
+/* below the suggestions, so they can still be tried while a clip records (stage.css moves
+   the code down by as much) */
+.has-played.has-tries:not(.is-gallery) .clip-hud {
+  top: 58px;
+}
+.has-played.has-tries:not(.is-gallery) .panes[data-view='split'] ~ .clip-hud {
+  top: 88px;
+}
+.clip-hud__thumb canvas {
+  display: block;
+  width: auto;
+  height: 44px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--hb-line-soft);
+}
+.clip-hud__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hb-ink-4);
+}
+.clip-hud.is-live .clip-hud__dot {
+  background: var(--hb-accent);
+  animation: hb-clip-live 1s ease-in-out infinite;
+}
+@keyframes hb-clip-live {
+  50% {
+    opacity: 0.35;
+  }
+}
+.clip-hud__text {
+  min-width: 8.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.clip-hud__meter {
+  flex: none;
+  width: 72px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--hb-line);
+  overflow: hidden;
+}
+.clip-hud__meter span {
+  display: block;
+  width: calc(var(--progress, 0) * 100%);
+  height: 100%;
+  background: var(--hb-accent);
+}
+.clip-hud .pillbtn {
+  flex: none;
+  padding: 7px 12px;
+}
+.clip-hud__thumb {
+  flex: none;
+}
+
+@media (max-width: 560px) {
+  .clip-hud {
+    gap: 8px;
+  }
+  .clip-hud__meter {
+    display: none;
+  }
+  .clip-hud__text {
+    min-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clip-hud.is-live .clip-hud__dot {
+    animation: none;
+  }
+}

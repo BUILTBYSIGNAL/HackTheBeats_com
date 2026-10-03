@@ -237,6 +237,25 @@ const hitDecorations = EditorView.decorations.compute([hits], (state) => {
   return builder.finish();
 });
 
+/* ---------- where the inline visuals sit (for video clips) ---------- */
+
+// Each inline visual (`._punchcard()` and the rest) as Strudel's widget id and the offset
+// its call ends at, kept in step with the code as the deck rewrites numbers. New code on
+// stage (setLocations, which every load and evaluation sends) drops the last song's.
+const setVisuals = StateEffect.define();
+const visualSpots = StateField.define({
+  create: () => [],
+  update(value, tr) {
+    let next = value;
+    if (tr.docChanged) next = next.map((spot) => ({ ...spot, pos: tr.changes.mapPos(spot.pos, -1) }));
+    for (const effect of tr.effects) {
+      if (effect.is(setLocations)) next = [];
+      else if (effect.is(setVisuals)) next = effect.value;
+    }
+    return next;
+  },
+});
+
 /* ---------- look ---------- */
 
 const theme = EditorView.theme(
@@ -327,6 +346,7 @@ export class Stage {
         codemirror.compartments.theme.reconfigure(Prec.highest([theme, syntaxHighlighting(syntax)])),
       ],
     });
+    this.view.dispatch({ effects: StateEffect.appendConfig.of([visualSpots]) });
 
     // When someone scrolls the code themselves, the camera keeps its hands off for a while.
     const scroller = this.view.scrollDOM;
@@ -501,6 +521,25 @@ export class Stage {
   setLocations(locations) {
     this.lastActive = '';
     this.view.dispatch({ effects: setLocations.of(locations || []) });
+  }
+
+  // Where each token the music can light sits now: the id haps know it by ("from:to" when
+  // the song was evaluated) → [from, to] in the code on stage. For video clips.
+  locations() {
+    const found = new Map();
+    for (let at = this.view.state.field(hits).marks.iter(); at.value; at.next()) found.set(at.value.spec.id, [at.from, at.to]);
+    return found;
+  }
+
+  // The inline visuals of the last evaluation (Strudel's widget configs, sliders left out),
+  // and where each one sits now: [{ id, type, pos }], pos being the end of its call.
+  setVisuals(widgets) {
+    const spots = (widgets || []).map((widget) => ({ id: `${widget.id || ''}_widget_${widget.type}_${widget.index}`, type: widget.type, pos: widget.to }));
+    const length = this.view.state.doc.length;
+    this.view.dispatch({ effects: setVisuals.of(spots.filter((spot) => spot.pos >= 0 && spot.pos <= length)) });
+  }
+  visuals() {
+    return this.view.state.field(visualSpots);
   }
 
   // Called every frame while playing; only touches the editor when the set changes.

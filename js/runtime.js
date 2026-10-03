@@ -85,6 +85,28 @@ async function safeSamples(source, ...rest) {
 let evalTarget = null;
 const scratch = {};
 
+// Which canvas each inline visual draws on, by its widget id, so a video clip can copy it
+// even while the editor has it scrolled out of view. Strudel draws on the canvas with that
+// id if the document has one, so one is put in a hidden holder first when it has not; the
+// editor moves it into the code when that line is shown.
+const visualCanvases = new Map();
+let canvasHolder = null;
+function claimCanvas(id) {
+  if (typeof id !== 'string' || typeof document === 'undefined' || document.getElementById(id)) return;
+  if (!canvasHolder?.isConnected) {
+    canvasHolder = document.createElement('div');
+    canvasHolder.hidden = true;
+    document.body.append(canvasHolder);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.id = id;
+  canvasHolder.append(canvas);
+}
+function noteCanvas(id) {
+  const canvas = typeof id === 'string' && typeof document !== 'undefined' ? document.getElementById(id) : null;
+  if (canvas && canvas.tagName === 'CANVAS') visualCanvases.set(id, canvas);
+}
+
 function installGlobals() {
   globalThis.samples = safeSamples;
   globalThis.sliderWithID = (id, value) => {
@@ -99,7 +121,10 @@ function installGlobals() {
     if (!original || original.hbWrapped) continue;
     const sized = type === '_punchcard' || type === '_pianoroll' || type === '_scope';
     const wrapped = function (id, options = {}) {
-      return original.call(this, id, sized ? { width: 640, ...options } : options);
+      claimCanvas(id);
+      const pattern = original.call(this, id, sized ? { width: 640, ...options } : options);
+      noteCanvas(id);
+      return pattern;
     };
     wrapped.hbWrapped = true;
     core.Pattern.prototype[type] = wrapped;
@@ -206,6 +231,11 @@ export const runtime = {
 
   get audioContext() {
     return webaudio.getAudioContext();
+  },
+
+  // The canvas an inline visual draws on, by Strudel's widget id (see Stage.visuals()).
+  visualCanvas(id) {
+    return visualCanvases.get(id) ?? null;
   },
 
   // Must be called synchronously from a click or key handler: resume() is requested before
