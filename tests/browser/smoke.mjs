@@ -338,6 +338,13 @@ async function scenario() {
       `${made?.type} · ${made?.blob.size} bytes · ${JSON.stringify(meta)}`,
     );
     check('and the clip maker lets go afterwards', !h.clip.active && document.getElementById('clip-hud').hidden && !document.getElementById('clip').open);
+    // Esc throws away a clip that is still counting in
+    const thrown = h.clip.record({ bars: 4, format: '1:1', save: false });
+    const counting = await until(() => h.clip.take?.state === 'counting', 10000);
+    const hudShown = !document.getElementById('clip-hud').hidden;
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    const outcome = await Promise.race([thrown, sleep(3000).then(() => 'still recording')]);
+    check('Esc cancels a clip that is counting in', counting && hudShown && outcome === null && !h.clip.active && document.getElementById('clip-hud').hidden, String(outcome));
   }
 
   // New offers a choice of starting points

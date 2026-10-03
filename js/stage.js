@@ -240,14 +240,18 @@ const hitDecorations = EditorView.decorations.compute([hits], (state) => {
 /* ---------- where the inline visuals sit (for video clips) ---------- */
 
 // Each inline visual (`._punchcard()` and the rest) as Strudel's widget id and the offset
-// its call ends at, kept in step with the code as the deck rewrites numbers.
+// its call ends at, kept in step with the code as the deck rewrites numbers. New code on
+// stage (setLocations, which every load and evaluation sends) drops the last song's.
 const setVisuals = StateEffect.define();
 const visualSpots = StateField.define({
   create: () => [],
   update(value, tr) {
     let next = value;
     if (tr.docChanged) next = next.map((spot) => ({ ...spot, pos: tr.changes.mapPos(spot.pos, -1) }));
-    for (const effect of tr.effects) if (effect.is(setVisuals)) next = effect.value;
+    for (const effect of tr.effects) {
+      if (effect.is(setLocations)) next = [];
+      else if (effect.is(setVisuals)) next = effect.value;
+    }
     return next;
   },
 });

@@ -296,17 +296,20 @@ export const clip = {
         return button;
       }),
     );
-    const player = this.player;
-    const problem = !this.supported
-      ? 'This browser cannot record video here. Chrome, Edge, Firefox and Safari can.'
-      : !player?.song
-        ? 'Load a beat first.'
-        : player.gated
-          ? 'Run the song first.'
-          : '';
-    els.problem.textContent = problem;
+    const problem = this.problem(this.player);
+    if (els.problem.textContent !== problem) els.problem.textContent = problem;
     els.problem.hidden = !problem;
     els.record.disabled = Boolean(problem);
+  },
+
+  // Why a clip of this deck cannot be made now ('' when it can).
+  problem(player) {
+    if (!this.supported) return 'This browser cannot record video here. Chrome, Edge, Firefox and Safari can.';
+    if (!player?.song) return 'Load a beat first.';
+    if (player.gated) return 'Run the song first.';
+    // a song that did not compile never starts (one with a mistake in an edit plays on)
+    if (player.failure && !player.ready) return 'This song did not run. Fix the code first.';
+    return '';
   },
 
   setFormat(format) {
@@ -346,7 +349,7 @@ export const clip = {
   async record({ bars = null, format = this.format, save = true } = {}) {
     if (this.active || !this.hooks.canUse?.()) return null;
     const player = this.player || this.hooks.source?.();
-    if (!this.supported || !player?.song || player.gated) {
+    if (this.problem(player)) {
       this.renderChoices();
       return null;
     }
@@ -364,11 +367,19 @@ export const clip = {
     this.startLoop();
     const result = new Promise((resolve) => (take.resolve = resolve));
 
-    if (!(await playing) && !(await until(() => player.started || take.done, 30000))) {
-      if (!take.done) this.cancel('The music did not start, so nothing was recorded.');
-      return result;
+    const going = () => player.started || take.done;
+    if (!(await Promise.resolve(playing).catch(() => false)) && !going()) {
+      // a song still loading does not start by itself: start it once it is ready (the click
+      // has already asked for the sound)
+      await until(() => player.ready || player.failure || going(), 30000);
+      if (!going() && player.ready && !player.busy) player.play().catch(() => {});
+      await until(() => going() || (player.failure && !player.ready), 15000);
     }
     if (take.done) return result;
+    if (!player.started) {
+      this.cancel('The music did not start, so nothing was recorded.');
+      return result;
+    }
     try {
       this.begin(take);
     } catch (error) {
@@ -520,7 +531,7 @@ export const clip = {
     const name = clipFilename({ title: song?.title, type: result.type });
     // made now, not when Share is pressed: a phone only shares from inside the tap
     const file = new File([result.blob], name, { type: result.type.split(';')[0] });
-    this.result = { ...result, name, file, url: URL.createObjectURL(result.blob), shareable: this.canShareFile(file) };
+    this.result = { ...result, name, title: song?.title || 'Hacking the Beats', file, url: URL.createObjectURL(result.blob), shareable: this.canShareFile(file) };
     this.showDone();
     if (!this.els.dialog.open) this.els.dialog.showModal();
   },
@@ -553,7 +564,7 @@ export const clip = {
     const result = this.result;
     if (!result?.shareable) return;
     navigator
-      .share({ files: [result.file], title: result.name })
+      .share({ files: [result.file], title: result.title })
       .then(() => this.exported('share'))
       .catch((error) => error?.name !== 'AbortError' && this.hooks.status?.('That did not work here: download the clip instead.'));
   },
@@ -575,6 +586,8 @@ export const clip = {
     if (!this.result) return;
     this.els.video.pause();
     this.els.video.removeAttribute('src');
+    // (lets the browser drop the decoded video too)
+    this.els.video.load();
     URL.revokeObjectURL(this.result.url);
     this.result = null;
   },
@@ -641,7 +654,12 @@ export const clip = {
     if (now !== null) take.lastCycle = now;
     if (take.state === 'counting' && now !== null && now >= take.start - player.cps / FPS) {
       // the bar line is within a frame: start writing
-      take.recorder.start();
+      try {
+        take.recorder.start();
+      } catch (error) {
+        console.warn('[clip] could not start recording', error);
+        return this.cancel('This browser could not record the clip.');
+      }
       take.state = 'recording';
     } else if (take.state === 'recording' && now !== null && now >= take.end) {
       this.finish();

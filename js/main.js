@@ -1062,16 +1062,20 @@ recorder.onAutoStop = () => finishRecording();
 
 /* ---------- video clips ---------- */
 
-// The deck a clip films unless it is given one: the one being heard.
+// The deck a clip films unless it is given one: the one being heard, else one with a song.
 function clipSource() {
   const heard = audible();
-  return heard.started ? heard : other(heard).started ? other(heard) : focused();
+  if (heard.started || other(heard).started) return heard.started ? heard : other(heard);
+  return focused().song || !other(focused()).song ? focused() : other(focused());
 }
 
 // "Make a video clip": with an account, the same as recording; never on the shared-song player.
+// From the share sheet it films the deck that song is on (a song from the list may be on neither).
 function openClip(target = {}) {
   if (site.guest || needsAccount('make a video clip')) return;
-  clip.open(target.player ?? null);
+  const { player } = shareSubject(target);
+  if (target.songId && !player) return setStatus('Load the song on a deck first, then make a video clip of it.');
+  clip.open(player);
 }
 
 /* ---------- MIDI ---------- */

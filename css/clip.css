@@ -66,6 +66,14 @@
 .clip-hud[hidden] {
   display: none;
 }
+/* below the suggestions, so they can still be tried while a clip records (stage.css moves
+   the code down by as much) */
+.has-played.has-tries:not(.is-gallery) .clip-hud {
+  top: 58px;
+}
+.has-played.has-tries:not(.is-gallery) .panes[data-view='split'] ~ .clip-hud {
+  top: 88px;
+}
 .clip-hud__thumb canvas {
   display: block;
   width: auto;
@@ -91,6 +99,8 @@
 }
 .clip-hud__text {
   min-width: 8.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .clip-hud__meter {
   flex: none;
@@ -107,7 +117,11 @@
   background: var(--hb-accent);
 }
 .clip-hud .pillbtn {
+  flex: none;
   padding: 7px 12px;
+}
+.clip-hud__thumb {
+  flex: none;
 }
 
 @media (max-width: 560px) {
