@@ -23,18 +23,73 @@ function walk(node, visit, ancestors = []) {
   ancestors.pop();
 }
 
-// What a value is passed to: `.lpf(x)` → "lpf" (also through `x.range(…)`), `pick(list, x)` → "pick".
-function paramOf(node, ancestors) {
+// What a value is passed to, and what is done to it on the way:
+//   `.lpf(x)`                    → { param: 'lpf', steps: [] }
+//   `.lpf(x.range(300, 2400))`   → { param: 'lpf', steps: [{ name: 'range', args: [300, 2400] }] }
+//   `pick(list, x)`              → { param: 'pick', steps: [] }
+// A step whose arguments are not plain numbers has args: null.
+function feedOf(node, ancestors) {
+  const steps = [];
   let child = node;
   for (let i = ancestors.length - 1; i >= 0; i--) {
     const anc = ancestors[i];
     if (anc.type === 'CallExpression' && anc.arguments.includes(child)) {
-      if (anc.callee.type === 'MemberExpression') return anc.callee.property?.name;
-      if (anc.callee.type === 'Identifier' && anc.callee.name !== 'slider') return anc.callee.name;
+      if (anc.callee.type === 'MemberExpression') return { param: anc.callee.property?.name, steps };
+      if (anc.callee.type === 'Identifier' && anc.callee.name !== 'slider') return { param: anc.callee.name, steps };
+    } else if (anc.type === 'MemberExpression' && anc.object === child) {
+      const call = ancestors[i - 1];
+      const called = call?.type === 'CallExpression' && call.callee === anc;
+      steps.push({ name: anc.property?.name, args: called ? numbersIn(call.arguments) : null });
+      if (called) {
+        child = call;
+        i--;
+        continue;
+      }
+    } else if (anc.type === 'BinaryExpression' || anc.type === 'UnaryExpression') {
+      steps.push({ name: anc.operator, args: null });
     }
     child = anc;
   }
-  return undefined;
+  return { param: undefined, steps };
+}
+
+// `(300, 2400)` → [300, 2400]; null if any argument is not a plain number
+function numbersIn(args) {
+  const values = args.map((arg) => {
+    if (arg.type === 'Literal') return arg.value;
+    if (arg.type === 'UnaryExpression' && arg.operator === '-' && arg.argument.type === 'Literal') return -arg.argument.value;
+    return NaN;
+  });
+  return values.every((value) => typeof value === 'number' && Number.isFinite(value)) ? values : null;
+}
+
+// The steps Strudel can take a number through on its way to a parameter, as it defines them.
+const STEPS = {
+  range: (v, min, max) => min + v * (max - min),
+  rangex: (v, min, max) => Math.exp(Math.log(min) + v * (Math.log(max) - Math.log(min))),
+  range2: (v, min, max) => min + ((v + 1) / 2) * (max - min),
+  add: (v, n) => v + n,
+  sub: (v, n) => v - n,
+  mul: (v, n) => v * n,
+  div: (v, n) => v / n,
+};
+
+// The number a parameter receives when the knob reads `value`; NaN if a step is unknown.
+function through(steps, value) {
+  let v = value;
+  for (const { name, args } of steps) {
+    const step = Object.hasOwn(STEPS, name) ? STEPS[name] : null;
+    if (!step || !args || args.length !== step.length - 1) return NaN;
+    v = step(v, ...args);
+  }
+  return v;
+}
+
+// Notes one place a slider's number goes (from feedOf).
+function feed(slider, { param, steps }) {
+  if (!param) return;
+  slider.params.add(param);
+  slider.feeds.push({ param, steps });
 }
 
 const words = (name) =>
@@ -149,13 +204,13 @@ export const createAnalyzer = (parse) => function analyze(code) {
       step: typeof step?.value === 'number' ? step.value : undefined,
       constName,
       params: new Set(),
+      feeds: [],
       tracks: new Set(),
     };
     if (constName) {
       constSliders.set(constName, slider);
     } else {
-      const param = paramOf(node, ancestors);
-      if (param) slider.params.add(param);
+      feed(slider, feedOf(node, ancestors));
       const track = trackAt(node.start);
       if (track) slider.tracks.add(track.index);
     }
@@ -169,8 +224,7 @@ export const createAnalyzer = (parse) => function analyze(code) {
       const parent = ancestors[ancestors.length - 1];
       if (parent?.type === 'VariableDeclarator' && parent.id === node) return;
       const slider = constSliders.get(node.name);
-      const param = paramOf(node, ancestors);
-      if (param) slider.params.add(param);
+      feed(slider, feedOf(node, ancestors));
       const track = trackAt(node.start);
       if (track) slider.tracks.add(track.index);
     });
@@ -181,8 +235,14 @@ export const createAnalyzer = (parse) => function analyze(code) {
     slider.k = k;
     const params = [...slider.params];
     const trackNames = [...slider.tracks].map((i) => tracks[i].name);
-    slider.isFrequency = params.some((p) => FREQ_PARAMS.has(p));
-    slider.taper = slider.isFrequency && slider.min > 0 && slider.max / slider.min >= 4 ? 'log' : 'linear';
+    // The readout is in Hz when the knob reaches a frequency by a route we can follow: its own
+    // number (`.lpf(cut)`) or a mapping of it (`.lpf(haze.range(400, 3200))`, read as the
+    // mapped value). Otherwise it is the plain number. Only the first gets a log taper: a
+    // mapping already sets the curve, and a 0–1 knob cannot have one.
+    const route = slider.feeds.find(({ param, steps }) => FREQ_PARAMS.has(param) && [slider.min, slider.max].every((v) => Number.isFinite(through(steps, v))));
+    slider.isFrequency = Boolean(route);
+    slider.via = route?.steps || [];
+    slider.taper = route && !route.steps.length && slider.min > 0 && slider.max / slider.min >= 4 ? 'log' : 'linear';
     // when the code does not say what the number feeds, show its range instead
     const range = `${slider.min}–${slider.max}`;
     if (slider.constName) {
@@ -348,10 +408,12 @@ export function sliderText(slider, value) {
   return String(Number(value.toFixed(digits)));
 }
 
-// Number → the readout on the deck.
+// Number → the readout on the deck. A frequency reads as what the filter receives, after
+// any mapping on the way (slider.via).
 export function sliderReadout(slider, value) {
   if (slider.isFrequency) {
-    return value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 1 : 2)} kHz` : `${Math.round(value)} Hz`;
+    const hz = slider.via?.length ? through(slider.via, value) : value;
+    return hz >= 1000 ? `${(hz / 1000).toFixed(hz >= 10000 ? 1 : 2)} kHz` : `${Math.round(hz)} Hz`;
   }
   if (slider.step) return value.toFixed(decimals(slider.step));
   const range = Math.abs(slider.max - slider.min);

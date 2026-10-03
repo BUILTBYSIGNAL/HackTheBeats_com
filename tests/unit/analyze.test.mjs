@@ -70,6 +70,38 @@ test('writes numbers at a precision that suits the range', () => {
   assert.equal(sliderReadout(bright, 440), '440 Hz');
 });
 
+test('a knob mapped onto a frequency reads as the frequency it sends', () => {
+  const { sliders } = analyze(`const haze = slider(0.25, 0, 1)
+const tilt = slider(0.5, 0.1, 1)
+PAD: note("c3").s("sawtooth").lpf(haze.range(400, 3200)).gain(haze)
+HISS: s("white").hpf(slider(0.5, 0, 1).rangex(100, 6400)).bpf(tilt.range(1, 4).mul(500))
+`);
+  const [haze, tilt, hiss] = sliders;
+  assert.equal(haze.sub, 'lpf · gain');
+  assert.equal(sliderReadout(haze, 0), '400 Hz');
+  assert.equal(sliderReadout(haze, 0.25), '1.10 kHz');
+  assert.equal(sliderReadout(haze, 1), '3.20 kHz');
+  assert.equal(sliderReadout(hiss, 0.5), '800 Hz');
+  assert.equal(sliderReadout(hiss, 1), '6.40 kHz');
+  assert.equal(sliderReadout(tilt, 0.5), '1.25 kHz');
+  // the mapping sets the curve, so the knob itself turns evenly
+  assert.deepEqual(sliders.map((s) => s.taper), ['linear', 'linear', 'linear']);
+});
+
+test('a knob reshaped in a way the deck cannot follow reads as its own number', () => {
+  const { sliders } = analyze(`const haze = slider(0.25, 0, 1)
+const top = 3000
+PAD: note("c3").s("sawtooth").lpf(haze.range(400, top))
+KEYS: note("e4").s("triangle").lpf(slider(0.4, 0.1, 1).segment(16)).hpf(slider(0.5, 0.2, 1) * 900)
+`);
+  assert.deepEqual(sliders.map((s) => [s.sub, s.isFrequency, s.taper]), [
+    ['lpf', false, 'linear'],
+    ['lpf', false, 'linear'],
+    ['hpf', false, 'linear'],
+  ]);
+  assert.equal(sliderReadout(sliders[0], 0.25), '0.25');
+});
+
 test('writes saved values back into the code, clamped to each range', () => {
   const { sliders } = analyze(SONG);
   const code = applySliderValues(SONG, sliders, [99999, 5, 600]);
