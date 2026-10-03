@@ -26,6 +26,7 @@ import { explainError } from './errors-core.js';
 import { tries } from './tries.js';
 import { onboarding } from './onboarding.js';
 import { shareSheet } from './share-sheet.js';
+import { clip } from './clip.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -332,6 +333,7 @@ function setAccess(access) {
   if (access !== 'preview') return;
   // leave nothing running that the small player has no control for
   players.forEach((player) => player.stage.editing && player.setEditable(false));
+  if (clip.busy) clip.cancel();
   if (B.started) B.stop();
   if (app.mixing) stopMixing();
   if (app.split) setSplit(false);
@@ -1058,6 +1060,20 @@ async function toggleRecord() {
 }
 recorder.onAutoStop = () => finishRecording();
 
+/* ---------- video clips ---------- */
+
+// The deck a clip films unless it is given one: the one being heard.
+function clipSource() {
+  const heard = audible();
+  return heard.started ? heard : other(heard).started ? other(heard) : focused();
+}
+
+// "Make a video clip": with an account, the same as recording; never on the shared-song player.
+function openClip(target = {}) {
+  if (site.guest || needsAccount('make a video clip')) return;
+  clip.open(target.player ?? null);
+}
+
 /* ---------- MIDI ---------- */
 
 let midiPrompted = false;
@@ -1281,6 +1297,15 @@ async function boot() {
       copyKey: APPLE ? '⌘C' : 'Ctrl+C',
     },
   );
+  clip.init({
+    players,
+    source: clipSource,
+    canUse: () => app.access === 'full' && !site.guest,
+    status: (message) => setStatus(message, { hold: 9000 }),
+    origin: () => config.appOrigin || location.origin,
+    event: (name, params) => analytics.event(name, params),
+  });
+  if (!site.guest) shareSheet.setClipMaker(openClip);
   if (!site.guest) {
     onboarding.init(
       {
@@ -1683,6 +1708,8 @@ async function boot() {
       if (!['Escape', ' ', 'ArrowLeft', 'ArrowRight', 'b', '?'].includes(key) && !mixing) return;
     }
 
+    // Esc throws away a video clip being recorded
+    if (key === 'Escape' && clip.active) return void clip.cancel();
     if (key === 'Escape') {
       if (midi.learning) toggleLearn();
       else if (app.gallery) setGallery(false);
@@ -1703,6 +1730,7 @@ async function boot() {
     else if (key === 'f') setFollow(!app.follow);
     else if (key === 'g') setGallery(!app.gallery);
     else if (key === 'r') toggleRecord();
+    else if (key === 'v') openClip();
     else if (key === 'b') crate.open(app.focusId);
     else if (key === '[') seekBy(-4);
     else if (key === ']') seekBy(4);
@@ -1818,5 +1846,6 @@ async function boot() {
 
 // A handle for tests and for poking around in the console.
 window.hackingTheBeats = { app, players: byId, master, deck, recorder, midi, visuals, runtime, registry, crate, thumbs, songs, cloud, config, site, admin, analytics, tries, onboarding, finishRecording, VERSION };
+window.hackingTheBeats.clip = clip;
 
 boot();

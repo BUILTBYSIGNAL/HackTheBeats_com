@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="css/stage.css" />
     <link rel="stylesheet" href="css/deck.css" />
     <link rel="stylesheet" href="css/controls.css" />
+    <link rel="stylesheet" href="css/clip.css" />
   </head>
   <body data-transport="idle" data-focus="A">
     <header class="topbar">
@@ -162,6 +163,16 @@
       <div class="hud" id="hud">
         <p class="hud__now"><span id="hud-title"></span><span class="hud__bar" id="hud-bar"></span></p>
         <button type="button" class="pillbtn" id="hud-exit">Exit gallery</button>
+      </div>
+
+      <!-- a video clip being recorded (js/clip.js); not a dialog, so the keys still work -->
+      <div class="clip-hud" id="clip-hud" role="group" aria-label="Recording a video clip" hidden>
+        <span class="clip-hud__thumb" id="clip-hud-thumb"></span>
+        <span class="clip-hud__dot" aria-hidden="true"></span>
+        <span class="clip-hud__text" id="clip-hud-text" role="status" aria-live="polite"></span>
+        <span class="clip-hud__meter" id="clip-hud-meter" aria-hidden="true"><span></span></span>
+        <button type="button" class="pillbtn pillbtn--go" id="clip-hud-stop" title="Keep what is recorded (at least one bar)">Stop</button>
+        <button type="button" class="pillbtn" id="clip-hud-cancel" title="Throw this clip away (Esc)">Cancel</button>
       </div>
 
       <div class="curtain" id="curtain">
@@ -462,6 +473,41 @@
       </div>
     </dialog>
 
+    <dialog class="sheet sheet--narrow clip" id="clip" aria-labelledby="clip-title">
+      <header class="sheet__head">
+        <h2 class="sheet__title" id="clip-title">Video clip</h2>
+        <button type="button" class="iconbtn" id="clip-close" aria-label="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+        </button>
+      </header>
+      <div class="sheet__body">
+        <div class="clip__frame" id="clip-frame">
+          <video class="clip__video" id="clip-video" muted loop playsinline autoplay hidden></video>
+        </div>
+        <div class="clip__setup" id="clip-setup">
+          <div class="clip__choices" role="group" aria-label="Shape">
+            <button type="button" class="chipbtn" data-clip-format="9:16" aria-pressed="true">Vertical 9:16</button>
+            <button type="button" class="chipbtn" data-clip-format="1:1" aria-pressed="false">Square 1:1</button>
+          </div>
+          <div class="clip__choices" id="clip-lengths" role="group" aria-label="Length"></div>
+          <p class="sheet__fine" id="clip-note">Recorded live on this device as the music plays, starting on the next bar. Nothing is uploaded.</p>
+          <p class="clip__problem" id="clip-problem" role="alert" hidden></p>
+          <div class="sheet__row">
+            <button type="button" class="pillbtn pillbtn--go" id="clip-record">Record clip</button>
+          </div>
+        </div>
+        <div class="clip__done" id="clip-done" hidden>
+          <p class="sheet__fine" id="clip-info"></p>
+          <div class="sheet__row">
+            <button type="button" class="pillbtn pillbtn--go" id="clip-share" hidden>Share…</button>
+            <button type="button" class="pillbtn" id="clip-download">Download</button>
+            <button type="button" class="pillbtn" id="clip-again">Make another</button>
+            <button type="button" class="pillbtn" id="clip-discard">Discard</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
     <dialog class="sheet" id="admin" aria-labelledby="admin-title">
       <header class="sheet__head">
         <h2 class="sheet__title" id="admin-title">Admin</h2>
@@ -535,6 +581,7 @@
           <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Jump back or forward four bars</dd></div>
           <div><dt><kbd>F</kbd> <kbd>G</kbd></dt><dd>Follow the music with the code; gallery (full-screen) view</dd></div>
           <div><dt><kbd>R</kbd> <kbd>B</kbd></dt><dd>Record the mix to a WAV file; open the beats list</dd></div>
+          <div><dt><kbd>V</kbd></dt><dd>Make a video clip of the code and the music (<kbd>Esc</kbd> cancels one being recorded)</dd></div>
           <div><dt>On a knob</dt><dd>Arrows adjust, <kbd>Shift</kbd> for fine, <kbd>Enter</kbd> or double-click resets</dd></div>
           <div><dt>In the code</dt><dd>Click a track label to mute it, click a highlighted number to find its knob, drag an inline slider</dd></div>
           <div><dt><kbd data-mod>Ctrl</kbd>+<kbd>.</kbd></dt><dd>Stop the deck in focus (works while typing in the code, too)</dd></div>

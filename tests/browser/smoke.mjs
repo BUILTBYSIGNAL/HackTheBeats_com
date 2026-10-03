@@ -306,6 +306,40 @@ async function scenario() {
     check('recording produces a WAV', false, 'recorder did not start');
   }
 
+  // a video clip: V opens its sheet, and a one-bar clip holds the code and the mix
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', bubbles: true, cancelable: true }));
+  const clipOpened = document.getElementById('clip').open;
+  const clipProblem = document.getElementById('clip-problem');
+  const clipNote = { problem: clipProblem.hidden ? '' : clipProblem.textContent, record: document.getElementById('clip-record').disabled };
+  document.getElementById('clip-close').click();
+  check('V opens the video clip sheet', clipOpened, JSON.stringify(clipNote));
+  if (!h.clip.supported) {
+    check('a browser that cannot record video is told so', /cannot record video/.test(clipNote.problem) && clipNote.record, clipNote.problem);
+  } else {
+    const core = await import('./js/clip-core.js');
+    const made = await h.clip.record({ bars: 1, format: '9:16', save: false });
+    const wanted = core.pickMimeType((type) => MediaRecorder.isTypeSupported(type));
+    const size = core.resolutionFor('9:16', wanted);
+    let meta = {};
+    if (made) {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.src = URL.createObjectURL(made.blob);
+      meta = await new Promise((resolve) => {
+        video.onloadedmetadata = () => resolve({ width: video.videoWidth, height: video.videoHeight });
+        video.onerror = () => resolve({ error: video.error?.code });
+        setTimeout(() => resolve({ timeout: true }), 15000);
+      });
+      URL.revokeObjectURL(video.src);
+    }
+    check(
+      'a one-bar video clip records the code and the mix, at the size its type is made at',
+      made && made.blob.size > 20000 && made.type === wanted && made.blob.type === wanted && made.width === size.width && made.height === size.height && meta.width === size.width && meta.height === size.height,
+      `${made?.type} · ${made?.blob.size} bytes · ${JSON.stringify(meta)}`,
+    );
+    check('and the clip maker lets go afterwards', !h.clip.active && document.getElementById('clip-hud').hidden && !document.getElementById('clip').open);
+  }
+
   // New offers a choice of starting points
   const before = h.songs.list().length;
   h.crate.open('A');

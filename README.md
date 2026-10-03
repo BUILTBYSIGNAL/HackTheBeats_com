@@ -177,6 +177,15 @@ the check refuses it, and the dev server will not serve it.
 Positions are remembered per song in the browser; **Reset** returns a song to what its code says.
 
 - **Record** (the dot in the top bar, or `R`) captures the mix to a 16-bit WAV file, about 10 MB a minute.
+- **Video clip** (`V`, or **Make a video clip** in the share sheet) records a short video of the code lighting up in
+  time with the music, with the song's title, its `@by` credit, the tempo and its address, ready to post: vertical
+  (9:16, kept clear of the buttons and captions TikTok and Reels lay over a video) or square. Lengths are 4, 8, 16 or
+  32 bars, whichever last 5 to 90 seconds. It starts on the next bar after a short count-in, and a pill on the stage
+  counts the bars, with **Stop** (keeps what is recorded, at least one bar) and **Cancel** (or `Esc`). Then
+  **Share…** (where the device can share files), **Download**, **Make another** or **Discard**. MP4 at 1080p where
+  the browser can write it, otherwise WebM at 720p. The code is drawn on a canvas of its own (`js/clip.js`) and the
+  sound is the mix before the volume knob; it is all made on the device, and nothing is uploaded. With an account,
+  like recording.
 - **Share** (the link icon) opens the share sheet (see [Songs of your own](#songs-of-your-own)). A built-in beat is
   shared as a link to its own page that carries the deck's knob, switch, channel and tempo settings.
 - **MIDI.** Press *MIDI*, click any knob, fader, pad or button, then move a control on your hardware. Bindings are
@@ -187,6 +196,7 @@ Positions are remembered per song in the browser; **Reset** returns a song to wh
   X      switch deck        [ ]     jump four bars         A S D   half · stutter · no drums
   M      mix to the other   1 … =   mute channels 1–12     F G     follow · gallery
   R      record             B  ?    song list · help       Esc     leave the code
+  V      video clip
 
   Ctrl+Enter   run the edited code        Ctrl+S   save        Ctrl+.   stop
 ```
@@ -514,6 +524,7 @@ and the offline cache name in `sw.js` together.
     deck.js ............. the controls section               controls.js knob, fader, pad
     visuals.js .......... scope, spectrum, arrangement ribbon   arrangement.js computes it
     recorder.js ......... WAV recording    share.js mix links    midi.js controller bindings
+    clip.js ............. video clips: the code drawn again, recorded with the mix
     library.js .......... the built-in beats   crate.js the song picker   thumbs.js
     songs.js ............ My songs: browser storage and account sync
     cloud.js ............ Google sign-in and Firestore

@@ -104,6 +104,8 @@ export class Player {
           .sort((a, b) => a.from - b.from)
           .map((widget) => `slider_${widget.from}`);
         this.stage.setLocations(meta?.miniLocations);
+        // where the inline visuals sit, for drawing the code elsewhere (video clips)
+        this.stage.setVisuals((meta?.widgets || []).filter((widget) => widget.type !== 'slider'));
       },
       onEvalError: (error) => this.evalFailed(error),
       onToggle: (started) => this.onToggle(started),
