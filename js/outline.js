@@ -70,6 +70,7 @@ export const songMap = {
     for (const player of hooks.players) {
       player.mirror.editor.dispatch({ effects: StateEffect.appendConfig.of(marked) });
       const mine = (fn) => (...args) => player === hooks.focused() && fn(...args);
+      player.on('song', () => this.unflash(player));
       player.on('song', mine(() => this.render()));
       player.on('structure', mine(() => this.render()));
       player.on('mixer', mine(() => this.renderState()));
@@ -128,12 +129,15 @@ export const songMap = {
     return this.cache.groups;
   },
 
-  // An entry as the code says it now: the list may be a few keystrokes behind.
+  // An entry as the code says it now: the list may be a few keystrokes behind. Keys are
+  // numbered (part:2), so after an edit that has not run yet the entry is matched by name.
   entry(key) {
     const player = this.hooks.focused();
     if (!player?.song) return null;
-    const find = (groups) => itemsOf(groups).find((item) => item.key === key);
-    return find(this.groupsFor(player.code)) || find(this.built.groups) || null;
+    const drawn = itemsOf(this.built.groups).find((item) => item.key === key);
+    const now = itemsOf(this.groupsFor(player.code));
+    if (!drawn) return now.find((item) => item.key === key) || null;
+    return now.find((item) => item.key === key && item.label === drawn.label) || now.find((item) => item.kind === drawn.kind && item.label === drawn.label) || drawn;
   },
 
   build(player, code) {
@@ -141,12 +145,16 @@ export const songMap = {
     // the same deck drawn again (after an edit, say) keeps its place and the entry in focus
     const same = this.built.player === player;
     const scroll = same ? list.scrollTop : 0;
-    const focusKey = same && list.contains(document.activeElement) ? document.activeElement.closest('.map__item')?.dataset.key : null;
+    // (focus on the card's button goes back to its entry first)
     this.hideCard();
+    const focusKey = same && list.contains(document.activeElement) ? document.activeElement.closest('.map__item')?.dataset.key : null;
     root.append(card);
     const groups = this.groupsFor(code);
     this.built = { player, code, groups };
     root.hidden = !player?.song;
+    // an empty deck has nothing to map: the button rests, as Edit does
+    this.els.toggle.disabled = !player?.song;
+    if (!player?.song && this.open) this.setOpen(false);
     empty.hidden = groups.length > 0;
     for (let i = 0; i < this.levels.length; i++) root.style.removeProperty(`--lv-${i}`);
     this.levels = [];
@@ -195,6 +203,8 @@ export const songMap = {
 
   // Each part's dot follows its track's activity (the stage keeps it, rounded).
   pulse(player) {
+    // (closed behind its button, the map is not drawn: no work each frame)
+    if (!player || (!this.docked && !this.open)) return;
     const levels = player.stage.levels;
     const root = this.els.root;
     for (let i = 0; i < Math.max(levels.length, this.levels.length); i++) {
@@ -212,13 +222,18 @@ export const songMap = {
     const { stage, root, toggle } = this.els;
     const free = parseFloat(getComputedStyle(player.mirror.editor.scrollDOM).paddingLeft) || 0;
     const atLeft = player.stage.root.getBoundingClientRect().left - stage.getBoundingClientRect().left < 2;
-    const docked = !phone() && atLeft && free >= DOCK_MIN;
+    // in split view the margin belongs to deck A alone, and the Try chips sit lower
+    const single = player.stage.root.parentElement?.dataset.view !== 'split';
+    const docked = !phone() && single && atLeft && free >= DOCK_MIN;
     root.style.setProperty('--map-free', `${Math.round(free)}px`);
     toggle.hidden = docked;
     if (docked === this.docked) return;
     this.docked = docked;
     document.body.classList.toggle('map-docked', docked);
     this.hideCard();
+    // (left open, the overlay would come back by itself when the window narrows again)
+    if (docked && this.open) this.setOpen(false);
+    if (docked) this.pulse(player);
   },
 
   setOpen(open) {
@@ -228,6 +243,7 @@ export const songMap = {
     document.body.classList.toggle('map-open', open);
     toggle.setAttribute('aria-expanded', String(open));
     this.hideCard();
+    if (open) this.pulse(this.hooks.focused());
     if (open) root.querySelector('.map__item')?.focus({ preventScroll: true });
     else if (inside) toggle.focus({ preventScroll: true });
   },
@@ -282,12 +298,20 @@ export const songMap = {
     const last = Math.min(doc.lineAt(Math.min(Math.max(item.from, item.to - 1), doc.length)).number, first + 400);
     const ranges = [];
     for (let n = first; n <= last; n++) ranges.push(markLine.range(doc.line(n).from));
+    // lines still marked from a moment ago start their mark again
+    if (view.state.field(marked, false)?.size) {
+      view.dispatch({ effects: setMarked.of(Decoration.none) });
+      void view.contentDOM.offsetHeight;
+    }
     view.dispatch({ effects: setMarked.of(Decoration.set(ranges)) });
     clearTimeout(this.flashTimers.get(view));
-    this.flashTimers.set(
-      view,
-      setTimeout(() => view.dispatch({ effects: setMarked.of(Decoration.none) }), 2400),
-    );
+    this.flashTimers.set(view, setTimeout(() => this.unflash(player), 2400));
+  },
+
+  unflash(player) {
+    const view = player.mirror.editor;
+    clearTimeout(this.flashTimers.get(view));
+    if (view.state.field(marked, false)?.size) view.dispatch({ effects: setMarked.of(Decoration.none) });
   },
 
   // "Edit this part": into the code with the caret at the start of the section. Signed out
@@ -337,6 +361,9 @@ export const songMap = {
     edit.textContent = access === 'full' ? EDIT[item.kind] : 'Sign in to edit';
     button.parentElement.append(card);
     card.hidden = false;
+    // (read out with the entry, for someone who cannot see the card)
+    for (const other of this.els.list.querySelectorAll('[aria-describedby]')) other.removeAttribute('aria-describedby');
+    button.setAttribute('aria-describedby', card.id);
     this.placeCard();
   },
 
@@ -366,6 +393,7 @@ export const songMap = {
     const focusBack = this.els.card.contains(document.activeElement) ? this.els.card.parentElement?.querySelector('.map__item') : null;
     this.els.card.hidden = true;
     this.shown = null;
+    this.els.card.parentElement?.querySelector('.map__item')?.removeAttribute('aria-describedby');
     this.quiet = true;
     focusBack?.focus({ preventScroll: true });
     this.quiet = false;

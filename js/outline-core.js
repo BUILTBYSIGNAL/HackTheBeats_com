@@ -34,9 +34,11 @@ export function listOf(items) {
 }
 
 const words = (name) => name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_+/g, ' ').trim();
+// A lookup table with no inherited keys, so a call such as `.valueOf()` finds nothing in it.
+const table = (entries) => Object.freeze(Object.assign(Object.create(null), entries));
 
 // Drum machine sounds by their usual short names, and the built-in synths.
-const DRUMS = {
+const DRUMS = table({
   bd: 'kick',
   sd: 'snare',
   hh: 'hi-hat',
@@ -52,8 +54,8 @@ const DRUMS = {
   sh: 'shaker',
   tb: 'tambourine',
   perc: 'percussion',
-};
-const SYNTHS = {
+});
+const SYNTHS = table({
   sawtooth: 'sawtooth',
   saw: 'sawtooth',
   square: 'square',
@@ -63,8 +65,8 @@ const SYNTHS = {
   sin: 'sine',
   supersaw: 'supersaw',
   pulse: 'pulse',
-};
-const NOISE = { white: 'white noise', pink: 'pink noise', brown: 'brown noise', crackle: 'crackle' };
+});
+const NOISE = table({ white: 'white noise', pink: 'pink noise', brown: 'brown noise', crackle: 'crackle' });
 
 // "RolandTR909" → "909 kit", "LinnDrum" → "Linn Drum kit"
 export function kitName(bank) {
@@ -94,7 +96,7 @@ const FILTER = { word: 'filter', unit: 'Hz' };
 const HIGH = { word: 'high-pass', unit: 'Hz' };
 const BAND = { word: 'band-pass', unit: 'Hz' };
 const ENVELOPE = { word: 'envelope', bare: true };
-const EFFECTS = {
+const EFFECTS = table({
   lpf: FILTER,
   cutoff: FILTER,
   lp: FILTER,
@@ -142,11 +144,11 @@ const EFFECTS = {
   chop: { word: 'chopped up', bare: true },
   striate: { word: 'sliced', bare: true },
   phaser: { word: 'phaser' },
-};
+});
 // The parameter a knob feeds, in words: "lpf" → "filter"
 export const effectWord = (param) => EFFECTS[param]?.word || param;
 
-const VISUALS = { punchcard: 'a punchcard', pianoroll: 'a piano roll', scope: 'a scope', tscope: 'a scope', fscope: 'a spectrum', spectrum: 'a spectrum', spiral: 'a spiral', pitchwheel: 'a pitch wheel', wordfall: 'falling words' };
+const VISUALS = table({ punchcard: 'a punchcard', pianoroll: 'a piano roll', scope: 'a scope', tscope: 'a scope', fscope: 'a spectrum', spectrum: 'a spectrum', spiral: 'a spiral', pitchwheel: 'a pitch wheel', wordfall: 'falling words' });
 const SOUND_CALLS = new Set(['s', 'sound']);
 const NOTE_CALLS = new Set(['note', 'n']);
 const TEMPO_CALLS = new Set(['setcps', 'setcpm', 'setCps', 'setCpm']);
@@ -221,8 +223,11 @@ const commentText = (comment) =>
     .map((line) => line.replace(/^\s*\*?\s?/, '').trim())
     .filter(Boolean)
     .join(' ');
-// a line of code that was commented out is not a note about anything
-const looksLikeCode = (text) => /^\.|^[\w$]+\s*[(=]|^[A-Z_$][\w$]*\s*:\s*\S+\(|[;{}]$/.test(text);
+// A line of code that was commented out is not a note about anything: `.lpf(300)`,
+// `s("bd")`, `x = 2`, `drums: s("bd*4")`. ("bass (sub) line" is words, and stays.)
+const looksLikeCode = (text) => /^\.\w+\(|^(const|let|var|function|await|return)\b|^[\w$]+\(|^[\w$.]+\s*=[^=]|^[\w$]+\s*:\s*[\w$.]+\(|[;{}]$/.test(text);
+// a note says something in words; a row of dashes is a divider
+const isNote = (text) => Boolean(text) && /\p{L}/u.test(text) && !looksLikeCode(text);
 const clip = (text, length = 160) => (text.length > length ? `${text.slice(0, length - 1).trimEnd()}…` : text);
 
 /* ---------- the outline ---------- */
@@ -251,7 +256,7 @@ export function outlineOf(code, analysis) {
     const inside = notes.filter((c) => c.start >= from && lineOf(c.start) <= last);
     const after = notes.filter((c) => lineOf(c.start) === last + 1 && own(c) && (lineOf(c.end) >= count || !lineText(lineOf(c.end) + 1).trim()));
     for (const group of [before, inside, after]) {
-      const text = group.map(commentText).filter((t) => t && !looksLikeCode(t)).join(' ');
+      const text = group.map(commentText).filter(isNote).join(' ');
       if (text) return clip(text);
     }
     return null;
@@ -405,13 +410,16 @@ export function outlineOf(code, analysis) {
   const tempo = body.find((statement) => TEMPO_CALLS.has(setupCall(statement)?.name));
   if (tempo) {
     const call = code.slice(tempo.start, tempo.end).replace(/;$/, '');
+    // read from this call itself (meta.bpm takes the first setcps in the text, even one commented out)
+    const { start, end } = setupCall(tempo).call;
+    const bpm = bpmOf(code.slice(start, end));
     setup.push({
       key: 'tempo',
       kind: 'tempo',
       label: 'Tempo',
       ...place(tempo.start, tempo.end),
-      summary: meta.bpm ? `${meta.bpm} bpm` : 'set in the code',
-      details: [meta.bpm ? `${meta.bpm} beats a minute, set by \`${call}\`` : `Set by \`${call}\``, "The deck's Tempo knob speeds it up or slows it down from there"],
+      summary: bpm ? `${bpm} bpm` : 'set in the code',
+      details: [bpm ? `${bpm} beats a minute, set by \`${call}\`` : `Set by \`${call}\``, "The deck's Tempo knob speeds it up or slows it down from there"],
       note: noteFor(tempo.start, tempo.end),
       code: null,
     });
@@ -451,7 +459,9 @@ export function outlineOf(code, analysis) {
     const shapes = slider.constName && declared.has(slider.constName) ? usedBy(slider.constName) : [...slider.tracks].map((i) => tracks[i]?.name).filter(Boolean);
     const details = [`A knob from ${slider.min} to ${slider.max}${slider.step ? ` in steps of ${slider.step}` : ''}, now ${slider.value}`];
     if (params.length) details.push(`Turns the ${listOf(feeds)} (${params.map((param) => `\`${param}\``).join(', ')})`);
-    details.push(shapes.length ? `Shapes ${listOf(shapes)}` : slider.hint);
+    // (a knob nothing refers to shapes nothing, whatever the deck's general hint says)
+    const unused = slider.constName && !body.some((other) => other !== statement && namesIn(other).has(slider.constName));
+    details.push(shapes.length ? `Shapes ${listOf(shapes)}` : unused ? 'Nothing in the code uses it yet' : slider.hint);
     controls.push({
       key: `knob:${slider.k}`,
       kind: 'knob',
@@ -558,6 +568,14 @@ function setupCall(statement) {
   const expression = statement.expression.type === 'AwaitExpression' ? statement.expression.argument : statement.expression;
   if (expression?.type !== 'CallExpression' || expression.callee.type !== 'Identifier') return null;
   return { name: expression.callee.name, call: expression };
+}
+// The beats a minute a tempo call sets, when it says so plainly (as analyze-core reads it):
+// setcps(96/60/4), setcpm(96/4), setcps(0.4)
+function bpmOf(call) {
+  const cps = call.match(/^setcps\(\s*([\d.]+)\s*\/\s*60\s*\/\s*4\s*\)$/i);
+  const cpm = call.match(/^setcpm\(\s*([\d.]+)\s*\/\s*4\s*\)$/i);
+  const plain = call.match(/^setcps\(\s*(\d*\.?\d+)\s*\)$/i);
+  return cps ? Number(cps[1]) : cpm ? Number(cpm[1]) : plain ? Math.round(Number(plain[1]) * 240) : null;
 }
 const isSetup = (statement) => {
   const name = setupCall(statement)?.name;

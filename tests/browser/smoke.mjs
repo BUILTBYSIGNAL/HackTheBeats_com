@@ -163,6 +163,16 @@ async function scenario() {
   const card = document.getElementById('map-card');
   const described = { shown: !card.hidden && getComputedStyle(card).display !== 'none', title: card.querySelector('.map__card-title').textContent, text: card.querySelector('.map__card-details').textContent, edit: card.querySelector('.map__card-edit').textContent };
   check('hovering an entry shows what that part plays and does', described.shown && described.title === A.mixer.tracks.at(-1).name && /Sounds|Notes/.test(described.text) && /Effects/.test(described.text) && described.edit === 'Edit this part', JSON.stringify(described));
+  // signed out, the card offers an account instead, and the code stays locked
+  h.app.access = 'preview';
+  lastPart.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+  const offer = card.querySelector('.map__card-edit').textContent;
+  card.querySelector('.map__card-edit').click();
+  const mapSignIn = document.getElementById('account-dialog').open && !A.stage.editing;
+  document.getElementById('account-dialog').close();
+  h.app.access = 'full';
+  check('signed out, the card says "Sign in to edit" and asks for an account', offer === 'Sign in to edit' && mapSignIn, offer);
+  lastPart.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
   card.querySelector('.map__card-edit').click();
   const caret = A.stage.view.state.selection.main.head;
   check('"Edit this part" opens the code with the caret at that part', A.stage.editing && caret === mapped.from, `caret on line ${A.stage.view.state.doc.lineAt(caret).number}, part on line ${A.stage.view.state.doc.lineAt(mapped.from).number}`);

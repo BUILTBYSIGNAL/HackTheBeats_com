@@ -151,6 +151,30 @@ test('a helper used through another helper counts for the parts that use that on
   assert.equal(item(groups, 'helper:tune').summary, 'used by LEAD');
 });
 
+test('the tempo comes from its own call; notes are words, not commented-out code or dividers', () => {
+  const code = [
+    '// setcps(140/60/4)',
+    'setcps(100/60/4)',
+    '',
+    '// lead (high) line',
+    'LEAD: note("c4 e4").s("sine")',
+    '',
+    '// ----------',
+    '// pads: s("pad")',
+    'PAD: s("soft_pad").valueOf()',
+    '',
+    'const idle = slider(5, 0, 10)',
+  ].join('\n');
+  const groups = outline(code);
+  assert.equal(item(groups, 'tempo').summary, '100 bpm');
+  assert.equal(item(groups, 'tempo').details[0], '100 beats a minute, set by `setcps(100/60/4)`');
+  assert.equal(item(groups, 'part:0').note, 'lead (high) line');
+  assert.equal(item(groups, 'part:1').note, null);
+  // a method that is not an effect (nor anything inherited) says nothing
+  assert.deepEqual(item(groups, 'part:1').details, ['Sounds: soft_pad']);
+  assert.ok(item(groups, 'knob:0').details.includes('Nothing in the code uses it yet'));
+});
+
 test('a song with no labels has one part: the pattern it ends on', () => {
   const code = 'setcpm(110/4)\nconst p = "bd sd"\ns(p).gain(0.5)';
   const groups = outline(code);
