@@ -87,6 +87,38 @@ export function keepBars(segments, from, to) {
   return kept.length ? toSegments(kept) : null;
 }
 
+// The bars picked, within the loop: [first, last], or null when they run past its end.
+function within(segments, from, to) {
+  const [a, b] = [Math.min(from, to), Math.max(from, to)];
+  return a >= 0 && b < loopLength(segments) ? [a, b] : null;
+}
+
+// The song's own bars that strip bars `from`…`to` play, in order: what Copy takes.
+export function copyBars(segments, from, to) {
+  const span = within(segments, from, to);
+  return span ? order(segments).slice(span[0], span[1] + 1) : null;
+}
+
+// Segments with strip bars `from`…`to` moved `by` bars (−1 earlier, 1 later); null at either end.
+export function moveBars(segments, from, to, by) {
+  const span = within(segments, from, to);
+  if (!span) return null;
+  const bars = order(segments);
+  if (span[0] + by < 0 || span[1] + by >= bars.length) return null;
+  const picked = bars.splice(span[0], span[1] - span[0] + 1);
+  bars.splice(span[0] + by, 0, ...picked);
+  return toSegments(bars);
+}
+
+// Segments with copied bars (song bars, from copyBars) put in at strip bar `at`: inserted
+// there, or written over the bars from there on (`over`). Null past the strip's 32 bars.
+export function pasteBars(segments, at, clip, over = false) {
+  const bars = order(segments);
+  if (at < 0 || at > bars.length) return null;
+  bars.splice(at, over ? Math.min(clip.length, bars.length - at) : 0, ...clip);
+  return bars.length <= BARS ? toSegments(bars) : null;
+}
+
 /* ---------- silencing a part ---------- */
 
 // A part's own mask: one bit per source bar (1 plays), or null if it has none of ours.
@@ -132,19 +164,33 @@ export function silenced(code, track, segments, from, to) {
 // What a trim changes in the code, as edits for the stage: { changes: [{ from, to, insert }],
 // segments } or { error }. `tracks` are the song's parts (analyze-core.js).
 //   { kind: 'cut' | 'keep', from, to }                 strip bars
+//   { kind: 'move', from, to, by }                     by: −1 one bar earlier, 1 later
+//   { kind: 'paste', at, bars, over }                  bars: song bars, from copyBars
 //   { kind: 'silence', track, from, to, on }            on: false silences, true brings back
 export function planTrim(code, tracks, action) {
   if (!tracks.length) return { error: 'This beat is a single pattern, so there is nothing to trim.' };
   const cut = parseCut(code);
   const segments = cut?.segments ?? null;
 
-  if (action.kind === 'cut' || action.kind === 'keep') {
-    const next = (action.kind === 'cut' ? cutBars : keepBars)(segments, action.from, action.to);
-    if (!next) return { error: 'That would cut every bar. Leave at least one.' };
+  const arranged = {
+    cut: () => cutBars(segments, action.from, action.to) ?? { error: 'That would cut every bar. Leave at least one.' },
+    keep: () => keepBars(segments, action.from, action.to) ?? { error: 'That would cut every bar. Leave at least one.' },
+    move: () =>
+      !within(segments, action.from, action.to)
+        ? { error: 'Pick bars before the loop starts again.' }
+        : (moveBars(segments, action.from, action.to, action.by) ?? { error: `Those bars are already at the ${action.by < 0 ? 'start' : 'end'}.` }),
+    paste: () =>
+      action.at > loopLength(segments)
+        ? { error: 'Pick bars before the loop starts again.' }
+        : (pasteBars(segments, action.at, action.bars, action.over) ?? { error: `The strip holds ${BARS} bars. Paste over some, or cut some to make room.` }),
+  }[action.kind];
+  if (arranged) {
+    const next = arranged();
+    if (next.error) return next;
     if (isWhole(next)) {
-      // back to the whole song: the line goes, with its line break
+      // back to the whole song: the line goes, with the line breaks it was written with
       if (!cut) return { changes: [], segments: null };
-      const end = code[cut.to] === '\n' ? cut.to + 1 : cut.to;
+      const end = code.startsWith('\n\n', cut.to) ? cut.to + 2 : code[cut.to] === '\n' ? cut.to + 1 : cut.to;
       return { changes: [{ from: cut.from, to: end, insert: '' }], segments: null };
     }
     if (cut) return { changes: [{ from: cut.from, to: cut.to, insert: cutLine(next) }], segments: next };

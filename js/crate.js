@@ -9,6 +9,18 @@ const ICONS = {
   copy: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 5.5V4A1.5 1.5 0 0 0 9 2.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>',
 };
 
+// "shared" stands out in the signal colour: anyone with the link can play that song
+const sharedMark = () => Object.assign(document.createElement('span'), { className: 'beat__shared', textContent: 'shared' });
+
+// When one of your songs was last saved: "saved Oct 3, 2:14 PM", with the year once it is not
+// this one, kept on one line.
+function savedMark(time) {
+  const date = new Date(time);
+  const year = date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric';
+  const when = date.toLocaleString(undefined, { month: 'short', day: 'numeric', year, hour: 'numeric', minute: '2-digit' });
+  return Object.assign(document.createElement('span'), { className: 'beat__saved', textContent: `saved ${when}` });
+}
+
 export const crate = {
   dialog: null,
   lists: {},
@@ -55,10 +67,11 @@ export const crate = {
         song.bpm ? `${song.bpm} bpm` : null,
         song.trackCount ? `${song.trackCount} ${song.trackCount === 1 ? 'track' : 'tracks'}` : 'one pattern',
         song.knobCount ? `${song.knobCount} ${song.knobCount === 1 ? 'knob' : 'knobs'}` : null,
-        own && song.shared ? 'shared' : null,
+        own && song.shared ? sharedMark() : null,
         own && song.from ? `from ${song.from.title}` : null,
         // the admin's view of who else can play a beat
         song.audience === 'admin' ? 'only you' : song.audience === 'members' ? 'members' : song.audience === 'everyone' ? 'featured' : null,
+        own && song.updatedAt ? savedMark(song.updatedAt) : null,
       ].filter(Boolean);
       item.innerHTML = `
         <button type="button" class="beat__main">
@@ -75,7 +88,9 @@ export const crate = {
           <button type="button" class="beat__tool">${own ? ICONS.more : ICONS.copy}</button>
         </span>`;
       item.querySelector('.beat__title').textContent = song.title;
-      item.querySelector('.beat__meta').textContent = [song.by ? `by ${song.by}` : null, ...facts].filter(Boolean).join(' · ');
+      item.querySelector('.beat__meta').append(
+        ...[song.by ? `by ${song.by}` : null, ...facts].filter(Boolean).flatMap((fact, n) => (n ? [' · ', fact] : [fact])),
+      );
       const choose = (deck) => {
         this.dialog.close();
         this.handlers.onSelect?.(song.id, deck);

@@ -162,7 +162,7 @@ export const onboarding = {
           text.textContent = hint;
           const button = document.createElement('button');
           button.type = 'button';
-          button.className = action ? 'pillbtn pillbtn--go' : 'chipbtn';
+          button.className = id === 'signin' ? 'gsi' : action ? 'pillbtn pillbtn--go' : 'chipbtn';
           button.dataset.act = id;
           button.textContent = action || 'Show me';
           body.append(text, button);

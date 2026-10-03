@@ -501,6 +501,48 @@ body[data-transport='loading'] .curtain__play .spinner {
   cursor: default;
 }
 
+/* Sign in with Google: Google's own button, dark theme, pill shape, exactly as its branding
+   guidelines draw it (developers.google.com/identity/branding-guidelines). Not our accent colour. */
+.gsi {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #8e918f;
+  border-radius: 20px;
+  background: #131314;
+  font: 500 14px/20px Roboto, var(--hb-sans);
+  letter-spacing: 0.25px;
+  color: #e3e3e3;
+  white-space: nowrap;
+  transition: background 0.218s, box-shadow 0.218s;
+}
+.gsi::before {
+  content: '';
+  flex: none;
+  width: 20px;
+  height: 20px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.gsi:hover {
+  background: color-mix(in srgb, #131314 92%, white);
+  box-shadow: 0 1px 2px 0 rgb(60 64 67 / 0.3), 0 1px 3px 1px rgb(60 64 67 / 0.15);
+}
+.gsi:focus-visible {
+  background: color-mix(in srgb, #131314 88%, white);
+}
+.gsi:disabled {
+  background: rgb(19 19 20 / 0.38);
+  border-color: rgb(142 145 143 / 0.12);
+  color: rgb(227 227 227 / 0.38);
+  box-shadow: none;
+  cursor: default;
+}
+.gsi:disabled::before {
+  opacity: 0.38;
+}
+
 /* MIDI learn: everything that can be bound is outlined; a click picks instead of acting */
 .is-learning [data-midi] {
   outline: 1px dashed var(--hb-accent);
@@ -689,6 +731,12 @@ dialog::backdrop {
 .beat__meta {
   font-size: 12px;
   color: var(--hb-ink-3);
+}
+.beat__shared {
+  color: var(--hb-accent);
+}
+.beat__saved {
+  white-space: nowrap;
 }
 /* a community song's header notes, two lines at most */
 .beat__blurb {
@@ -884,6 +932,144 @@ dialog::backdrop {
 }
 .sheet__body [hidden] {
   display: none !important;
+}
+
+/* ---------- the help sheet's own header and ending ---------- */
+
+.about__brand {
+  color: var(--hb-accent);
+}
+.about__tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.about__donate {
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--hb-accent);
+  font: 600 11px/1 var(--hb-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hb-accent-ink);
+  transition: background 0.15s, box-shadow 0.25s;
+}
+.about__donate:hover {
+  background: color-mix(in srgb, var(--hb-accent) 86%, white);
+  box-shadow: 0 0 18px 1px rgb(255 107 53 / 0.4);
+}
+.about__end {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+.about__up {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--hb-accent);
+  border-radius: 50%;
+  color: var(--hb-accent);
+  transition: background 0.15s, color 0.15s;
+}
+.about__up:hover {
+  background: var(--hb-accent);
+  color: var(--hb-accent-ink);
+}
+.about__up svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#support {
+  scroll-margin-top: 12px;
+}
+
+/* ---------- About and Privacy over the player (js/pages.js): page.css, inside the lightbox ---------- */
+
+.readpage {
+  width: min(720px, 94vw);
+}
+.readpage::backdrop {
+  backdrop-filter: blur(8px);
+}
+.readpage .sheet__body {
+  display: block;
+  padding: 22px var(--hb-gutter) 32px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+.readpage__tab {
+  font: 400 8px/1 var(--hb-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--hb-ink-4);
+}
+.readpage__tab:hover {
+  color: var(--hb-ink);
+}
+.readpage .sheet__body > h2 {
+  margin: 30px 0 10px;
+  font: 500 11px/1 var(--hb-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hb-ink-3);
+}
+.readpage .sheet__body > p,
+.readpage .sheet__body > ul {
+  margin: 0 0 12px;
+}
+.readpage .sheet__body > ul {
+  padding-left: 20px;
+}
+.readpage li {
+  margin-bottom: 4px;
+}
+.readpage .lede {
+  font-size: 17px;
+  color: var(--hb-ink);
+}
+.readpage .updated {
+  margin-bottom: 20px;
+  font: 400 12px/1 var(--hb-mono);
+  color: var(--hb-ink-4);
+}
+.readpage .draft {
+  padding: 12px 14px;
+  border: 1px solid var(--hb-accent);
+  border-radius: 8px;
+  color: var(--hb-ink);
+}
+.readpage .beats {
+  padding: 0;
+  list-style: none;
+  columns: 2 220px;
+}
+.readpage .beats span {
+  color: var(--hb-ink-4);
+}
+.readpage .linklike {
+  padding: 0;
+  font: inherit;
+  color: var(--hb-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--hb-ink-4);
+  text-underline-offset: 3px;
+}
+.readpage .support {
+  margin: 8px 0 4px;
+  scroll-margin-top: 12px;
+}
+@media (max-width: 480px) {
+  .readpage__tab {
+    display: none;
+  }
 }
 
 /* ---------- share ---------- */
@@ -1418,8 +1604,11 @@ body > .consent {
   bottom: calc(100% + 6px);
   z-index: 5;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  /* on a narrow screen the buttons wrap rather than run off the edge */
+  max-width: calc(100% - 16px);
   padding: 5px 6px 5px 10px;
   background: var(--hb-raise);
   border: 1px solid var(--hb-line);
@@ -1436,6 +1625,39 @@ body > .consent {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--hb-ink-2);
+}
+.trimbar__bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 4px;
+  font: 500 10.5px/1 var(--hb-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--hb-ink-2);
+}
+/* a bar number, typed over */
+.trimbar__num {
+  width: 3.2em;
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid var(--hb-line);
+  border-radius: 4px;
+  background: var(--hb-bg-deep);
+  font: 500 11px/1 var(--hb-mono);
+  color: var(--hb-ink);
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.trimbar__num::-webkit-inner-spin-button,
+.trimbar__num::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.trimbar__num:focus {
+  outline: none;
+  border-color: var(--hb-accent);
 }
 .trimbar__close {
   width: 22px;

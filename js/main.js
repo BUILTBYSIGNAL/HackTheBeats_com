@@ -29,6 +29,7 @@ import { songMap } from './outline.js';
 import { clip } from './clip.js';
 import { snapshots } from './snapshots.js';
 import { trim } from './trim.js';
+import { pages } from './pages.js';
 import { SLOT_KEYS } from './snapshots-core.js';
 
 const $ = (id) => document.getElementById(id);
@@ -1233,6 +1234,8 @@ async function boot() {
     const home = new URL(config.appOrigin).host;
     $('intro-title').textContent = 'A song someone shared with you.';
     $('intro-lede').textContent = `It is code, running live in your browser. To change it or keep a copy, open it on ${home} and sign in, free.`;
+    // not a sign-in here, so not Google's button either
+    $('intro-sign-in').className = 'pillbtn pillbtn--go';
     $('intro-sign-in').textContent = 'Edit a copy';
     $('intro-fine').hidden = true;
   }
@@ -1633,6 +1636,11 @@ async function boot() {
   $('load-b').addEventListener('click', () => crate.open('B'));
   $('open-about').addEventListener('click', () => els.about.showModal());
   $('about-close').addEventListener('click', () => els.about.close());
+  // About and Privacy open over the player
+  pages.init($('page-sheet'));
+  // Donate glides down to the shirt; the arrow at the end back up to the top
+  $('about-donate').addEventListener('click', () => $('support').scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  $('about-top').addEventListener('click', () => els.about.querySelector('.sheet__body').scrollTo({ top: 0, behavior: 'smooth' }));
   els.about.addEventListener('click', (event) => event.target === els.about && els.about.close());
   els.record.addEventListener('click', toggleRecord);
   $('share').addEventListener('click', () => openShareSheet());
@@ -1784,6 +1792,14 @@ async function boot() {
         return;
       }
       if (app.access === 'preview') return;
+      // bars picked on the arrangement: Ctrl+C copies them, Ctrl+V pastes them in after the bars picked
+      const typing = inEditor || event.target.closest?.('input, textarea') || String(getSelection());
+      if (trim.selection && !typing && ['c', 'v'].includes(event.key.toLowerCase())) {
+        event.preventDefault();
+        if (event.key.toLowerCase() === 'c') trim.copy();
+        else trim.act('paste');
+        return;
+      }
       // Ctrl+Enter and ⌘+Enter inside the editor are handled by the editor itself
       if (event.key === 'Enter' && !inEditor) {
         event.preventDefault();
@@ -1823,6 +1839,11 @@ async function boot() {
     if (trim.selection && (key === 'Backspace' || key === 'Delete') && !interactive) {
       event.preventDefault();
       return void trim.cutSelection();
+    }
+    // ← → move them a bar earlier or later
+    if (trim.selection?.row === null && (key === 'ArrowLeft' || key === 'ArrowRight') && !interactive) {
+      event.preventDefault();
+      return void trim.moveSelection(key === 'ArrowLeft' ? -1 : 1);
     }
     if (key === 'Escape' && snapshots.cancel('The capture was let go.')) return;
     if (key === 'Escape') {

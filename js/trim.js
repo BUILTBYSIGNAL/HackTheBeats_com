@@ -1,12 +1,13 @@
 // Trimming from the arrangement strip. Drag across it to pick bars (or, with the strip open,
-// along one track's row), then cut them or keep only them (or silence that track there).
+// along one track's row), or type their numbers, then cut them, keep only them, move them a
+// bar earlier or later, or copy them and paste them in elsewhere (or silence that track there).
 // The change is written into the code and run straight away, without stopping the music, so
 // it is an edit like any other: the changed lines are marked, Save keeps it, Revert undoes
 // it. The code it writes is described in trim-core.js.
 import { analyze } from './analyze.js';
 import { visuals } from './visuals.js';
 import { reverse } from './tries.js';
-import { planTrim, silenced, barsText } from './trim-core.js';
+import { BARS, planTrim, silenced, barsText, copyBars } from './trim-core.js';
 
 // how long Undo stays on offer after a trim
 const UNDO_FOR = 15000;
@@ -20,6 +21,8 @@ export const trim = {
   selection: null,
   // the trim just made, until the next: { player, before, after, changes, label }
   last: null,
+  // bars copied, to paste: { song, bars, label } (bars are the song's own, from copyBars)
+  clip: null,
   busy: false,
   undoTimer: null,
 
@@ -35,6 +38,10 @@ export const trim = {
     bar.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-act]');
       if (button) this.act(button.dataset.act);
+    });
+    // the bar numbers can be typed: the pick follows once one is entered
+    bar.addEventListener('change', (event) => {
+      if (event.target.matches('.trimbar__num')) this.typed(event.target);
     });
   },
 
@@ -83,6 +90,24 @@ export const trim = {
     else this.bar.hidden = true;
   },
 
+  // A bar number typed into the bar of buttons (counted from 1, as on screen).
+  typed(input) {
+    const pick = this.selection;
+    if (!pick) return;
+    const value = Math.round(Number(input.value));
+    let [a, b] = [Math.min(pick.from, pick.to), Math.max(pick.from, pick.to)];
+    if (Number.isFinite(value)) {
+      const bar = Math.max(1, Math.min(BARS, value)) - 1;
+      if (input.dataset.end === 'from') a = bar;
+      else b = bar;
+    }
+    this.pick({ from: Math.min(a, b), to: Math.max(a, b), row: pick.row });
+    // put the cursor back where it was, ready for the next number
+    const again = this.bar.querySelector(`.trimbar__num[data-end="${input.dataset.end}"]`);
+    again?.focus();
+    again?.select();
+  },
+
   clear() {
     this.selection = null;
     visuals.selection = null;
@@ -98,20 +123,30 @@ export const trim = {
       this.bar.hidden = true;
       return;
     }
-    const bars = barsText(pick.from, pick.to);
-    const button = (act, text, go = false) => `<button type="button" class="chipbtn${go ? ' chipbtn--go' : ''}" data-act="${act}">${text}</button>`;
+    const [a, b] = [Math.min(pick.from, pick.to), Math.max(pick.from, pick.to)];
+    const button = (act, text, go = false, label = '') =>
+      `<button type="button" class="chipbtn${go ? ' chipbtn--go' : ''}" data-act="${act}"${label ? ` aria-label="${label}"` : ''}>${text}</button>`;
+    const number = (end, value) => `<input class="trimbar__num" data-end="${end}" type="number" inputmode="numeric" min="1" max="${BARS}" value="${value + 1}" aria-label="${end === 'from' ? 'First' : 'Last'} bar" />`;
+    const numbers = `<span class="trimbar__bars">bars ${number('from', a)}–${number('to', b)}</span>`;
     let label;
     let buttons;
     if (pick.row === null) {
-      label = bars;
-      buttons = button('cut', 'Cut', true) + button('keep', 'Keep only');
+      label = '';
+      const pasting = this.clip?.song === player.song.id;
+      buttons =
+        button('left', '‹', false, 'Move them a bar earlier') +
+        button('right', '›', false, 'Move them a bar later') +
+        button('cut', 'Cut', true) +
+        button('keep', 'Keep only') +
+        button('copy', 'Copy') +
+        (pasting ? button('paste', 'Paste', false, `Paste ${this.clip.label} after these`) + button('over', 'Paste over', false, `Paste ${this.clip.label} over these`) : '');
     } else {
       const track = player.mixer.tracks[pick.row];
-      label = `${track?.name ?? 'track'} · ${bars}`;
+      label = `${track?.name ?? 'track'} ·`;
       const quiet = track && silenced(player.code, analyze(player.code).tracks[pick.row] ?? track, player.cut, pick.from, pick.to);
       buttons = quiet ? button('unsilence', 'Bring back', true) : button('silence', 'Silence', true);
     }
-    this.show(label, buttons + `<button type="button" class="trimbar__close" data-act="cancel" aria-label="Cancel">×</button>`, Math.min(pick.from, pick.to));
+    this.show(label, numbers + buttons + `<button type="button" class="trimbar__close" data-act="cancel" aria-label="Cancel">×</button>`, a);
   },
 
   // The bar of buttons, over the strip at `column`.
@@ -119,6 +154,7 @@ export const trim = {
     const bar = this.bar;
     bar.innerHTML = `<span class="trimbar__label"></span>${buttons}`;
     bar.querySelector('.trimbar__label').textContent = label;
+    bar.querySelector('.trimbar__label').hidden = !label;
     bar.hidden = false;
     const ribbon = bar.offsetParent?.getBoundingClientRect();
     const canvas = this.canvas.getBoundingClientRect();
@@ -136,15 +172,50 @@ export const trim = {
     }
     if (name === 'undo') return this.undo();
     if (!pick) return;
+    const player = this.hooks.focused();
     const bars = barsText(pick.from, pick.to);
-    const track = pick.row !== null ? this.hooks.focused()?.mixer.tracks[pick.row]?.name : null;
+    const [a, b] = [Math.min(pick.from, pick.to), Math.max(pick.from, pick.to)];
+    const track = pick.row !== null ? player?.mixer.tracks[pick.row]?.name : null;
+    if (name === 'copy') return this.copy();
+    const clip = this.clip?.song === player?.song?.id ? this.clip : null;
+    if ((name === 'paste' || name === 'over') && !clip) return this.hooks.status('Copy some bars first.');
+    const n = clip?.bars.length ?? 0;
+    // the bars that stay picked afterwards, so a move can be pressed again
     const actions = {
-      cut: [{ kind: 'cut', from: pick.from, to: pick.to }, `Cut ${bars}`],
-      keep: [{ kind: 'keep', from: pick.from, to: pick.to }, `Kept only ${bars}`],
-      silence: [{ kind: 'silence', track: pick.row, from: pick.from, to: pick.to, on: false }, `Silenced ${track} in ${bars}`],
-      unsilence: [{ kind: 'silence', track: pick.row, from: pick.from, to: pick.to, on: true }, `Brought ${track} back in ${bars}`],
+      cut: [{ kind: 'cut', from: a, to: b }, `Cut ${bars}`],
+      keep: [{ kind: 'keep', from: a, to: b }, `Kept only ${bars}`],
+      left: [{ kind: 'move', from: a, to: b, by: -1 }, `Moved ${bars} a bar earlier`, { from: a - 1, to: b - 1, row: null }],
+      right: [{ kind: 'move', from: a, to: b, by: 1 }, `Moved ${bars} a bar later`, { from: a + 1, to: b + 1, row: null }],
+      paste: [{ kind: 'paste', at: b + 1, bars: clip?.bars, over: false }, `Pasted ${clip?.label} after ${bars}`, { from: b + 1, to: b + n, row: null }],
+      over: [{ kind: 'paste', at: a, bars: clip?.bars, over: true }, `Pasted ${clip?.label} over ${barsText(a, a + n - 1)}`, { from: a, to: a + n - 1, row: null }],
+      silence: [{ kind: 'silence', track: pick.row, from: a, to: b, on: false }, `Silenced ${track} in ${bars}`],
+      unsilence: [{ kind: 'silence', track: pick.row, from: a, to: b, on: true }, `Brought ${track} back in ${bars}`],
     };
     if (actions[name]) this.apply(...actions[name]);
+  },
+
+  // Copy: the picked bars of the song, to paste in after (or over) other bars.
+  copy() {
+    const pick = this.selection;
+    const player = this.hooks.focused();
+    if (!pick || pick.row !== null || !player?.song) return false;
+    const bars = copyBars(player.cut, pick.from, pick.to);
+    if (!bars) {
+      this.hooks.status('Pick bars before the loop starts again.');
+      return true;
+    }
+    const label = barsText(pick.from, pick.to);
+    this.clip = { song: player.song.id, bars, label };
+    this.hooks.status(`Copied ${label}. Pick where they go, then Paste puts them in after, Paste over in place.`, { hold: 6000 });
+    this.render();
+    return true;
+  },
+
+  // ← or → with bars picked: move them a bar earlier or later.
+  moveSelection(by) {
+    if (!this.selection || this.selection.row !== null) return false;
+    this.act(by < 0 ? 'left' : 'right');
+    return true;
   },
 
   // Backspace or Delete with bars picked: cut them (or silence the track's).
@@ -156,7 +227,8 @@ export const trim = {
 
   /* ---------- changing the code ---------- */
 
-  async apply(action, label) {
+  // `then`: the bars to leave picked afterwards (a move, a paste), instead of offering Undo.
+  async apply(action, label, then = null) {
     const player = this.hooks.focused();
     if (this.busy || !player?.song) return;
     if (player.gated || !player.ready) return this.hooks.status('Run the song first, then trim it.');
@@ -178,6 +250,7 @@ export const trim = {
     }
     this.last = { player, before, after: player.code, changes: plan.changes, label };
     this.hooks.status(`${label}. The change is marked in the code: Save keeps it.`, { hold: 9000 });
+    if (then) return this.pick(then);
     this.offerUndo(label, Math.min(action.from, action.to));
   },
 

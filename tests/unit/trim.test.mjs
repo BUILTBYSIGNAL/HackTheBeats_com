@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parse } from 'acorn';
 import { createAnalyzer, applyChanges } from '../../js/analyze-core.js';
 import { ARRANGEMENT_BARS } from '../../js/arrangement.js';
-import { BARS, parseCut, cutLine, loopLength, sourceBar, cutBars, keepBars, parseMask, maskText, maskOf, silenced, planTrim, barsText } from '../../js/trim-core.js';
+import { BARS, parseCut, cutLine, loopLength, sourceBar, cutBars, keepBars, parseMask, maskText, maskOf, silenced, planTrim, barsText, copyBars, moveBars, pasteBars } from '../../js/trim-core.js';
 
 const analyze = createAnalyzer(parse);
 
@@ -141,4 +141,71 @@ test('bars are counted from 1 on screen', () => {
   assert.equal(barsText(8, 11), 'bars 9–12');
   assert.equal(barsText(11, 8), 'bars 9–12');
   assert.equal(barsText(0, 0), 'bar 1');
+});
+
+test('copying bars takes the song bars they play, in order', () => {
+  assert.deepEqual(copyBars(null, 1, 2), [1, 2]);
+  assert.deepEqual(copyBars(cutBars(null, 8, 11), 7, 8), [7, 12]);
+  // past the end of a trimmed loop there is nothing of its own to copy
+  assert.equal(copyBars(cutBars(null, 8, 11), 27, 28), null);
+});
+
+test('moving bars a bar earlier or later, but not past either end', () => {
+  assert.deepEqual(moveBars(null, 1, 2, -1), [
+    [1, 2],
+    [0, 1],
+    [3, 29],
+  ]);
+  assert.deepEqual(moveBars(null, 1, 2, 1), [
+    [0, 1],
+    [3, 1],
+    [1, 2],
+    [4, 28],
+  ]);
+  assert.equal(moveBars(null, 0, 3, -1), null);
+  assert.equal(moveBars(null, 30, 31, 1), null);
+  // moved there and back is the whole song again
+  assert.deepEqual(moveBars(moveBars(null, 4, 7, 1), 5, 8, -1), [[0, BARS]]);
+});
+
+test('pasting bars in after others, or over them, within the 32 bars of the strip', () => {
+  const short = keepBars(null, 0, 7);
+  assert.deepEqual(pasteBars(short, 8, [0, 1, 2, 3]), [
+    [0, 8],
+    [0, 4],
+  ]);
+  assert.deepEqual(pasteBars(short, 2, [6, 7]), [
+    [0, 2],
+    [6, 2],
+    [2, 6],
+  ]);
+  // over: the bars from there on are replaced, and the loop keeps its length
+  assert.deepEqual(pasteBars(null, 4, [0, 1, 2, 3], true), [
+    [0, 4],
+    [0, 4],
+    [8, 24],
+  ]);
+  // over, running past the end: the loop grows to fit
+  assert.equal(loopLength(pasteBars(short, 6, [0, 1, 2, 3], true)), 10);
+  // the strip is full: inserting has no room
+  assert.equal(pasteBars(null, 4, [0]), null);
+});
+
+test('moving and pasting write the same one line, and read back', () => {
+  const moved = run(SONG, { kind: 'move', from: 0, to: 3, by: 1 });
+  parses(moved);
+  assert.deepEqual(parseCut(moved).segments, [
+    [4, 1],
+    [0, 4],
+    [5, 27],
+  ]);
+  assert.equal(run(moved, { kind: 'move', from: 1, to: 4, by: -1 }), SONG);
+  const pasted = run(SONG, { kind: 'paste', at: 0, bars: [8, 9], over: true });
+  assert.deepEqual(parseCut(pasted).segments, [
+    [8, 2],
+    [2, 30],
+  ]);
+  const plan = (action) => planTrim(SONG, analyze(SONG).tracks, action);
+  assert.match(plan({ kind: 'move', from: 0, to: 1, by: -1 }).error, /already at the start/);
+  assert.match(plan({ kind: 'paste', at: 2, bars: [0], over: false }).error, /holds 32 bars/);
 });

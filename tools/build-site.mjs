@@ -16,7 +16,7 @@
 //     exported twice kept once, except songs marked `"publish": false` in beats/titles.json.
 //
 // What goes in:
-//   - the site itself (css/, js/, sw.js, the two vendor bundles)
+//   - the site itself (css/, js/, images/, sw.js, the two vendor bundles)
 //   - a page for every address, so each can be found and read on its own:
 //       /                 the player
 //       /beats/<slug>     the player opened on one beat, with that beat's title,
@@ -61,7 +61,7 @@ mkdirSync(dist, { recursive: true });
 
 /* ---------- the site's own files ---------- */
 
-for (const path of ['sw.js', 'LICENSE', 'css', 'js', 'site-config.js', 'vendor/strudel.bundle.js', 'vendor/firebase.bundle.js']) {
+for (const path of ['sw.js', 'LICENSE', 'css', 'js', 'images', 'site-config.js', 'vendor/strudel.bundle.js', 'vendor/firebase.bundle.js']) {
   cpSync(join(root, path), join(dist, path), { recursive: true });
 }
 // the published site carries its settings; the source (and the source archive) does not

@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="css/deck.css" />
     <link rel="stylesheet" href="css/controls.css" />
     <link rel="stylesheet" href="css/clip.css" />
+    <link rel="stylesheet" href="css/support.css" />
   </head>
   <body data-transport="idle" data-focus="A">
     <header class="topbar">
@@ -228,7 +229,7 @@
         <p class="gate__text" id="locked-text"></p>
         <div class="locked__notes" id="locked-notes"></div>
         <div class="gate__actions">
-          <button type="button" class="pillbtn pillbtn--go" id="locked-sign-in">Sign in with Google</button>
+          <button type="button" class="gsi" id="locked-sign-in">Sign in with Google</button>
           <button type="button" class="pillbtn" id="locked-featured">Play the featured beat</button>
         </div>
       </div>
@@ -358,7 +359,7 @@
       </ul>
       <p class="intro__now" id="intro-now"><strong>The knobs are yours.</strong> Sign in, free, to change the code, keep your version and share it.</p>
       <div class="intro__action">
-        <button type="button" class="pillbtn pillbtn--go" id="intro-sign-in">Sign in with Google</button>
+        <button type="button" class="gsi" id="intro-sign-in">Sign in with Google</button>
         <p class="intro__fine" id="intro-fine">
           We store your name, email address and the songs you save. <a href="privacy" target="_blank" rel="noopener">Privacy</a> ·
           <a href="about" target="_blank" rel="noopener">About</a>
@@ -432,7 +433,7 @@
             and your own songs, kept in your account and shareable by link. It is free.
           </p>
           <div class="sheet__row">
-            <button type="button" class="pillbtn pillbtn--go" id="sign-in">Sign in with Google</button>
+            <button type="button" class="gsi" id="sign-in">Sign in with Google</button>
           </div>
           <p class="sheet__fine">
             We store your name, email address and the songs you save. See the <a href="privacy" target="_blank" rel="noopener">privacy notice</a>.
@@ -621,10 +622,13 @@
 
     <dialog class="sheet" id="about" aria-labelledby="about-title">
       <header class="sheet__head">
-        <h2 class="sheet__title" id="about-title">Hacking the Beats <span class="sheet__version" id="about-version"></span></h2>
-        <button type="button" class="iconbtn" id="about-close" aria-label="Close">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
-        </button>
+        <h2 class="sheet__title" id="about-title"><span class="about__brand">Hack The Beats</span> <span class="sheet__version" id="about-version"></span></h2>
+        <div class="about__tools">
+          <button type="button" class="about__donate" id="about-donate" aria-controls="support">Donate</button>
+          <button type="button" class="iconbtn" id="about-close" aria-label="Close">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+          </button>
+        </div>
       </header>
       <div class="sheet__body">
         <p>
@@ -638,6 +642,7 @@
         <p class="sheet__row"><button type="button" class="pillbtn" id="coach-restart">Show the first steps again</button></p>
 
         <h3>Keys</h3>
+        <p class="sheet__fine">While you are typing in the code, the single-key shortcuts are off.</p>
         <dl class="keys">
           <div><dt><kbd>Space</kbd></dt><dd>Play or stop the deck in focus</dd></div>
           <div><dt><kbd>X</kbd></dt><dd>Switch focus between deck A and deck B</dd></div>
@@ -646,15 +651,36 @@
           <div><dt><kbd>1</kbd>–<kbd>9</kbd> <kbd>0</kbd> <kbd>-</kbd> <kbd>=</kbd></dt><dd>Mute channels 1 to 12</dd></div>
           <div><dt><kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></dt><dd>Hold a pad: echo, drop, wash, half, stutter, no drums. With <kbd>Shift</kbd> it stays on.</dd></div>
           <div><dt><kbd>T</kbd> <kbd>Y</kbd> <kbd>U</kbd> <kbd>I</kbd> <kbd>H</kbd> <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd></dt><dd>Snapshot pads 1 to 8: bring one in on the next bar, or stop it. With <kbd>Shift</kbd> it plays once. Capture one with ● on a channel in the Mixer (<kbd>Esc</kbd> lets a capture go).</dd></div>
-          <div><dt>On the arrangement</dt><dd>Drag across bars to cut them or keep only them; open it and drag along a track to silence that track there. <kbd>Shift</kbd>-click picks one bar, <kbd>Delete</kbd> cuts what is picked, <kbd>Esc</kbd> lets it go. The change is made in the code: Save keeps it.</dd></div>
           <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Jump back or forward four bars</dd></div>
           <div><dt><kbd>F</kbd> <kbd>G</kbd></dt><dd>Follow the music with the code; gallery (full-screen) view</dd></div>
-          <div><dt><kbd>R</kbd> <kbd>B</kbd></dt><dd>Record the mix to a WAV file; open the beats list</dd></div>
+          <div><dt><kbd>R</kbd> <kbd>B</kbd> <kbd>?</kbd></dt><dd>Record the mix to a WAV file; open the beats list; this help</dd></div>
           <div><dt><kbd>V</kbd></dt><dd>Make a video clip of the code and the music (<kbd>Esc</kbd> cancels one being recorded)</dd></div>
-          <div><dt>On a knob</dt><dd>Arrows adjust, <kbd>Shift</kbd> for fine, <kbd>Enter</kbd> or double-click resets</dd></div>
-          <div><dt>In the code</dt><dd>Click a track label to mute it, click a highlighted number to find its knob, drag an inline slider</dd></div>
           <div><dt><kbd data-mod>Ctrl</kbd>+<kbd>.</kbd></dt><dd>Stop the deck in focus (works while typing in the code, too)</dd></div>
-          <div><dt>Editing</dt><dd>Click in the code (or press <strong>Edit</strong>) to change it. <kbd data-mod>Ctrl</kbd>+<kbd>Enter</kbd> runs your changes without stopping the music, <kbd data-mod>Ctrl</kbd>+<kbd>S</kbd> saves, <kbd>Esc</kbd> leaves the code. Changed lines are marked until you save.</dd></div>
+          <div><dt><kbd data-mod>Ctrl</kbd>+<kbd>Enter</kbd> <kbd data-mod>Ctrl</kbd>+<kbd>S</kbd></dt><dd>Run your changes without stopping the music; save</dd></div>
+        </dl>
+
+        <h3>On screen</h3>
+        <dl class="keys">
+          <div><dt>Editing</dt><dd>Click in the code (or press <strong>Edit</strong>) to change it, and <strong>Update</strong> runs it. A mistake is shown in plain words and the last good version keeps playing. Changed lines are marked until you <strong>Save</strong>; <strong>Save as new</strong> keeps your version as a song of its own, <strong>Revert</strong> throws the changes away. <kbd>Esc</kbd> leaves the code.</dd></div>
+          <div><dt>In the code</dt><dd>Click a track label to mute it, click a highlighted number to find its knob, drag an inline slider. <strong>Try</strong>, top left, makes one of the song's suggested changes; tap it again to put it back.</dd></div>
+          <div><dt>Song map</dt><dd>The sections of the code, beside it (or behind <strong>Map</strong> when the window is narrow). Rest on one to read what it does; click to glide there.</dd></div>
+          <div><dt>Views</dt><dd><strong>Follow</strong> glides the code to whichever track comes in, <strong>Split</strong> shows both decks' code, <strong>Gallery</strong> is full screen. Click a channel's name to focus on that track; click again to let it go.</dd></div>
+          <div><dt>On a knob</dt><dd>Arrows adjust, <kbd>Shift</kbd> for fine, <kbd>Enter</kbd> or double-click resets. <strong>Reset</strong> puts every knob back to what the code says.</dd></div>
+          <div><dt>Pads</dt><dd>Hold one, or <kbd>Shift</kbd>-click (or switch <strong>Latch</strong> on) to keep it on.</dd></div>
+          <div><dt>Snapshots</dt><dd>Press ● on a channel in the Mixer to capture it (1, 2, 4 or 8 bars) from the next bar. Tap its pad to bring it in on the next bar; right-click or long-press to rename, pin, download as WAV or clear it.</dd></div>
+          <div><dt>Two decks</dt><dd>With <strong>Sync</strong> on, a deck started while the other plays comes in on the bar, at its tempo. <strong>Mix</strong> does that and fades across over eight bars.</dd></div>
+          <div>
+            <dt>Arrangement</dt>
+            <dd>
+              Which tracks play in each of 32 bars; click a bar to jump there. Drag across bars, <kbd>Shift</kbd>-click one, or type the bar numbers to pick them, then:
+              <strong>Cut</strong> or <strong>Keep only</strong> them; move them a bar with <strong>‹ ›</strong> (or <kbd>←</kbd> <kbd>→</kbd>);
+              <strong>Copy</strong> them, pick other bars and <strong>Paste</strong> them in after (or <strong>Paste over</strong> to replace those).
+              <kbd data-mod>Ctrl</kbd>+<kbd>C</kbd> and <kbd data-mod>Ctrl</kbd>+<kbd>V</kbd> copy and paste, <kbd>Delete</kbd> cuts, <kbd>Esc</kbd> lets them go.
+              Open the strip and drag along one track to <strong>Silence</strong> it there. Every change is made in the code: Save keeps it.
+            </dd>
+          </div>
+          <div><dt>Your songs</dt><dd>In the beats list: <strong>New</strong>, <strong>Import</strong> and <strong>Export</strong>, and each song's <strong>⋯</strong> menu to rename, duplicate, share or delete it. Each shows when it was last saved, and whether it is shared.</dd></div>
+          <div><dt>Sharing</dt><dd>The link icon shares a song by link, which always plays its latest saved version; switching sharing off closes the link for good. <strong>Make a video clip</strong> there (or <kbd>V</kbd>) records the code lighting up with the music, ready to post.</dd></div>
         </dl>
 
         <h3>MIDI controller</h3>
@@ -665,6 +691,33 @@
           <button type="button" class="pillbtn" id="midi-clear">Forget bindings</button>
         </div>
         <p class="sheet__fine">With Learn on, click any knob, fader, pad or button on the deck, then move a control on your hardware.</p>
+
+        <section class="support" id="support" aria-labelledby="support-title">
+          <div class="support__copy">
+            <h3 class="support__title" id="support-title">Support the site</h3>
+            <p>
+              Hack The Beats is free: no ads, no paywall, no subscription. If it has had your head nodding, help us keep hacking
+              the beats. Tell a friend who makes music, share a song you made, and wear the shirt.
+            </p>
+            <p class="support__fine">Every shirt helps keep the site running, free, and full of new beats.</p>
+            <a class="support__buy" href="https://creativecanvaslabs.com/collections/hack-the-beats" target="_blank" rel="noopener">
+              Buy a shirt
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5" /></svg>
+            </a>
+          </div>
+          <a class="support__merch" href="https://creativecanvaslabs.com/collections/hack-the-beats" target="_blank" rel="noopener" aria-label="The Hack the Beats shirt, in the shop (opens in a new window)">
+            <span class="support__tag" aria-hidden="true">merch_001<span>long sleeve</span></span>
+            <span class="support__scan" aria-hidden="true"></span>
+            <img
+              src="images/shirt.webp"
+              alt="A black long-sleeve shirt with the Hack the Beats logo in white and orange pixels"
+              width="552"
+              height="720"
+              loading="lazy"
+            />
+            <span class="support__steps" aria-hidden="true"><i style="--i: 0"></i><i style="--i: 1"></i><i style="--i: 2"></i><i style="--i: 3"></i><i style="--i: 4"></i><i style="--i: 5"></i><i style="--i: 6"></i><i style="--i: 7"></i><i style="--i: 8"></i><i style="--i: 9"></i><i style="--i: 10"></i><i style="--i: 11"></i><i style="--i: 12"></i><i style="--i: 13"></i><i style="--i: 14"></i><i style="--i: 15"></i></span>
+          </a>
+        </section>
 
         <h3>Credits and source</h3>
         <p>
@@ -683,7 +736,27 @@
           <a href="about" target="_blank" rel="noopener">About this site, credits and contact</a> ·
           <a href="privacy" target="_blank" rel="noopener">Privacy</a>
         </p>
+        <p class="about__end">
+          <button type="button" class="about__up" id="about-top" aria-label="Back to the top">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" /></svg>
+          </button>
+        </p>
       </div>
+    </dialog>
+
+    <!-- About and Privacy, over the player (js/pages.js): the words come from the pages themselves -->
+    <dialog class="sheet readpage" id="page-sheet" aria-labelledby="page-sheet-title">
+      <header class="sheet__head">
+        <h2 class="sheet__title" id="page-sheet-title"></h2>
+        <div class="about__tools">
+          <a class="readpage__tab" data-act="tab" href="about" target="_blank" rel="noopener">Open as a page ↗</a>
+          <button type="button" class="about__donate" data-act="donate">Donate</button>
+          <button type="button" class="iconbtn" data-act="close" aria-label="Close">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+          </button>
+        </div>
+      </header>
+      <div class="sheet__body"></div>
     </dialog>
 
     <!-- this site's own settings (js/config.js); empty unless config.site.json exists -->
