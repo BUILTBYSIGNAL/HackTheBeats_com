@@ -34,6 +34,10 @@ beats/*
 # notes, drafts and anything else that is not ready to ship stay on this machine
 private/
 
+# docs/ stays on this machine too, apart from the screenshot the README shows
+docs/*
+!docs/player.png
+
 # local tool settings
 .claude/
 
