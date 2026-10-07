@@ -1030,6 +1030,10 @@ dialog::backdrop {
 .readpage {
   width: min(720px, 94vw);
 }
+/* the page's name, orange like the help sheet's */
+.readpage .sheet__title {
+  color: var(--hb-accent);
+}
 .readpage::backdrop {
   backdrop-filter: blur(8px);
 }

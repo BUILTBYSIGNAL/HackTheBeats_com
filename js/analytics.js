@@ -69,12 +69,12 @@ function notice() {
   banner.setAttribute('role', 'region');
   banner.setAttribute('aria-label', 'Analytics');
   banner.innerHTML = off
-    ? `<span>Google Analytics is off for you in this browser. <a href="privacy" target="_blank" rel="noopener">Privacy</a></span>
+    ? `<span>Google Analytics is off for you in this browser. <a href="privacy">Privacy</a></span>
     <span class="consent__actions">
       <button type="button" data-answer="no">Keep it off</button>
       <button type="button" data-answer="yes">Turn it on</button>
     </span>`
-    : `<span>We count visits with Google Analytics, which uses cookies. <a href="privacy" target="_blank" rel="noopener">Privacy</a></span>
+    : `<span>We count visits with Google Analytics, which uses cookies. <a href="privacy">Privacy</a></span>
     <span class="consent__actions">
       <button type="button" data-answer="yes">OK</button>
       <button type="button" data-answer="no">Opt out</button>

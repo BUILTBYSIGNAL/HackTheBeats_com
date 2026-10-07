@@ -126,6 +126,23 @@ export const pages = {
         link.textContent = config.contact;
       }
     }
+    // About and Privacy end as the help sheet does: the shirt (About has its own), then a
+    // way back to the top
+    if (root === page.body) {
+      if (!holder.querySelector('.support')) {
+        const support = document.getElementById('support')?.cloneNode(true);
+        if (support) {
+          for (const node of [support, ...support.querySelectorAll('[id]')]) node.id &&= `page-${node.id}`;
+          support.setAttribute('aria-labelledby', 'page-support-title');
+          holder.append(support);
+        }
+      }
+      const end = document.createElement('p');
+      end.className = 'about__end';
+      end.innerHTML = '<button type="button" class="about__up" aria-label="Back to the top"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" /></svg></button>';
+      end.querySelector('button').addEventListener('click', () => this.dialog.querySelector('.sheet__body').scrollTo({ top: 0, behavior: 'smooth' }));
+      holder.append(end);
+    }
     holder.querySelector('#page-analytics-choice')?.addEventListener('click', () => {
       // the notice is on the player, under the lightbox
       this.dialog.close();
